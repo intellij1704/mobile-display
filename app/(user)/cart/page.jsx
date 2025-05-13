@@ -8,327 +8,379 @@ import { CircularProgress } from "@mui/material";
 import { Button } from "@nextui-org/react";
 import { Minus, Plus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 
-const Page = () => {
-    const { user } = useAuth();
-    const { data, isLoading } = useUser({ uid: user?.uid });
+const CartPage = () => {
+  const { user } = useAuth();
+  const { data, isLoading } = useUser({ uid: user?.uid });
+  const [cartSubtotals, setCartSubtotals] = useState({});
 
-    if (isLoading) {
-        return (
-            <div className="h-screen w-full flex flex-col justify-center items-center bg-gray-100">
-                <CircularProgress size={50} thickness={4} color="primary" />
-                <p className="mt-4 text-gray-600 font-medium">Fetching Data...</p>
-            </div>
-        );
+  // Memoize the onSubtotalUpdate and onRemove callbacks to prevent unnecessary re-renders
+  const onSubtotalUpdate = useCallback((itemId, subtotal, quantity) => {
+    setCartSubtotals((prev) => ({
+      ...prev,
+      [itemId]: { subtotal, quantity },
+    }));
+  }, []);
+
+  const onRemove = useCallback((itemId) => {
+    setCartSubtotals((prev) => {
+      const updated = { ...prev };
+      delete updated[itemId];
+      return updated;
+    });
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100">
+        <CircularProgress size={50} thickness={4} color="primary" />
+        <p className="mt-4 text-gray-600 font-medium">Loading Cart...</p>
+      </div>
+    );
+  }
+
+  const calculateSummary = () => {
+    if (!data?.carts || !Array.isArray(data.carts)) {
+      return {
+        productTotal: 0,
+        totalItems: 0,
+        discount: 0,
+        deliveryFee: 0,
+        total: 0,
+      };
     }
 
-    const calculateSummary = () => {
-        if (!data?.carts) return {};
+    let productTotal = 0;
+    let totalItems = 0;
 
+    // Sum up the subtotals from cartSubtotals
+    Object.values(cartSubtotals).forEach(({ subtotal, quantity }) => {
+      productTotal += subtotal || 0;
+      totalItems += quantity || 0;
+    });
 
-        let productTotal = 0;
-        let totalItems = 0;
+    const discount = 0; // Can be dynamic
+    const deliveryFee = 100; // Can be dynamic
+    const total = productTotal - discount + deliveryFee;
 
-        data.carts.forEach(item => {
-            const productPrice = item.salePrice || item.price || 0;
-            productTotal += productPrice * item.quantity;
-            totalItems += item.quantity;
-        });
-
-        const discount = 0;
-        const deliveryFee = 0;
-        const total = productTotal - discount + deliveryFee;
-
-        return {
-            productTotal,
-            totalItems,
-            discount,
-            deliveryFee,
-            total
-        };
+    return {
+      productTotal,
+      totalItems,
+      discount,
+      deliveryFee,
+      total,
     };
+  };
 
-    const summary = calculateSummary();
+  const summary = calculateSummary();
 
-    return (
-        <div className="min-h-screen bg-gray-50 py-8 md:py-14 px-4 sm:px-6 lg:px-8 xl:px-20">
-            <div className="max-w-8xl mx-auto">
-                {(!data?.carts || data?.carts?.length === 0) ? (
-                    <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 rounded-lg p-8 text-center">
-                        <img
-                            className="h-60 mb-8 w-auto"
-                            src="/svgs/Empty-pana.svg"
-                            alt="Shopping cart is empty"
-                        />
-                        <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-                            Your cart feels lonely
-                        </h2>
-                        <p className="text-gray-500 mb-6 max-w-md">
-                            Your shopping cart is empty. Let's fill it with some amazing products!
-                        </p>
-                        <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                            Continue Shopping
-                        </button>
-                        <p className="mt-4 text-sm text-gray-400">
-                            Need help? <a href="#" className="text-indigo-500 hover:underline">Contact support</a>
-                        </p>
+  return (
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 xl:px-20">
+      <div className="mx-auto max-w-7xl">
+        {!data?.carts || data.carts.length === 0 ? (
+          <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg bg-white p-8 text-center shadow-sm">
+            <img
+              className="mb-8 h-60 w-auto"
+              src="/svgs/Empty-pana.svg"
+              alt="Empty cart"
+            />
+            <h2 className="mb-2 text-2xl font-semibold text-gray-700">
+              Your Cart is Empty
+            </h2>
+            <p className="mb-6 max-w-md text-gray-500">
+              Looks like you haven't added any products yet. Start shopping now!
+            </p>
+            <Link href="/">
+              <Button className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">
+                Continue Shopping
+              </Button>
+            </Link>
+            <p className="mt-4 text-sm text-gray-400">
+              Need help?{" "}
+              <Link href="#" className="text-indigo-500 hover:underline">
+                Contact support
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <>
+            <h1 className="mb-3 text-2xl font-bold text-gray-900 md:text-3xl">
+              Your Cart
+            </h1>
+            <div className="flex flex-col gap-6 lg:flex-row">
+              {/* Cart Items */}
+              <div className="lg:w-2/3">
+                <div className="hidden rounded-t-lg bg-white p-4 shadow-sm md:block">
+                  <div className="grid grid-cols-12 gap-4 font-medium text-gray-600">
+                    <div className="col-span-5">Product</div>
+                    <div className="col-span-2 text-center">Price</div>
+                    <div className="col-span-2 text-center">Quantity</div>
+                    <div className="col-span-2 text-center">Subtotal</div>
+                    <div className="col-span-1"></div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {data.carts.map((item) => (
+                    <CartItem
+                      key={item.id}
+                      item={item}
+                      user={user}
+                      data={data}
+                      onSubtotalUpdate={onSubtotalUpdate}
+                      onRemove={onRemove}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="lg:w-1/3">
+                <div className="rounded-lg bg-white p-6 shadow-md">
+                  <h2 className="mb-4 text-lg font-semibold">Order Summary</h2>
+                  <div className="space-y-3 border-b border-gray-200 pb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Items ({summary.totalItems})</span>
+                      <span className="font-medium">
+                        ₹{summary.productTotal.toFixed(2)}
+                      </span>
                     </div>
-                ) : (
-                    <>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">YOUR CART</h1>
-                        <h2 className="text-base md:text-lg font-semibold">Order Summary</h2>
-
-                        <div className="flex flex-col lg:flex-row gap-6 md:gap-8 mt-6">
-                            {/* Cart Items - Left Side */}
-                            <div className="lg:w-2/3">
-                                {/* Desktop Table Header */}
-                                <div className="hidden md:block bg-white p-4 rounded-t-lg border border-gray-200 shadow-sm">
-                                    <div className="grid grid-cols-12 gap-4 font-medium text-gray-600">
-                                        <div className="col-span-5">Product</div>
-                                        <div className="col-span-2 text-center">Price</div>
-                                        <div className="col-span-2 text-center">Quantity</div>
-                                        <div className="col-span-2 text-center">Subtotal</div>
-                                        <div className="col-span-1">Action</div>
-                                    </div>
-                                </div>
-
-                                {/* Cart Items */}
-                                <div className="space-y-4">
-                                    {data?.carts?.map((item) => (
-                                        <CartItem key={item.id} item={item} user={user} data={data} />
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Order Summary - Right Side */}
-                            <div className="lg:w-1/3">
-                                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md border border-gray-200 sticky top-8">
-                                    <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
-                                    <div className="space-y-3 border-b border-gray-200 pb-4">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Product Total</span>
-                                            <span className="font-medium">₹{summary.productTotal.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Quantity</span>
-                                            <span className="font-medium">{summary.totalItems}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Discount</span>
-                                            <span className="font-medium">₹{summary.discount.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Delivery fee</span>
-                                            <span className="font-medium">₹{summary.deliveryFee.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between text-sm mt-6">
-                                        <span className="text-gray-600">Total</span>
-                                        <span className="text-lg md:text-xl font-bold">₹{summary.total.toFixed(2)}</span>
-                                    </div>
-                                    <Link href={`/checkout?type=cart`} className="block w-full mt-4">
-                                        <button className="w-full bg-[#FF1212] hover:bg-red-600 text-white py-3 rounded-md font-medium transition-colors">
-                                            Order Now
-                                        </button>
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Discount</span>
+                      <span className="font-medium">
+                        -₹{summary.discount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Delivery Fee</span>
+                      <span className="font-medium">
+                        ₹{summary.deliveryFee.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-between">
+                    <span className="text-gray-600">Total</span>
+                    <span className="text-lg font-bold">
+                      ₹{summary.total.toFixed(2)}
+                    </span>
+                  </div>
+                  <Link href="/checkout?type=cart" className="mt-6 block">
+                    <Button className="w-full bg-red-600 py-3 text-white hover:bg-red-700">
+                      Proceed to Checkout
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </div>
-        </div>
-    );
+          </>
+        )}
+      </div>
+    </div>
+  );
 };
 
-const CartItem = ({ item, user, data }) => {
-    const [isRemoving, setIsRemoving] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
-    const { data: product } = useProduct({ productId: item?.id });
-    const price = product?.salePrice || product?.price || 0;
-    const subtotal = price * item.quantity;
-    const isOutOfStock = product?.stock === 0;
+const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { data: product } = useProduct({ productId: item?.id });
 
-    const handleRemove = async () => {
-        if (!confirm("Are you sure?")) return;
-        setIsRemoving(true);
-        try {
-            const newList = data?.carts?.filter((d) => d?.id !== item?.id);
-            await updateCarts({ list: newList, uid: user?.uid });
-            toast.success("Item removed from cart");
-        } catch (error) {
-            toast.error(error?.message);
-        }
-        setIsRemoving(false);
-    };
+  // Memoize price and quantity to prevent unnecessary recalculations
+  const price = useMemo(
+    () => product?.salePrice || product?.price || item?.salePrice || item?.price || 0,
+    [product, item]
+  );
+  const quantity = useMemo(() => item.quantity || 1, [item.quantity]);
+  const subtotal = useMemo(() => price * quantity, [price, quantity]);
 
-    const handleUpdate = async (quantity) => {
-        if (quantity < 1) return;
-        setIsUpdating(true);
-        try {
-            const newList = data?.carts?.map((d) => {
-                if (d?.id === item?.id) {
-                    return { ...d, quantity: parseInt(quantity) };
-                }
-                return d;
-            });
-            await updateCarts({ list: newList, uid: user?.uid });
-        } catch (error) {
-            toast.error(error?.message);
-        }
-        setIsUpdating(false);
-    };
+  const isOutOfStock = product?.stock === 0;
 
-    return (
-        <div className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 ${isOutOfStock ? 'opacity-70' : ''}`}>
-            {/* Mobile View - Stacked Layout */}
-            <div className="md:hidden flex flex-col gap-4">
-                {isOutOfStock && (
-                    <div className="bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium mb-2">
-                        Out of Stock
-                    </div>
-                )}
-                <div className="flex gap-4">
-                    <div className="w-24 h-24 flex-shrink-0">
-                        <img
-                            src={product?.featureImageURL || "/cart-item.png"}
-                            alt={product?.title}
-                            className="w-full h-full object-cover rounded"
-                        />
-                    </div>
-                    <div className="flex-grow">
-                        <h3 className="text-base font-medium text-gray-800">
-                            {product?.title || "Product Title"}
-                        </h3>
-                        {item?.selectedColor && (
-                            <p className="text-sm text-gray-500">Color: {item.selectedColor}</p>
-                        )}
-                        {item?.selectedQuality && (
-                            <p className="text-sm text-gray-500">Quality: {item.selectedQuality}</p>
-                        )}
-                    </div>
-                </div>
+  // Update parent with the subtotal and quantity
+  useEffect(() => {
+    onSubtotalUpdate(item.id, subtotal, quantity);
+  }, [item.id, subtotal, quantity, onSubtotalUpdate]); // Dependencies are stable now
 
-                <div className="flex justify-between items-center">
-                    <div className="text-lg font-semibold">₹{price.toFixed(2)}</div>
+  const handleRemove = async () => {
+    if (!confirm("Are you sure you want to remove this item?")) return;
+    setIsRemoving(true);
+    try {
+      const newList = data?.carts?.filter((d) => d?.id !== item?.id);
+      await updateCarts({ list: newList, uid: user?.uid });
+      toast.success("Item removed from cart");
+      onRemove(item.id); // Notify parent to remove this item's subtotal
+    } catch (error) {
+      toast.error(error?.message || "Failed to remove item");
+    } finally {
+      setIsRemoving(false);
+    }
+  };
 
-                    <div className="flex items-center gap-2">
-                        {isOutOfStock ? (
-                            <span className="text-sm text-red-600">Out of Stock</span>
-                        ) : (
-                            <>
-                                <button
-                                    onClick={() => handleUpdate(item.quantity - 1)}
-                                    disabled={isUpdating || item.quantity <= 1}
-                                    className="p-1 border border-gray-300 bg-gray-100 rounded-l hover:bg-gray-200 disabled:opacity-50"
-                                >
-                                    <Minus size={16} />
-                                </button>
-                                <span className="px-3 py-1 border border-gray-300 text-sm">{item.quantity}</span>
-                                <button
-                                    onClick={() => handleUpdate(item.quantity + 1)}
-                                    disabled={isUpdating}
-                                    className="p-1 border border-gray-300 bg-gray-100 rounded-r hover:bg-gray-200 disabled:opacity-50"
-                                >
-                                    <Plus size={16} />
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
+  const handleUpdate = async (newQuantity) => {
+    if (newQuantity < 1 || isOutOfStock) return;
+    setIsUpdating(true);
+    try {
+      const newList = data?.carts?.map((d) =>
+        d?.id === item?.id ? { ...d, quantity: parseInt(newQuantity) } : d
+      );
+      await updateCarts({ list: newList, uid: user?.uid });
+      toast.success("Cart updated");
+    } catch (error) {
+      toast.error(error?.message || "Failed to update quantity");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
-                <div className="flex justify-between items-center border-t border-gray-200 pt-3">
-                    <span className="text-sm text-gray-600">Subtotal</span>
-                    <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
-                </div>
-
-                <button
-                    onClick={handleRemove}
-                    disabled={isRemoving}
-                    className="self-end text-gray-400 hover:text-red-500 disabled:opacity-50"
-                >
-                    {isRemoving ? (
-                        <CircularProgress size={16} />
-                    ) : (
-                        <img src="/icon/tursh.svg" alt="Remove" className="h-5 w-5" />
-                    )}
-                </button>
-            </div>
-
-            {/* Desktop View - Grid Layout */}
-            <div className="hidden md:grid grid-cols-12 gap-4 items-center">
-                {isOutOfStock && (
-                    <div className="col-span-12 bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium mb-1">
-                        Out of Stock
-                    </div>
-                )}
-                <div className="col-span-5 flex items-center gap-4">
-                    <div className="w-20 h-20 flex-shrink-0">
-                        <img
-                            src={product?.featureImageURL || "/cart-item.png"}
-                            alt={product?.title}
-                            className="w-full h-full object-cover rounded"
-                        />
-                    </div>
-                    <div>
-                        <h3 className="text-base font-medium text-gray-800">
-                            {product?.title || "Product Title"}
-                        </h3>
-                        {item?.selectedColor && (
-                            <p className="text-sm text-gray-500">Color: {item.selectedColor}</p>
-                        )}
-                        {item?.selectedQuality && (
-                            <p className="text-sm text-gray-500">Quality: {item.selectedQuality}</p>
-                        )}
-                    </div>
-                </div>
-
-                <div className="col-span-2 text-center font-medium">₹{price.toFixed(2)}</div>
-
-                <div className="col-span-2 flex justify-center">
-                    {isOutOfStock ? (
-                        <span className="text-sm text-red-600">Out of Stock</span>
-                    ) : (
-                        <div className="flex items-center">
-                            <button
-                                onClick={() => handleUpdate(item.quantity - 1)}
-                                disabled={isUpdating || item.quantity <= 1}
-                                className="p-1 border border-gray-300 bg-gray-100 rounded-l hover:bg-gray-200 disabled:opacity-50"
-                            >
-                                <Minus size={16} />
-                            </button>
-                            <span className="px-3 py-1 border border-gray-300 text-sm">{item.quantity}</span>
-                            <button
-                                onClick={() => handleUpdate(item.quantity + 1)}
-                                disabled={isUpdating}
-                                className="p-1 border border-gray-300 bg-gray-100 rounded-r hover:bg-gray-200 disabled:opacity-50"
-                            >
-                                <Plus size={16} />
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="col-span-2 text-center font-semibold">₹{subtotal.toFixed(2)}</div>
-
-                <div className="col-span-1 flex justify-end">
-                    <button
-                        onClick={handleRemove}
-                        disabled={isRemoving}
-                        className="text-gray-400 hover:text-red-500 disabled:opacity-50"
-                    >
-                        {isRemoving ? (
-                            <CircularProgress size={16} />
-                        ) : (
-                            <img src="/icon/tursh.svg" alt="Remove" className="h-5 w-5" />
-                        )}
-                    </button>
-                </div>
-            </div>
+  return (
+    <div
+      className={`rounded-lg bg-white p-4 shadow-sm ${
+        isOutOfStock ? "opacity-60" : ""
+      }`}
+    >
+      {/* Mobile View */}
+      <div className="flex flex-col gap-4 md:hidden">
+        {isOutOfStock && (
+          <span className="rounded bg-red-100 px-2 py-1 text-sm text-red-600">
+            Out of Stock
+          </span>
+        )}
+        <div className="flex gap-4">
+          <img
+            src={product?.featureImageURL || "/cart-item.png"}
+            alt={product?.title || "Product"}
+            className="h-24 w-24 rounded object-cover"
+          />
+          <div>
+            <h3 className="text-base font-medium text-gray-800">
+              {product?.title || "Product"}
+            </h3>
+            {item?.selectedColor && (
+              <p className="text-sm text-gray-500">
+                Color: {item.selectedColor}
+              </p>
+            )}
+            {item?.selectedQuality && (
+              <p className="text-sm text-gray-500">
+                Quality: {item.selectedQuality}
+              </p>
+            )}
+          </div>
         </div>
-    );
+        <div className="flex items-center justify-between">
+          <span className="font-medium">₹{price.toFixed(2)}</span>
+          {isOutOfStock ? (
+            <span className="text-sm text-red-600">Unavailable</span>
+          ) : (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleUpdate(quantity - 1)}
+                disabled={isUpdating || quantity <= 1}
+                className="rounded-l border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="border-y px-3 py-1 text-sm">{quantity}</span>
+              <button
+                onClick={() => handleUpdate(quantity + 1)}
+                disabled={isUpdating}
+                className="rounded-r border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-between border-t pt-2">
+          <span className="text-sm text-gray-600">Subtotal</span>
+          <span className="font-medium">₹{subtotal.toFixed(2)}</span>
+        </div>
+        <button
+          onClick={handleRemove}
+          disabled={isRemoving}
+          className="self-end text-gray-400 hover:text-red-500"
+        >
+          {isRemoving ? (
+            <CircularProgress size={16} />
+          ) : (
+            <img src="/icon/tursh.svg" alt="Remove" className="h-5 w-5" />
+          )}
+        </button>
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:grid grid-cols-12 gap-4">
+        {isOutOfStock && (
+          <span className="col-span-12 rounded bg-red-100 px-2 py-1 text-sm text-red-600">
+            Out of Stock
+          </span>
+        )}
+        <div className="col-span-5 flex gap-4">
+          <img
+            src={product?.featureImageURL || "/cart-item.png"}
+            alt={product?.title || "Product"}
+            className="h-20 w-20 rounded object-cover"
+          />
+          <div>
+            <h3 className="text-base font-medium text-gray-800">
+              {product?.title || "Product"}
+            </h3>
+            {item?.selectedColor && (
+              <p className="text-sm text-gray-500">
+                Color: {item.selectedColor}
+              </p>
+            )}
+            {item?.selectedQuality && (
+              <p className="text-sm text-gray-500">
+                Quality: {item.selectedQuality}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="col-span-2 text-center font-medium">
+          ₹{price.toFixed(2)}
+        </div>
+        <div className="col-span-2 text-center">
+          {isOutOfStock ? (
+            <span className="text-sm text-red-600">Unavailable</span>
+          ) : (
+            <div className="inline-flex items-center gap-1">
+              <button
+                onClick={() => handleUpdate(quantity - 1)}
+                disabled={isUpdating || quantity <= 1}
+                className="rounded-l border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="border-y px-3 py-1 text-sm">{quantity}</span>
+              <button
+                onClick={() => handleUpdate(quantity + 1)}
+                disabled={isUpdating}
+                className="rounded-r border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="col-span-2 text-center font-medium">
+          ₹{subtotal.toFixed(2)}
+        </div>
+        <div className="col-span-1 text-right">
+          <button
+            onClick={handleRemove}
+            disabled={isRemoving}
+            className="text-gray-400 hover:text-red-500"
+          >
+            {isRemoving ? (
+              <CircularProgress size={16} />
+            ) : (
+              <img src="/icon/tursh.svg" alt="Remove" className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default Page;
+export default CartPage;
