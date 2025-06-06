@@ -74,8 +74,8 @@ export default async function Page({ params, searchParams }) {
             </section>
 
             {/* Review Section */}
-            <section className="py-12 bg-white border-t">
-                <div className="container mx-auto px-4 max-w-5xl">
+            <section className="py-12 bg-white border-t rounded-md">
+                <div className="container mx-auto px-4 max-w-8xl flex">
                     <AuthContextProvider>
                         <AddReview productId={product.id} />
                         <Reviews productId={product.id} />

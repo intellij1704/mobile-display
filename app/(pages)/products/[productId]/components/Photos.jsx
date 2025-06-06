@@ -5,36 +5,41 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { motion } from "framer-motion";
 
-// Custom arrow components with fixed positioning
-const PrevArrow = (props) => {
-    const { onClick } = props;
-    return (
-        <button
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/70 text-white cursor-pointer hover:bg-black transition-all duration-200"
-            onClick={onClick}
-            type="button"
-            aria-label="Previous slide"
-        >
-            <ChevronLeft size={24} />
-        </button>
-    );
-};
+// Custom arrow components
+const PrevArrow = ({ onClick }) => (
+    <button
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/70 text-white cursor-pointer hover:bg-black transition-all duration-200"
+        onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+        }}
+        onMouseDown={(e) => e.preventDefault()}
+        type="button"
+        aria-label="Previous slide"
+    >
+        <ChevronLeft size={24} />
+    </button>
+);
 
-const NextArrow = (props) => {
-    const { onClick } = props;
-    return (
-        <button
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/70 text-white cursor-pointer hover:bg-black transition-all duration-200"
-            onClick={onClick}
-            type="button"
-            aria-label="Next slide"
-        >
-            <ChevronRight size={24} />
-        </button>
-    );
-};
+const NextArrow = ({ onClick }) => (
+    <button
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/70 text-white cursor-pointer hover:bg-black transition-all duration-200"
+        onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+        }}
+        onMouseDown={(e) => e.preventDefault()}
+        type="button"
+        aria-label="Next slide"
+    >
+        <ChevronRight size={24} />
+    </button>
+);
 
 function Photos({ product, selectedColor }) {
     const defaultImage = "/prodduct.png";
@@ -43,6 +48,7 @@ function Photos({ product, selectedColor }) {
     const [isZoomed, setIsZoomed] = useState(false);
     const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
     const [showFullscreen, setShowFullscreen] = useState(false);
+    const [fullscreenSlide, setFullscreenSlide] = useState(0);
     const mainSliderRef = useRef(null);
     const thumbnailSliderRef = useRef(null);
 
@@ -51,10 +57,9 @@ function Photos({ product, selectedColor }) {
         ? product.variantImages[selectedColor]
         : [product?.featureImageURL, ...(product?.imageList ?? [])].filter(Boolean);
 
-    // Fallback to default image if no images are available
     const displayImages = images.length ? images : [defaultImage];
 
-    // Settings for the main slider
+    // Main slider settings
     const mainSliderSettings = {
         dots: false,
         infinite: true,
@@ -64,88 +69,87 @@ function Photos({ product, selectedColor }) {
         arrows: true,
         autoplay: !isPaused,
         autoplaySpeed: 3000,
-        pauseOnHover: true,
+        pauseOnHover: false,
+        pauseOnFocus: false,
         prevArrow: <PrevArrow />,
         nextArrow: <NextArrow />,
-        beforeChange: (current, next) => {
+        beforeChange: (_, next) => {
             setCurrentSlide(next);
+            if (showFullscreen) {
+                setFullscreenSlide(next);
+            }
         },
-        afterChange: (current) => {
-            setCurrentSlide(current);
-        },
+        swipe: false,
     };
 
-    // Settings for the thumbnail slider
+    // Thumbnail slider settings
     const thumbnailSliderSettings = {
         dots: false,
         infinite: true,
         speed: 500,
-        slidesToShow: displayImages.length > 6 ? 6 : displayImages.length,
+        slidesToShow: Math.min(displayImages.length, 6),
         slidesToScroll: 1,
         arrows: false,
-        focusOnSelect: true,
+        focusOnSelect: false,
+        swipe: false,
         responsive: [
-            {
-                breakpoint: 768,
-                settings: {
-                    slidesToShow: displayImages.length > 3 ? 3 : displayImages.length,
-                },
-            },
-            {
-                breakpoint: 480,
-                settings: {
-                    slidesToShow: displayImages.length > 2 ? 2 : displayImages.length,
-                },
-            },
+            { breakpoint: 768, settings: { slidesToShow: Math.min(displayImages.length, 3) } },
+            { breakpoint: 480, settings: { slidesToShow: Math.min(displayImages.length, 2) } },
         ],
     };
 
-    // Handle zoom functionality
-    const handleMouseMove = (e) => {
+    const handleMouseMove = useCallback((e) => {
         if (!isZoomed) return;
-
-        const container = e.currentTarget;
-        const rect = container.getBoundingClientRect();
-
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
-
+        const container = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - container.left) / container.width;
+        const y = (e.clientY - container.top) / container.height;
         setZoomPosition({ x, y });
-    };
+    }, [isZoomed]);
 
-    // Handle thumbnail click
-    const handleThumbnailClick = (index) => {
-        if (mainSliderRef.current) {
-            mainSliderRef.current.slickGoTo(index);
-            setCurrentSlide(index);
+    const handleThumbnailClick = useCallback((index) => {
+        mainSliderRef.current?.slickGoTo(index);
+        setCurrentSlide(index);
+        if (showFullscreen) {
+            setFullscreenSlide(index);
         }
-    };
+    }, [showFullscreen]);
 
-    // Handle fullscreen view
-    const toggleFullscreen = () => {
-        setShowFullscreen(!showFullscreen);
+    const toggleFullscreen = useCallback((e, index) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+        const slideIndex = typeof index === 'number' ? index : currentSlide;
+        setFullscreenSlide(slideIndex);
+        setShowFullscreen((prev) => !prev);
         setIsPaused(true);
-    };
-
-    // Sync the two sliders
-    useEffect(() => {
-        if (mainSliderRef.current && thumbnailSliderRef.current) {
-            thumbnailSliderRef.current.slickGoTo(currentSlide);
-        }
     }, [currentSlide]);
 
-    // Reset slider when images change
-    useEffect(() => {
+    const syncSliders = useCallback(() => {
+        thumbnailSliderRef.current?.slickGoTo(currentSlide);
+    }, [currentSlide]);
+
+    const resetSlider = useCallback(() => {
         setCurrentSlide(0);
-        if (mainSliderRef.current) {
-            mainSliderRef.current.slickGoTo(0);
-        }
-    }, [selectedColor]);
+        setFullscreenSlide(0);
+        mainSliderRef.current?.slickGoTo(0);
+        syncSliders();
+    }, [syncSliders]);
+
+    useEffect(() => {
+        syncSliders();
+    }, [currentSlide, syncSliders]);
+
+    useEffect(() => {
+        resetSlider();
+    }, [selectedColor, resetSlider]);
+
+    const handleWheel = useCallback((e) => {
+        e.stopPropagation();
+    }, []);
 
     if (!displayImages.length) {
         return (
-            <div className="flex justify-center items-center min-h-screen bg-gray-100">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-semibold text-red-500 px-6 text-center">
+            <div className="flex justify-center items-center min-h-[200px] bg-gray-100">
+                <div className="text-2xl font-semibold text-red-500 px-6 text-center">
                     Something Went Wrong
                 </div>
             </div>
@@ -153,27 +157,48 @@ function Photos({ product, selectedColor }) {
     }
 
     return (
-        <div className="w-full max-w-8xl mx-auto px-4 sm:px-6 lg:px-10 py-6 bg-white">
+        <div
+            className="w-full max-w-8xl mx-auto px-4 sm:px-6 lg:px-10 py-6 bg-white"
+            onWheel={handleWheel}
+        >
             {/* Fullscreen View */}
             {showFullscreen && (
-                <div className="fixed inset-0 top-16 bg-black z-50 flex items-center justify-center" onClick={toggleFullscreen}>
+                <motion.div
+                    className="fixed inset-0 top-0 bg-black/80 z-50 flex items-center justify-center"
+                    onClick={toggleFullscreen}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                >
                     <button
                         className="absolute top-4 right-4 z-50 w-10 h-10 bg-white text-black p-2 rounded-full"
                         onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
-                            toggleFullscreen();
+                            toggleFullscreen(e);
                         }}
+                        onMouseDown={(e) => e.preventDefault()}
                         aria-label="Close fullscreen"
                     >
                         ✕
                     </button>
-                    <Image
-                        src={displayImages[currentSlide] || "/placeholder.svg"}
-                        alt={`Full size image ${currentSlide + 1}`}
-                        fill
-                        className="object-contain p-4 cursor-zoom-out"
-                    />
-                </div>
+                    <motion.div
+                        initial={{ scale: 0.95 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                        className="relative w-full h-full"
+                    >
+                        <Image
+                            src={displayImages[fullscreenSlide] || "/placeholder.svg"}
+                            alt={`Full size image ${fullscreenSlide + 1}`}
+                            fill
+                            className="object-contain p-4 cursor-zoom-out"
+                            priority
+                        />
+                    </motion.div>
+                </motion.div>
             )}
 
             <div className="flex flex-col space-y-4">
@@ -194,28 +219,24 @@ function Photos({ product, selectedColor }) {
                                     onMouseMove={handleMouseMove}
                                     onMouseEnter={() => setIsZoomed(true)}
                                     onMouseLeave={() => setIsZoomed(false)}
-                                    onClick={toggleFullscreen}
+                                    onClick={(e) => toggleFullscreen(e, index)}
+                                    onMouseDown={(e) => e.preventDefault()}
                                 >
                                     <button
-                                        className="absolute top-0 right-3 z-10 bg-black/70 text-white p-2 rounded-full"
+                                        className="absolute top-3 right-3 z-10 bg-black/70 text-white p-2 rounded-full"
                                         onClick={(e) => {
+                                            e.preventDefault();
                                             e.stopPropagation();
-                                            toggleFullscreen();
+                                            toggleFullscreen(e, index);
                                         }}
+                                        onMouseDown={(e) => e.preventDefault()}
                                         aria-label="View fullscreen"
                                     >
                                         <Maximize2 size={20} />
                                     </button>
-
                                     <div
                                         className={`transition-all duration-75 w-full h-full ${isZoomed ? "scale-[2]" : "scale-100"}`}
-                                        style={
-                                            isZoomed
-                                                ? {
-                                                    transformOrigin: `${zoomPosition.x * 200}% ${zoomPosition.y * 200}%`,
-                                                }
-                                                : {}
-                                        }
+                                        style={isZoomed ? { transformOrigin: `${zoomPosition.x * 200}% ${zoomPosition.y * 200}%` } : {}}
                                     >
                                         <Image
                                             src={img || "/placeholder.svg"}
@@ -223,11 +244,10 @@ function Photos({ product, selectedColor }) {
                                             fill
                                             className="object-contain"
                                             priority={index === 0}
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                         />
                                     </div>
-
-                                    {/* Image caption/details */}
-                                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-3 transform transition-transform duration-300 translate-y-full hover:translate-y-0">
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-3 transform transition-transform duration-300 translate-y-full group-hover:translate-y-0">
                                         <h3 className="text-lg font-semibold">Product Image {index + 1}</h3>
                                         <p className="text-sm opacity-80">Click to view full details</p>
                                     </div>
@@ -245,7 +265,12 @@ function Photos({ product, selectedColor }) {
                                 <div key={index} className="px-1">
                                     <button
                                         className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all duration-200 h-20 w-full ${currentSlide === index ? "border-black" : "border-gray-200 opacity-70"}`}
-                                        onClick={() => handleThumbnailClick(index)}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleThumbnailClick(index);
+                                        }}
+                                        onMouseDown={(e) => e.preventDefault()}
                                         aria-label={`Go to image ${index + 1}`}
                                     >
                                         <div className="relative w-full h-full">
@@ -254,6 +279,7 @@ function Photos({ product, selectedColor }) {
                                                 alt={`Thumbnail ${index + 1}`}
                                                 fill
                                                 className="object-cover"
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                             />
                                         </div>
                                     </button>

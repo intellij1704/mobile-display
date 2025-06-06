@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { ArrowRight, ChevronRight, Tag, Clock, Star } from 'lucide-react';
@@ -10,6 +10,7 @@ const Slider = dynamic(() => import("react-slick"), { ssr: false });
 
 const ComboOffer = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
+    const sliderRef = useRef(null);
     const router = useRouter();
 
     const settings = {
@@ -71,6 +72,10 @@ const ComboOffer = () => {
         }
     ];
 
+    const goToSlide = (index) => {
+        sliderRef.current.slickGoTo(index);
+    };
+
     return (
         <div className="bg-[#FFFFF] py-16 px-4 md:px-8 lg:px-12 overflow-hidden">
             <div className="max-w-7xl mx-auto">
@@ -95,12 +100,11 @@ const ComboOffer = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-4 mt-2">
-                            <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full text-base font-medium flex items-center gap-2 shadow-lg shadow-red-200 transition-all duration-300 transform hover:translate-y-[-2px]"   onClick={() => router.push('/product')}>
+                            <button
+                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full text-base font-medium flex items-center gap-2 shadow-lg shadow-red-200 transition-all duration-300 transform hover:translate-y-[-2px]"
+                                onClick={() => router.push('/product')}
+                            >
                                 Shop Now <ArrowRight size={18} />
-                            </button>
-
-                            <button className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 px-6 py-3 rounded-full text-base font-medium flex items-center gap-2 transition-all duration-300"   onClick={() => router.push('/product')}>
-                                View All Offers
                             </button>
                         </div>
 
@@ -109,9 +113,8 @@ const ComboOffer = () => {
                             {offers.map((_, index) => (
                                 <button
                                     key={index}
-                                    onClick={() => setCurrentSlide(index)}
-                                    className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? "w-8 bg-red-600" : "w-2 bg-gray-300"
-                                        }`}
+                                    onClick={() => goToSlide(index)}
+                                    className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? "w-8 bg-red-600" : "w-2 bg-gray-300"}`}
                                     aria-label={`Go to slide ${index + 1}`}
                                 />
                             ))}
@@ -121,7 +124,7 @@ const ComboOffer = () => {
                     {/* Right: Image Slider */}
                     <div className="w-full md:w-3/5 relative">
                         <div className="bg-white rounded-2xl shadow-xl overflow-hidden p-4 md:p-6">
-                            <Slider {...settings}>
+                            <Slider ref={sliderRef} {...settings}>
                                 {offers.map((offer, index) => (
                                     <div key={index} className="outline-none">
                                         <div className="flex flex-col md:flex-row items-center gap-6 p-2">
@@ -172,8 +175,7 @@ const ComboOffer = () => {
 
                                                 <button
                                                     className="mt-4 bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-full text-base font-medium flex items-center justify-center gap-2 transition-all duration-300"
-                       onClick={() => router.push('/product')}
-
+                                                    onClick={() => router.push('/product')}
                                                 >
                                                     View More <ChevronRight size={18} />
                                                 </button>
@@ -186,7 +188,7 @@ const ComboOffer = () => {
 
                         {/* Decorative elements */}
                         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-red-100 rounded-full opacity-70 blur-2xl"></div>
-                        <div className="absolute -top-10 -left-10 w-40 h-40 bg-blue-100 rounded-full opacity-70 blur-2xl"></div>
+                        <div className="absolute -top-10 -left-10 w-40 h-40 bg-red-100 rounded-full opacity-70 blur-2xl"></div>
                     </div>
                 </div>
             </div>

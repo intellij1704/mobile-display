@@ -35,8 +35,8 @@ export default function Reviews({ productId }) {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 py-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
+    <div className="w-full max-w-3xl mx-auto px-4 py-8 border border-gray-100 rounded-md">
+      <h2 className="text-2xl text-center font-bold text-gray-900 mb-6">Customer Reviews</h2>
 
       {reviewsLoading ? (
         <div className="flex justify-center py-10">
