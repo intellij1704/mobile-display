@@ -40,3 +40,14 @@ export const updateCarts = async ({ uid, list }) => {
     }
   );
 };
+
+export const updateUser = async (uid, updates) => {
+  await setDoc(
+    doc(db, `users/${uid}`),
+    {
+      ...updates,
+      timestampUpdated: Timestamp.now(),
+    },
+    { merge: true }
+  );
+};

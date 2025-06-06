@@ -1,25 +1,19 @@
 "use client";
 
-import { useAllOrders } from "@/lib/firestore/orders/read";
-import { useProducts } from "@/lib/firestore/products/read";
-import { deleteProduct } from "@/lib/firestore/products/write";
-import { useUser, useUsers } from "@/lib/firestore/user/read";
-import { Avatar, CircularProgress } from "@mui/material";
+import { useAllOrders, useOrders } from "@/lib/firestore/orders/read";
+import { useUsers } from "@/lib/firestore/user/read";
+import { CircularProgress } from "@mui/material";
 import { Button } from "@nextui-org/react";
-import { Edit2, Trash2 } from "lucide-react";
+import { Avatar } from "@mui/material";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function ListView() {
     const [pageLimit, setPageLimit] = useState(10);
     const [lastSnapDocList, setLastSnapDocList] = useState([]);
 
-    useEffect(() => {
-        setLastSnapDocList([]);
-    }, [pageLimit]);
-
+    const { data: users = [], error: usersError, isLoading: usersLoading } = useUsers();
     const {
         data: orders,
         isLoading,
@@ -30,49 +24,75 @@ export default function ListView() {
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
     });
 
-    const handleNextPage = () => setLastSnapDocList([...lastSnapDocList, lastSnapDoc]);
-    const handlePrePage = () => setLastSnapDocList(lastSnapDocList.slice(0, -1));
+    useEffect(() => {
+        setLastSnapDocList([]);
+    }, [pageLimit]);
 
-
-    if (isLoading) {
+    if (isLoading || usersLoading) {
         return (
-            <div className="h-screen w-full flex flex-col justify-center items-center bg-gray-100">
-                <CircularProgress size={50} thickness={4} color="primary" />
-                <p className="mt-4 text-gray-600 font-medium">Please Wait...</p>
+            <div className="h-screen w-full flex flex-col items-center justify-center bg-gray-100">
+                <CircularProgress size={50} color="primary" thickness={4} />
+                <p className="mt-4 text-center text-gray-600">Please Wait...</p>
             </div>
         );
     }
 
-    if (error) {
-        return <div>{error.message}</div>
+    if (error || usersError) {
+        return <div>{error?.message || usersError?.message || "An error occurred"}</div>;
     }
+
     return (
         <div className="flex-1 flex flex-col gap-4 px-5 py-4 rounded-xl w-full overflow-x-auto bg-gray-50">
             <table className="w-full border-collapse bg-white rounded-lg shadow-md">
                 <thead className="bg-gray-100">
                     <tr>
-                        {['SN', 'Customer', 'Total Price', 'Total Products', 'Order Date', 'Payment Mode', 'Status', 'Actions'].map((header) => (
-                            <th key={header} className="px-4 py-3 text-left font-semibold text-gray-700">{header}</th>
+                        {[
+                            "SN",
+                            "Customer",
+                            "Total Price",
+                            "Total Products",
+                            "Order Date",
+                            "Payment Mode",
+                            "Status",
+                            "User Last Order Status",
+                            "User Type",
+                            "User Flag",
+                            "Remarks",
+                            "Actions"
+                        ].map((header) => (
+                            <th key={header} className="px-4 py-3 text-left font-semibold text-gray-700">
+                                {header}
+                            </th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
-                    {isLoading ? (
+                    {orders?.length > 0 ? (
+                        orders.map((item, index) => (
+                            <Row
+                                key={item.id}
+                                index={index + lastSnapDocList.length * pageLimit}
+                                item={item}
+                                users={users}
+                            />
+                        ))
+                    ) : (
                         <tr>
-                            <td colSpan={9} className="text-center py-5">
-                                <CircularProgress />
+                            <td colSpan={12} className="text-center py-5">
+                                <div className="text-gray-500 text-sm">No orders found</div>
                             </td>
                         </tr>
-                    ) : (
-                        orders?.map((item, index) => (
-                            <Row key={item.id} index={index + lastSnapDocList.length * pageLimit} item={item} />
-                        ))
                     )}
                 </tbody>
             </table>
 
             <div className="flex justify-between items-center py-4">
-                <Button isDisabled={isLoading || lastSnapDocList.length === 0} onClick={handlePrePage} size="sm" variant="bordered">
+                <Button
+                    isDisabled={isLoading || lastSnapDocList.length === 0}
+                    onClick={() => setLastSnapDocList(lastSnapDocList.slice(0, -1))}
+                    size="sm"
+                    variant="bordered"
+                >
                     Previous
                 </Button>
                 <select
@@ -84,7 +104,12 @@ export default function ListView() {
                         <option key={value} value={value}>{value} Items</option>
                     ))}
                 </select>
-                <Button isDisabled={isLoading || orders?.length === 0} onClick={handleNextPage} size="sm" variant="bordered">
+                <Button
+                    isDisabled={isLoading || orders?.length < pageLimit}
+                    onClick={() => setLastSnapDocList([...lastSnapDocList, lastSnapDoc])}
+                    size="sm"
+                    variant="bordered"
+                >
                     Next
                 </Button>
             </div>
@@ -92,31 +117,41 @@ export default function ListView() {
     );
 }
 
-function Row({ item, index }) {
-    const [isDeleting, setIsDeleting] = useState(false);
-    const totalAmount = item?.checkout?.line_items?.reduce((prev, curr) => (
-        prev + (curr?.price_data?.unit_amount / 100) * curr?.quantity
-    ), 0);
+function Row({ item, index, users }) {
+    const totalAmount = item?.checkout?.line_items?.reduce(
+        (prev, curr) => prev + (curr?.price_data?.unit_amount / 100) * curr?.quantity,
+        0
+    );
 
-    const { data: user } = useUser({ uid: item?.uid })
+    const user = users.find((u) => u.id === item.uid);
+    const { data: userOrders } = useOrders({ uid: item.uid });
 
+    const isNewCustomer = userOrders?.length <= 1;
+    const previousOrder = userOrders
+        ?.filter((order) => order.timestampCreate.toMillis() < item.timestampCreate.toMillis())
+        ?.sort((a, b) => b.timestampCreate.toMillis() - a.timestampCreate.toMillis())[0];
+    const previousOrderStatus = previousOrder?.status || "pending";
 
     const statusColors = {
         pending: "bg-yellow-100 text-yellow-700",
-        shipped: "bg-red-100 text-blue-700",
+        shipped: "bg-blue-100 text-blue-700",
         pickup: "bg-purple-100 text-purple-700",
         inTransit: "bg-orange-100 text-orange-700",
         outForDelivery: "bg-indigo-100 text-indigo-700",
         delivered: "bg-green-100 text-green-700",
-        cancelled: "bg-red-100 text-red-700"
+        cancelled: "bg-red-100 text-red-700",
+        "N/A": "bg-gray-100 text-gray-700"
+    };
+
+    const userTypeColors = {
+        New: "bg-green-100 text-green-700",
+        Existing: "bg-blue-100 text-blue-700"
     };
 
     return (
         <tr className="border-b hover:bg-gray-100 transition">
-
             <td className="px-4 py-3 text-center">{index + 1}</td>
-
-            <td className="border-y  px-3 py-2 whitespace-nowrap ">
+            <td className="border-y px-3 py-2 whitespace-nowrap">
                 <div className="flex gap-2 items-center">
                     <Avatar src={user?.photoURL || "/default-avatar.png"} sx={{ width: 32, height: 32 }} />
                     <div>
@@ -126,30 +161,56 @@ function Row({ item, index }) {
                     </div>
                 </div>
             </td>
-            <td className="border-y px-3 py-2  whitespace-nowrap text-gray-600">
-
+            <td className="border-y px-3 py-2 whitespace-nowrap text-gray-600">
                 ₹ {totalAmount.toFixed(2)}
             </td>
-            <td className="border-y px-3 py-2 text-gray-600">{item?.checkout?.line_items?.length}</td>
+            <td className="border-y px-3 py-2 text-gray-600">{item?.checkout?.line_items?.length || 0}</td>
             <td className="border-y px-3 py-2 text-xs md:text-sm text-gray-600">
                 {item?.timestampCreate?.toDate()?.toLocaleString() || "N/A"}
             </td>
-            <td className="border-y px-3 py-2">  <div className="flex">
-                <span className="bg-red-100 text-blue-600 text-xs px-3 py-1 rounded-full">
-                    {item?.paymentMode === "cod" ? "Cash On Delivery" : item?.paymentMode}
-                </span></div>   </td>
-            <td className="border-y  px-3 py-2">
+            <td className="border-y px-3 py-2">
                 <div className="flex">
-                    <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[item?.status || "pending"]}`}>{item?.status || "Pending"}</span>
-                </div>           </td>
+                    <span className="bg-red-100 text-blue-600 text-xs px-3 py-1 rounded-full">
+                        {item?.paymentMode === "cod" ? "Cash On Delivery" : item?.paymentMode || "N/A"}
+                    </span>
+                </div>
+            </td>
+            <td className="border-y px-3 py-2">
+                <div className="flex">
+                    <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[item?.status || "pending"]}`}>
+                        {item?.status || "Pending"}
+                    </span>
+                </div>
+            </td>
+            <td className="border-y px-3 py-2">
+                <div className="flex">
+                    <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[previousOrderStatus]}`}>
+                        {previousOrderStatus}
+                    </span>
+                </div>
+            </td>
+            <td className="border-y px-3 py-2">
+                <div className="flex">
+                    <span className={`text-xs px-3 py-1 rounded-full uppercase ${userTypeColors[isNewCustomer ? "New" : "Existing"]}`}>
+                        {isNewCustomer ? "New" : "Existing"}
+                    </span>
+                </div>
+            </td>
+            <td className="border-y px-3 py-2 text-gray-600">
+                {user?.flagged ? "Yes" : "No"}
+            </td>
+            <td className="border-y px-3 py-2 text-gray-600">
+                {user?.remarks || "N/A"}
+            </td>
             <td className="border-y px-3 py-2 rounded-r-lg border-r">
                 <div className="flex">
                     <Link href={`/admin/orders/${item?.id}`}>
-                        <button className="bg-red-500 hover:bg-red-600 text-white text-xs px-4 py-1 rounded">View Order</button>
+                        <button className="bg-red-500 hover:bg-red-600 text-white text-xs px-4 py-1 rounded">
+                            View Order
+                        </button>
                     </Link>
                 </div>
             </td>
-
         </tr>
     );
 }

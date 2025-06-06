@@ -17,7 +17,7 @@ export function useUser({ uid }) {
       const ref = doc(db, `users/${uid}`);
       const unsub = onSnapshot(
         ref,
-        (snapshot) => next(null, snapshot.exists() ? snapshot.data() : null),
+        (snapshot) => next(null, snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
         (err) => next(err, null)
       );
       return () => unsub();
@@ -36,8 +36,8 @@ export function useUsers() {
         next(
           null,
           snapshot.docs.length === 0
-            ? null
-            : snapshot.docs.map((snap) => snap.data())
+            ? []
+            : snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() }))
         ),
       (err) => next(err, null)
     );

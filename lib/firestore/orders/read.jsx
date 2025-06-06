@@ -17,12 +17,12 @@ export function useOrder({ id }) {
   const { data, error } = useSWRSubscription(
     ["orders", id],
     ([path, id], { next }) => {
-      if (!id) return; // Prevent unnecessary calls
+      if (!id) return;
 
       const ref = doc(db, `orders/${id}`);
       const unsub = onSnapshot(
         ref,
-        (snapshot) => next(null, snapshot.exists() ? snapshot.data() : null),
+        (snapshot) => next(null, snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
         (err) => next(err, null)
       );
       return () => unsub();
@@ -32,9 +32,10 @@ export function useOrder({ id }) {
   return {
     data,
     error,
-    isLoading: data === undefined && !error, // Ensure proper loading state
+    isLoading: data === undefined && !error,
   };
 }
+
 export function useOrders({ uid }) {
   const { data, error } = useSWRSubscription(
     ["orders", uid],
@@ -46,7 +47,13 @@ export function useOrders({ uid }) {
       );
       const unsub = onSnapshot(
         ref,
-        (snapshot) => next(null, snapshot.docs.map((snap) => snap.data()) || []),
+        (snapshot) =>
+          next(
+            null,
+            snapshot.docs.length === 0
+              ? []
+              : snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() }))
+          ),
         (err) => next(err, [])
       );
 
@@ -82,8 +89,8 @@ export function useAllOrders({ pageLimit, lastSnapDoc }) {
           next(null, {
             list:
               snapshot.docs.length === 0
-                ? null
-                : snapshot.docs.map((snap) => snap.data()),
+                ? []
+                : snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() })),
             lastSnapDoc:
               snapshot.docs.length === 0
                 ? null
