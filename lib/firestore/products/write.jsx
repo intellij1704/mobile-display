@@ -63,7 +63,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
 export const updateProduct = async ({ data, featureImage, imageList, variantImages }) => {
   if (!data?.title) throw new Error("Title is required");
   if (!data?.id) throw new Error("ID is required");
-  // if (!data?.sku) throw new Error("SKU is required");
+  if (!data?.sku) throw new Error("SKU is required");
   if (data?.isVariable && (!data?.colors || data?.colors.length === 0))
     throw new Error("At least one color is required for variable products");
   if (data?.hasQualityOptions && (!data?.qualities || data?.qualities.length === 0))
