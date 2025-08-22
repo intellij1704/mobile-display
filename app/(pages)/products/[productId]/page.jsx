@@ -20,7 +20,7 @@ export async function generateMetadata({ params }) {
 
     if (!product) {
         return {
-            title: "Product Not Found | Phoner Mobile Spare Parts",
+            title: "Product Not Found | Mobile Display Mobile Spare Parts",
             description: "The product you are looking for does not exist.",
         };
     }
@@ -52,7 +52,7 @@ export async function generateMetadata({ params }) {
         openGraph: {
             type: "website",
             locale: "en_US",
-            siteName: "Phoner Mobile Phone Spare Parts Online",
+            siteName: "Mobile Display | Mobile Phone Spare Parts Online",
             url,
             title,
             description,
@@ -70,8 +70,8 @@ export async function generateMetadata({ params }) {
         },
         twitter: {
             card: "summary_large_image",
-            site: "@Phonerkolkata",
-            creator: "@Phonerkolkata",
+            site: "@MobileDisplay",
+            creator: "@MobileDisplay",
             title,
             description,
             images: [image],
@@ -116,13 +116,13 @@ export default async function Page({ params, searchParams }) {
         sku: product.sku,
         brand: {
             "@type": "Brand",
-            name: product.brand || "Phoner",
+            name: product.brand || "Mobile Display",
         },
         category: product.categoryName || "Mobile Spare Parts",
         image: product.featureImageURL,
         offers: {
             "@type": "Offer",
-            url: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.seoSlug || product.id}`,
+            url: `${process.env.NEXT_PUBLIC_DOMAIN}/product/${product.seoSlug || product.id}`,
             priceCurrency: "INR",
             price: product.price || "0",
             availability:
@@ -131,7 +131,7 @@ export default async function Page({ params, searchParams }) {
                     : "https://schema.org/OutOfStock",
             seller: {
                 "@type": "Organization",
-                name: "Phoner Mobile Phone Spare Parts Online",
+                name: "Mobile Display Mobile Phone Spare Parts Online",
             },
         },
     };
