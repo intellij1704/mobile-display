@@ -1,6 +1,6 @@
 // lib/firestore/series/write.js
 import { db } from "@/lib/firebase";
-import { collection, doc, addDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, addDoc, setDoc, deleteDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 export const createNewSeries = async ({ data }) => {
   try {
@@ -66,5 +66,34 @@ export const deleteSeries = async ({ id }) => {
   } catch (error) {
     console.error("Error deleting series:", error);
     throw new Error(error.message || "Failed to delete series");
+  }
+};
+
+export const updateSeries = async ({ id, data }) => {
+  try {
+    if (!id) {
+      throw new Error("Series ID is required");
+    }
+    if (!data || Object.keys(data).length === 0) {
+      throw new Error("Update data is required");
+    }
+
+    const seriesRef = doc(db, "series", id);
+
+    const updatedData = {
+      ...data,
+      updatedAt: serverTimestamp(),
+    };
+
+    // Trim seriesName if it exists
+    if (updatedData.seriesName) {
+      updatedData.seriesName = updatedData.seriesName.trim();
+    }
+
+    await updateDoc(seriesRef, updatedData);
+    return id;
+  } catch (error) {
+    console.error("Error updating series:", error);
+    throw new Error(error.message || "Failed to update series");
   }
 };

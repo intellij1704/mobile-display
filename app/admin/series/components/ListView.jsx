@@ -91,7 +91,7 @@ function Row({ item, index }) {
   };
 
   const handleUpdate = () => {
-    router.push(`/admin/series/form?id=${item?.id}`);
+    router.push(`/admin/series?id=${item?.id}`);
   };
 
   return (

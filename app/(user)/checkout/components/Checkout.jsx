@@ -42,6 +42,8 @@ export default function Checkout({ productList }) {
         }
     };
 
+    console.log(productList)
+
     const totalPrice = productList?.reduce((prev, curr) => {
         return prev + curr?.quantity * curr?.product?.salePrice;
     }, 0);

@@ -11,23 +11,27 @@ import Link from "next/link";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 
+const getUniqueId = (item) => {
+  return `${item.id}-${item.selectedColor || ''}-${item.selectedQuality || ''}`;
+};
+
 const CartPage = () => {
   const { user } = useAuth();
   const { data, isLoading } = useUser({ uid: user?.uid });
   const [cartSubtotals, setCartSubtotals] = useState({});
 
   // Memoize the onSubtotalUpdate and onRemove callbacks to prevent unnecessary re-renders
-  const onSubtotalUpdate = useCallback((itemId, subtotal, quantity) => {
+  const onSubtotalUpdate = useCallback((uniqueId, subtotal, quantity) => {
     setCartSubtotals((prev) => ({
       ...prev,
-      [itemId]: { subtotal, quantity },
+      [uniqueId]: { subtotal, quantity },
     }));
   }, []);
 
-  const onRemove = useCallback((itemId) => {
+  const onRemove = useCallback((uniqueId) => {
     setCartSubtotals((prev) => {
       const updated = { ...prev };
-      delete updated[itemId];
+      delete updated[uniqueId];
       return updated;
     });
   }, []);
@@ -124,7 +128,7 @@ const CartPage = () => {
                 <div className="space-y-4">
                   {data.carts.map((item) => (
                     <CartItem
-                      key={item.id}
+                      key={getUniqueId(item)}
                       item={item}
                       user={user}
                       data={data}
@@ -184,7 +188,6 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   const [isRemoving, setIsRemoving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const { data: product } = useProduct({ productId: item?.id });
-
   // Memoize price and quantity to prevent unnecessary recalculations
   const price = useMemo(
     () => product?.salePrice || product?.price || item?.salePrice || item?.price || 0,
@@ -192,22 +195,27 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   );
   const quantity = useMemo(() => item.quantity || 1, [item.quantity]);
   const subtotal = useMemo(() => price * quantity, [price, quantity]);
+  const uniqueId = useMemo(() => getUniqueId(item), [item]);
 
   const isOutOfStock = product?.stock === 0;
 
   // Update parent with the subtotal and quantity
   useEffect(() => {
-    onSubtotalUpdate(item.id, subtotal, quantity);
-  }, [item.id, subtotal, quantity, onSubtotalUpdate]); // Dependencies are stable now
+    onSubtotalUpdate(uniqueId, subtotal, quantity);
+  }, [uniqueId, subtotal, quantity, onSubtotalUpdate]); // Dependencies are stable now
 
   const handleRemove = async () => {
     if (!confirm("Are you sure you want to remove this item?")) return;
     setIsRemoving(true);
     try {
-      const newList = data?.carts?.filter((d) => d?.id !== item?.id);
+      const newList = data?.carts?.filter((d) => !(
+        d?.id === item?.id &&
+        d?.selectedColor === item?.selectedColor &&
+        d?.selectedQuality === item?.selectedQuality
+      ));
       await updateCarts({ list: newList, uid: user?.uid });
       toast.success("Item removed from cart");
-      onRemove(item.id); // Notify parent to remove this item's subtotal
+      onRemove(uniqueId); // Notify parent to remove this item's subtotal
     } catch (error) {
       toast.error(error?.message || "Failed to remove item");
     } finally {
@@ -220,7 +228,11 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
     setIsUpdating(true);
     try {
       const newList = data?.carts?.map((d) =>
-        d?.id === item?.id ? { ...d, quantity: parseInt(newQuantity) } : d
+        d?.id === item?.id &&
+          d?.selectedColor === item?.selectedColor &&
+          d?.selectedQuality === item?.selectedQuality
+          ? { ...d, quantity: parseInt(newQuantity) }
+          : d
       );
       await updateCarts({ list: newList, uid: user?.uid });
       toast.success("Cart updated");
@@ -233,9 +245,8 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
 
   return (
     <div
-      className={`rounded-lg bg-white p-4 shadow-sm ${
-        isOutOfStock ? "opacity-60" : ""
-      }`}
+      className={`rounded-lg bg-white p-4 shadow-sm ${isOutOfStock ? "opacity-60" : ""
+        }`}
     >
       {/* Mobile View */}
       <div className="flex flex-col gap-4 md:hidden">

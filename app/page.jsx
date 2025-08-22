@@ -83,7 +83,7 @@ export default async function Home() {
         {/* Display New Arrivals */}
         <ProductSection title="New Arrival" products={newArrivalProducts} />
 
-        <ComboOffer />
+        <ComboOffer products={bestSellingProducts} />
         <CustomerReviews />
         <Footer />
       </main>

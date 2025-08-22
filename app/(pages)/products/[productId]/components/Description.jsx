@@ -8,7 +8,7 @@ export default function Description({ product }) {
 
   return (
     <section className="w-full py-10 px-4">
-      <div className="max-w-8xl mx-auto bg-gray-100 p-6 md:p-10">
+      <div className="max-w-8xl mx-auto bg-gray-100 p-0 md:p-10">
         <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-6 border-b border-gray-400">
           Product Details
         </h2>
