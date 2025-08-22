@@ -7,6 +7,7 @@ import Description from "./components/Description";
 import KeyFeature from "./components/KeyFeature";
 import InTheBox from "./components/InTheBox";
 import Compatibility from "./components/Compatibility";
+import SeoAndSku from "./components/SeoAndSku"; // 🔥 NEW COMPONENT
 import { Button } from "@nextui-org/react";
 import toast from "react-hot-toast";
 import { createNewProduct, updateProduct } from "@/lib/firestore/products/write";
@@ -38,9 +39,7 @@ export default function Page() {
   };
 
   useEffect(() => {
-    if (id) {
-      fetchData();
-    }
+    if (id) fetchData();
   }, [id]);
 
   const handleData = (key, value) => {
@@ -88,6 +87,7 @@ export default function Page() {
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1">
           <BasicDetails data={data} handleData={handleData} />
+          <SeoAndSku data={data} handleData={handleData} /> {/* ✅ SEO + SKU */}
         </div>
 
         <div className="flex-1 flex flex-col gap-6">

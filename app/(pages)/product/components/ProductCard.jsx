@@ -18,6 +18,7 @@ const ProductCard = ({ product }) => {
     bestSelling,
     isNewArrival,
     stock,
+    seoSlug,
     orders = 0,
   } = product
 
@@ -86,7 +87,7 @@ const ProductCard = ({ product }) => {
       {/* Content section - takes right side on mobile */}
       <div className="p-3 flex flex-col justify-between md:w-full w-2/3">
         <div>
-          <Link href={`/products/${id}`} className="group-hover:text-blue-600 transition-colors duration-200">
+          <Link href={`/products/${seoSlug || id}`} className="group-hover:text-blue-600 transition-colors duration-200">
             <h3 className="text-sm font-medium text-gray-800 line-clamp-2 md:h-10 group-hover:text-blue-600 transition-colors duration-200">
               {title}
             </h3>
@@ -170,7 +171,7 @@ const ProductCard = ({ product }) => {
         {/* Quick shop button - mobile version */}
         {!isOutOfStock && (
           <Link
-            href={`/products/${id}`}
+            href={`/products/${seoSlug || id}`}
             className="mt-2 md:hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-full flex items-center justify-center gap-1 shadow-sm"
           >
             <ShoppingBag size={12} />
@@ -183,7 +184,7 @@ const ProductCard = ({ product }) => {
       {!isOutOfStock && (
         <div className="absolute bottom-[6.5rem] left-0 right-0 md:flex justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0 hidden">
           <Link
-            href={`/products/${id}`}
+            href={`/products/${seoSlug || id}`}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-full flex items-center gap-2 shadow-md"
           >
             <ShoppingBag size={16} />

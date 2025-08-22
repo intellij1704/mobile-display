@@ -10,41 +10,140 @@ import InTheBoxSection from "./components/InTheBoxSection";
 import CompatibilitySection from "./components/CompatibilitySection";
 import { notFound } from "next/navigation";
 
-export async function generateMetadata({ params, searchParams }) {
-    const { productId } = await params;
-    const product = await getProduct({ id: productId });
+// ✅ Dynamic Metadata for SEO
+export async function generateMetadata({ params }) {
+    const { productId } = params;
+
+    // First try seoSlug, then fallback to Firestore id
+    let product = await getProduct({ seoSlug: productId });
+    if (!product) product = await getProduct({ id: productId });
+
     if (!product) {
         return {
-            title: "Product Not Found | E-Commerce",
+            title: "Product Not Found | Phoner Mobile Spare Parts",
             description: "The product you are looking for does not exist.",
         };
     }
 
+    const title =
+        product.seoTitle ||
+        `${product.title} - Elevate Visual Brilliance With Genuine Replacement - Cash On Delivery`;
+    const description =
+        product.seoDescription ||
+        `Buy ${product.title} at Mobile Display, your trusted source for authentic mobile spare parts. Enjoy quality, authenticity, and reliable mobile repair solutions.`;
+    const keywords = product.seoKeywords || "";
+    const image = product.featureImageURL || "/default-product.jpg";
+    const url = `${process.env.NEXT_PUBLIC_DOMAIN}/products/${product.seoSlug || product.id}`;
+
     return {
-        title: `${product.title} | E-Commerce Product`,
-        description: product.shortDescription ?? "",
+        title,
+        description,
+        keywords,
+        robots: {
+            index: true,
+            follow: true,
+            "max-snippet": -1,
+            "max-video-preview": -1,
+            "max-image-preview": "large",
+        },
+        alternates: {
+            canonical: url,
+        },
         openGraph: {
-            images: [product.featureImageURL],
+            type: "website",
+            locale: "en_US",
+            siteName: "Phoner Mobile Phone Spare Parts Online",
+            url,
+            title,
+            description,
+            updatedTime: new Date().toISOString(),
+            images: [
+                {
+                    url: image,
+                    secureUrl: image,
+                    width: 1125,
+                    height: 1125,
+                    alt: product.title,
+                    type: "image/jpeg",
+                },
+            ],
+        },
+        twitter: {
+            card: "summary_large_image",
+            site: "@Phonerkolkata",
+            creator: "@Phonerkolkata",
+            title,
+            description,
+            images: [image],
+            label1: "Price",
+            data1: `₹${product.price}`,
+            label2: "Availability",
+            data2: product.stock > 0 ? "In Stock" : "Out of Stock",
+        },
+        other: {
+            "product:price:amount": product.price || "0",
+            "product:price:currency": "INR",
+            "product:availability":
+                product.stock > 0 ? "instock" : "outofstock",
         },
     };
 }
 
 export default async function Page({ params, searchParams }) {
-    const { productId } = await params;
-    const { color, quality } = await searchParams;
-    const rawProduct = await getProduct({ id: productId });
+    const { productId } = params;
+    const { color, quality } = searchParams;
+
+    // ✅ First try by seoSlug, then fallback to Firestore id
+    let rawProduct = await getProduct({ seoSlug: productId });
+    if (!rawProduct) rawProduct = await getProduct({ id: productId });
 
     if (!rawProduct) return notFound();
 
-    // Convert Firestore Timestamps to plain strings
+    // ✅ Normalize product data
     const product = {
         ...rawProduct,
+        id: rawProduct.id || productId,
         timestampCreate: rawProduct.timestampCreate?.toDate().toISOString(),
         timestampUpdate: rawProduct.timestampUpdate?.toDate().toISOString(),
     };
 
+    // ✅ Schema for SEO
+    const schemaData = product.schemaData || {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        name: product.title,
+        description: product.seoDescription || product.shortDescription,
+        sku: product.sku,
+        brand: {
+            "@type": "Brand",
+            name: product.brand || "Phoner",
+        },
+        category: product.categoryName || "Mobile Spare Parts",
+        image: product.featureImageURL,
+        offers: {
+            "@type": "Offer",
+            url: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.seoSlug || product.id}`,
+            priceCurrency: "INR",
+            price: product.price || "0",
+            availability:
+                product.stock > 0
+                    ? "https://schema.org/InStock"
+                    : "https://schema.org/OutOfStock",
+            seller: {
+                "@type": "Organization",
+                name: "Phoner Mobile Phone Spare Parts Online",
+            },
+        },
+    };
+
     return (
         <main className="p-4 md:px-10 w-full max-w-8xl mx-auto bg-gray-100">
+            {/* ✅ Inject Schema.org JSON-LD */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+            />
+
             {/* Product Main Section */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                 {/* Images */}
@@ -54,7 +153,11 @@ export default async function Page({ params, searchParams }) {
 
                 {/* Product Details */}
                 <div>
-                    <Details product={product} selectedColor={color} selectedQuality={quality} />
+                    <Details
+                        product={product}
+                        selectedColor={color}
+                        selectedQuality={quality}
+                    />
                 </div>
             </section>
 

@@ -31,7 +31,7 @@ export function ProductCard({ product }) {
 
             {/* Product Details Section */}
             <div className="p-4 flex flex-col flex-grow gap-4">
-                <Link href={`/products/${product?.id}`}>
+                <Link href={`/products/${product.seoSlug || product?.id}`}>
                     <h3 className="text-base font-semibold text-gray-900 line-clamp-2 hover:text-blue-500 transition-colors delay-100">
                         {product?.title}
                     </h3>
