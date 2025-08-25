@@ -19,6 +19,7 @@ const CartPage = () => {
   const { user } = useAuth();
   const { data, isLoading } = useUser({ uid: user?.uid });
   const [cartSubtotals, setCartSubtotals] = useState({});
+  const [deliveryType, setDeliveryType] = useState('free'); // 'free' or 'express'
 
   // Memoize the onSubtotalUpdate and onRemove callbacks to prevent unnecessary re-renders
   const onSubtotalUpdate = useCallback((uniqueId, subtotal, quantity) => {
@@ -50,7 +51,6 @@ const CartPage = () => {
       return {
         productTotal: 0,
         totalItems: 0,
-        discount: 0,
         deliveryFee: 0,
         total: 0,
       };
@@ -65,14 +65,12 @@ const CartPage = () => {
       totalItems += quantity || 0;
     });
 
-    const discount = 0; // Can be dynamic
-    const deliveryFee = 100; // Can be dynamic
-    const total = productTotal - discount + deliveryFee;
+    const deliveryFee = deliveryType === 'free' ? 0 : 99;
+    const total = productTotal + deliveryFee;
 
     return {
       productTotal,
       totalItems,
-      discount,
       deliveryFee,
       total,
     };
@@ -142,25 +140,44 @@ const CartPage = () => {
               {/* Order Summary */}
               <div className="lg:w-1/3">
                 <div className="rounded-lg bg-white p-6 shadow-md">
-                  <h2 className="mb-4 text-lg font-semibold">Order Summary</h2>
+                  <h2 className="mb-4 text-2xl font-medium">Cart totals</h2>
                   <div className="space-y-3 border-b border-gray-200 pb-4">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Items ({summary.totalItems})</span>
+                      <span className="text-gray-600">Subtotal</span>
                       <span className="font-medium">
                         ₹{summary.productTotal.toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Discount</span>
-                      <span className="font-medium">
-                        -₹{summary.discount.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Delivery Fee</span>
-                      <span className="font-medium">
-                        ₹{summary.deliveryFee.toFixed(2)}
-                      </span>
+                      <div className="text-sm text-gray-600">
+                        Shipping
+                      </div>
+                      <div className="flex flex-col justify-end items-end gap-2">
+                        <label className="flex items-center gap-2">
+                          <span>Free Delivery</span>
+
+                          <input
+                            type="radio"
+                            name="delivery"
+                            value="free"
+                            checked={deliveryType === 'free'}
+                            onChange={() => setDeliveryType('free')}
+                            className="form-radio text-blue-600"
+                          />
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <span>Express Delivery: ₹99.00</span>
+
+                          <input
+                            type="radio"
+                            name="delivery"
+                            value="express"
+                            checked={deliveryType === 'express'}
+                            onChange={() => setDeliveryType('express')}
+                            className="form-radio text-blue-600"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                   <div className="mt-4 flex justify-between">

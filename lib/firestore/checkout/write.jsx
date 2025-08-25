@@ -20,7 +20,7 @@ export const createCheckoutAndGetURL = async ({ uid, products, address }) => {
                         `${process.env.NEXT_PUBLIC_DOMAIN}/logo.png`,
                     ],
                     metadata: {
-                        productId: item?.id,
+                        productId: item?.product?.id ?? "",
                     },
                 },
                 unit_amount: item?.product?.salePrice * 100,
@@ -88,10 +88,18 @@ export const createCheckoutAndGetURL = async ({ uid, products, address }) => {
     }
 };
 
-export const createCheckoutCODAndGetId = async ({ uid, products, address }) => {
+
+export const createCheckoutCODAndGetId = async ({ uid, products, address, deliveryType }) => {
     const checkoutId = `cod_${doc(collection(db, `ids`)).id}`;
 
     const ref = doc(db, `users/${uid}/checkout_sessions_cod/${checkoutId}`);
+
+    const deliveryFee = deliveryType === "free" ? 0 : 99;
+    const codFee = 20;
+    const subtotal = products.reduce((prev, curr) => prev + curr.quantity * curr.product.salePrice, 0);
+    const total = subtotal + deliveryFee + codFee;
+    const advance = total * 0.1;
+    const remaining = total - advance;
 
     let line_items = [];
 
@@ -107,7 +115,9 @@ export const createCheckoutCODAndGetId = async ({ uid, products, address }) => {
                         `${process.env.NEXT_PUBLIC_DOMAIN}/logo.png`,
                     ],
                     metadata: {
-                        productId: item?.id,
+                        productId: item?.product?.id ?? "",
+                        selectedColor: item?.selectedColor || "",
+                        selectedQuality: item?.selectedQuality || "",
                     },
                 },
                 unit_amount: item?.product?.salePrice * 100,
@@ -123,7 +133,14 @@ export const createCheckoutCODAndGetId = async ({ uid, products, address }) => {
             checkoutId: checkoutId,
             uid: uid,
             address: JSON.stringify(address),
+            deliveryType: deliveryType,
         },
+        subtotal: subtotal,
+        deliveryFee: deliveryFee,
+        codFee: codFee,
+        total: total,
+        advance: advance,
+        remaining: remaining,
         createdAt: Timestamp.now(),
     });
 

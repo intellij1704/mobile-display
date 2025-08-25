@@ -4,8 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { createCheckoutCODAndGetId } from "@/lib/firestore/checkout/write";
 import { CircularProgress } from "@mui/material";
 import { Button } from "@nextui-org/react";
-import confetti from "canvas-confetti";
-import { CheckSquare2Icon, Square, ChevronLeft, CreditCard, Wallet, Truck } from "lucide-react";
+import { ChevronLeft, CreditCard, Truck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -13,6 +12,7 @@ import toast from "react-hot-toast";
 export default function Checkout({ productList }) {
     const [isLoading, setIsLoading] = useState(false);
     const [paymentMode, setPaymentMode] = useState("cod");
+    const [deliveryType, setDeliveryType] = useState("free");
     const [address, setAddress] = useState({
         firstName: "",
         lastName: "",
@@ -42,15 +42,38 @@ export default function Checkout({ productList }) {
         }
     };
 
-    console.log(productList)
-
     const totalPrice = productList?.reduce((prev, curr) => {
         return prev + curr?.quantity * curr?.product?.salePrice;
     }, 0);
 
-    const tax = totalPrice * 0.065;
-    const shippingFee = 100;
-    const totalDue = totalPrice + tax + shippingFee;
+    const deliveryFee = deliveryType === "free" ? 0 : 99;
+    const codFee = paymentMode === "cod" ? 20 : 0;
+    const total = totalPrice + deliveryFee + codFee;
+    const advance = paymentMode === "cod" ? (total * 0.1) : total;
+    const remaining = paymentMode === "cod" ? (total * 0.9) : 0;
+
+    const getEstimatedDelivery = () => {
+        const today = new Date();
+        let startDays = deliveryType === "express" ? 2 : 4;
+        let endDays = deliveryType === "express" ? 5 : 7;
+        const start = new Date(today);
+        start.setDate(start.getDate() + startDays);
+        const end = new Date(today);
+        end.setDate(end.getDate() + endDays);
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const formatDate = (date) => `${date.getDate()} ${months[date.getMonth()]}, ${date.getFullYear()}`;
+        const startStr = formatDate(start);
+        const endStr = formatDate(end);
+        const [startDay, startRest] = startStr.split(' ', 2);
+        const [endDay, endRest] = endStr.split(' ', 2);
+        if (startRest === endRest) {
+            return `${startDay}-${endDay} ${startRest}`;
+        } else {
+            return `${startStr} - ${endStr}`;
+        }
+    };
+
+    const estimatedDelivery = getEstimatedDelivery();
 
     const validateForm = () => {
         const newErrors = {};
@@ -81,7 +104,7 @@ export default function Checkout({ productList }) {
             if (!productList || productList?.length === 0) {
                 throw new Error("Product List Is Empty");
             }
-            if (paymentMode === "prepaid") {
+            if (paymentMode === "online") {
                 throw new Error("Online Payment Option Not Available");
             } else {
                 const checkoutId = await createCheckoutCODAndGetId({
@@ -97,6 +120,7 @@ export default function Checkout({ productList }) {
                         pincode: address.pinCode,
                         country: address.country
                     },
+                    deliveryType: deliveryType,
                 });
 
                 router.push(`/checkout-cod?checkout_id=${checkoutId}`);
@@ -261,8 +285,8 @@ export default function Checkout({ productList }) {
 
                 {/* Right Column - Order Summary and Payment */}
                 <div className="lg:w-1/3 w-full">
-                    <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100 sticky top-4">
-                        <h2 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-100">Order Summary</h2>
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 sticky top-4">
+                        <h2 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-100">SUBTOTAL</h2>
 
                         <div className="space-y-4 mb-6">
                             {productList?.map((item, index) => (
@@ -274,47 +298,74 @@ export default function Checkout({ productList }) {
                                                 alt={item?.product?.title}
                                                 className="w-full h-full object-contain"
                                             />
-                                            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                                                {item?.quantity}
-                                            </span>
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900">{item?.product?.title || "Product Name"}</p>
-                                            <p className="text-sm text-gray-500">Quantity: {item?.quantity || ""}</p>
-                                            {item?.selectedColor && (
-                                                <p className="text-sm text-gray-500">Color: {item.selectedColor}</p>
-                                            )}
-                                            {item?.selectedQuality && (
-                                                <p className="text-sm text-gray-500">Quality: {item.selectedQuality}</p>
-                                            )}
+                                            <p className="font-medium text-gray-900 text-sm">{item?.product?.title}{item?.selectedQuality ? ` - ${item.selectedQuality}` : ''}{item?.selectedColor ? ` - ${item.selectedColor}` : ''}</p>
+                                            <p className="text-sm text-gray-500">Phoner.in x {item?.quantity}</p>
+                                            <p className="text-sm text-gray-500">Estimated delivery on {estimatedDelivery}</p>
                                         </div>
                                     </div>
-                                    <p className="font-medium text-gray-900">₹{item?.product?.salePrice * item?.quantity}</p>
+                                    <p className="font-medium text-gray-900 text-sm">₹{(item?.product?.salePrice * item?.quantity).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="space-y-3 mb-6">
-                            <div className="flex justify-between text-gray-600">
+                        <div className="border-t border-gray-200 pt-4 mb-4">
+                            <div className="flex justify-between text-gray-600 text-sm mb-2">
                                 <span>Subtotal</span>
-                                <span>₹{totalPrice}</span>
+                                <span>₹{totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
-                            <div className="flex justify-between text-gray-600">
-                                <span>Sales tax (6.5%)</span>
-                                <span>₹{tax.toFixed(2)}</span>
+                            <div className="flex justify-between text-gray-600 text-sm mb-4">
+                                Shipping
+                                <div className="flex flex-col justify-end items-end gap-3 mt-1">
+                                    <label className="flex items-center gap-2">
+                                        <span>Free Delivery</span>
+                                        <input
+                                            type="radio"
+                                            name="delivery"
+                                            checked={deliveryType === 'free'}
+                                            onChange={() => setDeliveryType('free')}
+                                            className="form-radio text-blue-600"
+                                        />
+                                    </label>
+                                    <label className="flex items-center gap-2">
+                                        <span>Express Delivery: ₹99.00</span>
+                                        <input
+                                            type="radio"
+                                            name="delivery"
+                                            checked={deliveryType === 'express'}
+                                            onChange={() => setDeliveryType('express')}
+                                            className="form-radio text-blue-600"
+                                        />
+                                    </label>
+                                </div>
                             </div>
-                            <div className="flex justify-between text-gray-600">
-                                <span>Shipping</span>
-                                <span>₹{shippingFee}</span>
-                            </div>
-                            <div className="flex justify-between font-bold text-lg pt-3 border-t border-gray-200">
+                            {paymentMode === "cod" && (
+                                <div className="flex justify-between text-gray-600 text-sm mb-2">
+                                    <span>COD Fee</span>
+                                    <span>₹{codFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-200">
                                 <span>Total</span>
-                                <span>₹{totalDue.toFixed(2)}</span>
+                                <span>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
 
+                        {paymentMode === "cod" && (
+                            <div className="space-y-2 mb-6 border-t border-gray-200 pt-4 text-sm text-gray-600">
+                                <div className="flex justify-between">
+                                    <span>10% Advance is charged to get Rid Off Non-Genuine Buyers.</span>
+                                    <span>₹{advance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Pay Remaining Balance on Delivery in Cash</span>
+                                    <span>₹{remaining.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="mb-6">
-                            <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
                             <div className="space-y-3">
                                 <button
                                     onClick={() => setPaymentMode('cod')}
@@ -335,59 +386,33 @@ export default function Checkout({ productList }) {
                                 </button>
 
                                 <button
-                                    onClick={() => setPaymentMode('prepaid')}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'prepaid' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                    onClick={() => setPaymentMode('online')}
+                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'online' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
                                 >
                                     <div className="flex items-center">
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'prepaid' ? 'bg-blue-500' : 'border border-gray-400'}`}>
-                                            {paymentMode === 'prepaid' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'online' ? 'bg-blue-500' : 'border border-gray-400'}`}>
+                                            {paymentMode === 'online' && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-center">
                                                 <CreditCard className="h-5 w-5 text-gray-600 mr-2" />
-                                                <span className="font-medium">Credit/Debit Card</span>
+                                                <span className="font-medium">Pay Online</span>
                                             </div>
-                                            <p className="text-sm text-gray-500 ml-7 mt-1">Secure payment with your card</p>
-                                            {paymentMode === 'prepaid' && (
-                                                <div className="mt-3 ml-7 space-y-2">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Card number"
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                                    />
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="MM/YY"
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            placeholder="CVV"
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <p className="text-sm text-gray-500 ml-7 mt-1">Secure payment online</p>
                                         </div>
                                     </div>
-                                </button>
-
-                                <button
-                                    className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-gray-300 transition-all opacity-50 cursor-not-allowed"
-                                    disabled
-                                >
-                                    <div className="flex items-center">
-                                        <div className="flex items-center justify-center w-5 h-5 rounded-full border border-gray-400 mr-3"></div>
-                                        <div className="flex items-center">
-                                            <Wallet className="h-5 w-5 text-gray-600 mr-2" />
-                                            <span className="font-medium">Other Payment Methods</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-500 ml-7 mt-1">UPI, Paytm, etc. (Coming soon)</p>
                                 </button>
                             </div>
                         </div>
+
+                        <div className="bg-gray-100 p-4 rounded-md mb-4 text-sm text-gray-600">
+                            <img src="https://imgstatic.phonepe.com/images/online-merchant-assets/plugins/woocommerce/2529/405/payment_gateway_logo.png" alt="PhonePe" className="h-8 mb-2" />
+                            <p>All UPI apps, Debit and Credit Cards, and NetBanking accepted | Powered by PhonePe</p>
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-4">
+                            Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our privacy policy.
+                        </p>
 
                         <div className="flex items-start mb-6">
                             <input
@@ -397,16 +422,16 @@ export default function Checkout({ productList }) {
                                 defaultChecked
                             />
                             <label htmlFor="terms" className="text-sm text-gray-600">
-                                I agree with the <a href="#" className="text-blue-600 hover:underline">terms & conditions</a>
+                                I have read and agree to the website terms and conditions *
                             </label>
                         </div>
 
                         <Button
                             onClick={handlePlaceOrder}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors"
+                            className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-medium transition-colors"
                             isLoading={isLoading}
                         >
-                            {paymentMode === 'cod' ? 'Place Order' : `Pay ₹${totalDue.toFixed(2)}`}
+                            PLACE ORDER
                         </Button>
                     </div>
                 </div>

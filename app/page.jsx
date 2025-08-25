@@ -18,6 +18,7 @@ import WhyUsSection from "./components/WhyUsSection";
 import ComboOffer from "./components/ComboOffer";
 import ProductSection from "./components/ProductSection";
 import CategoriesNav from "./components/header/CategoriesNav";
+import ShopOwnerSection from "./components/ShopOwnerSection";
 
 export default async function Home() {
   // Fetch data from Firestore
@@ -75,6 +76,7 @@ export default async function Home() {
         <FeaturedProductSlider />
         <Collections collections={collections} />
         <Accessories />
+        <ShopOwnerSection />
         <WhyUsSection />
         
         {/* Display Best Selling Products */}

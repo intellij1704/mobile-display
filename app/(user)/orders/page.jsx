@@ -1,12 +1,15 @@
+// app/orders/page.jsx
+
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { useOrders } from "@/lib/firestore/orders/read";
+import { updateOrderStatus } from "@/lib/firestore/orders/write";
 import { CircularProgress } from "@mui/material";
 import Image from "next/image";
-import { updateOrderStatus } from "@/lib/firestore/orders/write";
-import toast from "react-hot-toast";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import ConfirmationDialog from "./components/ConfirmationDialog";
 
 const OrdersPage = () => {
@@ -14,13 +17,25 @@ const OrdersPage = () => {
   const { data: orders, error, isLoading } = useOrders({ uid: user?.uid });
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const router = useRouter();
 
-  const handleCancelClick = (orderId) => {
-    setOrderToCancel(orderId);
-  };
+  // Cancel order
+  const handleCancelClick = (orderId) => setOrderToCancel(orderId);
 
   const handleCancelConfirm = async () => {
     if (!orderToCancel) return;
+
+    const currentOrder = orders?.find((o) => o.id === orderToCancel);
+    const canCancel =
+      currentOrder?.status !== "cancelled" &&
+      currentOrder?.status !== "delivered" &&
+      currentOrder?.status !== "outForDelivery";
+
+    if (!canCancel) {
+      toast.error("This order cannot be cancelled at this time.");
+      setOrderToCancel(null);
+      return;
+    }
 
     setIsCancelling(true);
     try {
@@ -29,55 +44,51 @@ const OrdersPage = () => {
         {
           loading: "Cancelling order...",
           success: "Order cancelled successfully",
-          error: (e) => e?.message || "Failed to cancel order",
+          error: "Failed to cancel order",
         }
       );
-    } catch (error) {
-      toast.error(error?.message || "Something went wrong");
     } finally {
       setIsCancelling(false);
       setOrderToCancel(null);
     }
   };
 
-  const getDeliveryDate = (orderDate) => {
-    if (!orderDate) return "Calculating...";
-    const date = new Date(orderDate);
-    date.setDate(date.getDate() + 3);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
+  // Status badge
   const getStatusBadge = (status) => {
-    const baseClasses = "text-xs px-2.5 py-1 rounded-full font-medium";
+    const base = "text-xs px-3 py-1.5 rounded-full font-semibold";
     switch (status) {
-      case "Delivered":
-        return `${baseClasses} bg-green-100 text-green-800`;
+      case "delivered":
+        return `${base} bg-green-100 text-green-700`;
+      case "outForDelivery":
+        return `${base} bg-yellow-100 text-yellow-700`;
       case "cancelled":
-        return `${baseClasses} bg-red-100 text-red-800`;
+        return `${base} bg-red-100 text-red-700`;
       default:
-        return `${baseClasses} bg-blue-100 text-blue-800`;
+        return `${base} bg-blue-100 text-blue-700`;
     }
   };
 
+  // Loading UI
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col justify-center items-center bg-gray-100">
-        <CircularProgress size={50} thickness={4} color="primary" />
-        <p className="mt-4 text-gray-600 font-medium">Loading your orders...</p>
+      <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
+        <CircularProgress size={60} thickness={5} />
+        <p className="mt-6 text-gray-700 font-semibold text-lg">
+          Loading your orders...
+        </p>
       </div>
     );
   }
 
+  // Error UI
   if (error) {
     return (
-      <div className="h-screen flex flex-col justify-center items-center bg-gray-100">
-        <p className="text-red-600 font-medium">Error loading orders: {error.message}</p>
+      <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
+        <p className="text-red-600 font-semibold text-lg">
+          Error loading orders: {error.message}
+        </p>
         <button
-          className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
+          className="mt-6 text-blue-600 hover:text-blue-800 font-semibold"
           onClick={() => window.location.reload()}
         >
           Try Again
@@ -87,163 +98,153 @@ const OrdersPage = () => {
   }
 
   return (
-    <main className="min-h-screen max-w-8xl bg-white py-10 px-4 md:px-8 lg:px-20">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Orders</h1>
-      </div>
+    <main className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">My Orders</h1>
 
-      {!orders || orders.length === 0 ? (
-        <div className="flex flex-col justify-center items-center py-20 md:py-32">
-          <Image
-            src="/svgs/Empty-pana.svg"
-            width={250}
-            height={250}
-            alt="No Orders"
-            priority
-          />
-          <h2 className="text-lg font-medium text-gray-600 mt-4">You have no orders yet</h2>
-          <p className="text-gray-500 text-sm mt-2">Your orders will appear here once you place them</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {orders.map((order, orderIndex) => {
-            const orderDate = order?.timestampCreate?.toDate();
-            const totalAmount =
-              order?.checkout?.line_items
-                ?.reduce(
-                  (prev, curr) => prev + (curr?.price_data?.unit_amount / 100) * curr?.quantity,
-                  0
-                )
-                ?.toFixed(2) || "0.00";
-            const canCancel = order?.status !== "cancelled" && order?.status !== "Delivered";
+        {!orders || orders.length === 0 ? (
+          // Empty orders
+          <div className="flex flex-col justify-center items-center py-24 bg-white rounded-lg shadow">
+            <Image
+              src="/svgs/Empty-pana.svg"
+              width={300}
+              height={300}
+              alt="No Orders"
+              priority
+            />
+            <h2 className="text-xl font-semibold text-gray-700 mt-6">
+              You have no orders yet
+            </h2>
+            <p className="text-gray-500 mt-2">
+              Your orders will appear here once you place them.
+            </p>
+          </div>
+        ) : (
+          // Orders list
+          <div className="space-y-6">
+            {orders.map((order, orderIndex) => {
+              const orderDate = order?.timestampCreate?.toDate();
+              const lineItems = order?.checkout?.line_items || [];
 
-            return (
-              <div
-                key={order.id || orderIndex}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-              >
-                {/* Order Header */}
-                <div className="px-5 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900">
-                      Order #{orders.length - orderIndex}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      • {orderDate?.toLocaleString() || "Date not available"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        order?.paymentMode === "cod"
-                          ? "bg-orange-100 text-orange-800"
-                          : "bg-purple-100 text-purple-800"
-                      }`}
-                    >
-                      {order?.paymentMode === "cod" ? "Cash On Delivery" : "Paid Online"}
-                    </span>
-                    <span className="text-sm font-semibold text-gray-900">₹{totalAmount}</span>
-                  </div>
-                </div>
+              // Filter out fees
+              const productItems = lineItems.filter(
+                (item) =>
+                  item?.price_data?.product_data?.name !== "COD Fee" &&
+                  item?.price_data?.product_data?.name !== "Express Delivery"
+              );
 
-                {/* Order Items */}
-                <div className="divide-y divide-gray-200">
-                  {order?.checkout?.line_items?.map((product, index) => {
-                    // Attempt to access selectedColor and selectedQuality from multiple possible locations
-                    const selectedColor =
-                      product?.selectedColor ||
-                      product?.price_data?.selectedColor ||
-                      product?.product_data?.selectedColor;
-                    const selectedQuality =
-                      product?.selectedQuality ||
-                      product?.price_data?.selectedQuality ||
-                      product?.product_data?.selectedQuality;
+              const subtotal = productItems.reduce(
+                (sum, item) =>
+                  sum +
+                  (item?.price_data?.unit_amount / 100) * (item?.quantity || 1),
+                0
+              );
 
-                    return (
-                      <div key={index} className="p-4 md:p-5">
-                        <div className="flex items-start gap-4">
-                          {/* Product Image */}
-                          <div className="flex-shrink-0">
-                            <img
-                              className="rounded-md border border-gray-200 w-16 h-16 object-contain"
-                              src={
-                                product?.price_data?.product_data?.images?.[0] ||
-                                "/images/placeholder-product.png"
-                              }
-                              alt={product?.price_data?.product_data?.name || "Product image"}
-                            />
-                          </div>
+              const codFee = order?.checkout?.codFee || 0;
+              const deliveryFee = order?.checkout?.deliveryFee || 0;
+              const totalAmount =
+                order?.checkout?.total || subtotal + codFee + deliveryFee;
 
-                          {/* Product Details */}
-                          <div>
-                            <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
-                              {product?.price_data?.product_data?.name || "Iphone Display"}
+              const canCancel =
+                order?.status !== "cancelled" &&
+                order?.status !== "delivered" &&
+                order?.status !== "outForDelivery";
+
+              const orderNumber = orders.length - orderIndex;
+
+              return (
+                <div
+                  key={order.id || orderIndex}
+                  onClick={() => router.push(`/orders/${order.id}`)}
+                  className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition"
+                >
+                  <div className="p-4 md:p-6">
+                    {/* Order header */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-md font-semibold text-gray-900">
+                          Order #{orderNumber}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          • {orderDate?.toLocaleDateString() || "N/A"}
+                        </span>
+                      </div>
+                      <span className={getStatusBadge(order?.status || "processing")}>
+                        {order?.status
+                          ? order.status.charAt(0).toUpperCase() +
+                            order.status.slice(1)
+                          : "Processing"}
+                      </span>
+                    </div>
+
+                    {/* Order products */}
+                    {productItems.map((product, idx) => {
+                      const metadata = product?.price_data?.product_data?.metadata || {};
+                      const selectedColor = metadata?.selectedColor || "";
+
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-4 mb-4 last:mb-0"
+                        >
+                          <img
+                            className="w-20 h-20 object-contain rounded border border-gray-200"
+                            src={
+                              product?.price_data?.product_data?.images?.[0] ||
+                              "/images/placeholder-product.png"
+                            }
+                            alt={product?.price_data?.product_data?.name}
+                          />
+                          <div className="flex-1">
+                            <h3 className="text-md font-medium text-gray-900">
+                              {product?.price_data?.product_data?.name}
                             </h3>
-                            <div className="mt-1 space-y-1 text-sm text-gray-500">
-                              {selectedColor && (
-                                <p className="text-sm text-gray-500">Color: {selectedColor}</p>
-                              )}
-                              {selectedQuality && (
-                                <p className="text-sm text-gray-500">Quality: {selectedQuality}</p>
-                              )}
-                              <p className="text-sm text-gray-500">Qty: {product?.quantity || 1}</p>
-                              <p className="text-sm text-gray-500">
-                                ₹{(product?.price_data?.unit_amount / 100)?.toFixed(2) || "0.00"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Order Status */}
-                          <div className="flex-grow flex flex-col justify-center items-center mb-2">
-                            <p className="text-xs text-gray-500 mb-1">Order Status</p>
-                            <span className={getStatusBadge(order?.status)}>
-                              {order?.status || "Processing"}
-                            </span>
-                          </div>
-
-                          {/* Delivery Info */}
-                          <div className="flex-shrink-0 flex flex-col items-end">
-                            {order?.status !== "cancelled" && (
-                              <p className="text-xs text-gray-500 text-right">
-                                Expected by
-                                <br />
-                                <span className="text-sm font-medium text-gray-900">
-                                  {getDeliveryDate(orderDate)}
+                            <p className="text-sm text-gray-500">
+                              ₹{(product?.price_data?.unit_amount / 100).toFixed(
+                                2
+                              )}{" "}
+                              × {product.quantity}
+                            </p>
+                            {selectedColor && (
+                              <p className="text-sm text-gray-600">
+                                Color:{" "}
+                                <span className="font-medium">
+                                  {selectedColor}
                                 </span>
                               </p>
                             )}
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
 
-                {/* Order Footer */}
-                <div className="px-5 py-3 border-t border-gray-200">
-                  <div className="flex justify-end">
-                    {canCancel && (
-                      <button
-                        onClick={() => handleCancelClick(order?.id)}
-                        disabled={isCancelling}
-                        className={`text-sm font-medium px-3 py-1 border rounded-md transition-colors ${
-                          isCancelling
-                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                            : "text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-                        }`}
-                      >
-                        {isCancelling ? "Processing..." : "Cancel Order"}
-                      </button>
-                    )}
+                    {/* Footer */}
+                    <div className="mt-4 flex justify-between items-center">
+                      <span className="text-md font-semibold text-gray-900">
+                        Total: ₹{totalAmount.toFixed(2)}
+                      </span>
+                      {canCancel && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCancelClick(order?.id);
+                          }}
+                          disabled={isCancelling}
+                          className="text-sm font-medium text-red-600 hover:text-red-800"
+                        >
+                          Cancel Order
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Confirmation Dialog */}
+      {/* Confirmation dialog */}
       <ConfirmationDialog
         isOpen={!!orderToCancel}
         onClose={() => setOrderToCancel(null)}

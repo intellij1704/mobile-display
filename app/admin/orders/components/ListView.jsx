@@ -118,10 +118,17 @@ export default function ListView() {
 }
 
 function Row({ item, index, users }) {
-    const totalAmount = item?.checkout?.line_items?.reduce(
-        (prev, curr) => prev + (curr?.price_data?.unit_amount / 100) * curr?.quantity,
-        0
-    );
+    const lineItems = item?.checkout?.line_items || [];
+    const productItems = lineItems.filter(curr => {
+        const name = curr?.price_data?.product_data?.name || "";
+        return name !== "COD Fee" && name !== "Express Delivery";
+    });
+    const subtotal = productItems.reduce((prev, curr) => prev + (curr?.price_data?.unit_amount / 100) * curr?.quantity, 0);
+    const codFeeItem = lineItems.find(curr => curr?.price_data?.product_data?.name === "COD Fee");
+    const deliveryFeeItem = lineItems.find(curr => curr?.price_data?.product_data?.name === "Express Delivery");
+    const codFee = item?.checkout?.codFee || (codFeeItem ? (codFeeItem?.price_data?.unit_amount / 100) * (codFeeItem?.quantity || 1) : 0);
+    const deliveryFee = item?.checkout?.deliveryFee || (deliveryFeeItem ? (deliveryFeeItem?.price_data?.unit_amount / 100) * (deliveryFeeItem?.quantity || 1) : 0);
+    const totalAmount = item?.checkout?.total || (subtotal + codFee + deliveryFee);
 
     const user = users.find((u) => u.id === item.uid);
     const { data: userOrders } = useOrders({ uid: item.uid });
@@ -164,7 +171,7 @@ function Row({ item, index, users }) {
             <td className="border-y px-3 py-2 whitespace-nowrap text-gray-600">
                 ₹ {totalAmount.toFixed(2)}
             </td>
-            <td className="border-y px-3 py-2 text-gray-600">{item?.checkout?.line_items?.length || 0}</td>
+            <td className="border-y px-3 py-2 text-gray-600">{productItems.length}</td>
             <td className="border-y px-3 py-2 text-xs md:text-sm text-gray-600">
                 {item?.timestampCreate?.toDate()?.toLocaleString() || "N/A"}
             </td>
