@@ -301,7 +301,7 @@ export default function Checkout({ productList }) {
                                         </div>
                                         <div>
                                             <p className="font-medium text-gray-900 text-sm">{item?.product?.title}{item?.selectedQuality ? ` - ${item.selectedQuality}` : ''}{item?.selectedColor ? ` - ${item.selectedColor}` : ''}</p>
-                                            <p className="text-sm text-gray-500">Phoner.in x {item?.quantity}</p>
+                                            <p className="text-sm text-gray-500">Mobile Display x {item?.quantity}</p>
                                             <p className="text-sm text-gray-500">Estimated delivery on {estimatedDelivery}</p>
                                         </div>
                                     </div>

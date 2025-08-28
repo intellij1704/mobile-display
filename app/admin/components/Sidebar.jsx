@@ -13,7 +13,10 @@ import {
     Newspaper,
     Layers,
     Factory,
-    Package
+    Package,
+    Tag,
+    Percent,
+    TicketPercent
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { signOut } from "firebase/auth";
@@ -27,6 +30,7 @@ const menuList = [
     { name: "Series", link: "/admin/series", icon: <Layers className="h-5 w-5" /> },
     { name: "Models", link: "/admin/models", icon: <Package className="h-5 w-5" /> },
     { name: "Products", link: "/admin/products", icon: <PackageOpen className="h-5 w-5" /> },
+{ name: "Add Special Offers", link: "/admin/special-offers", icon: <TicketPercent className="h-5 w-5" /> },
     { name: "Orders", link: "/admin/orders", icon: <ShoppingCart className="h-5 w-5" /> },
     { name: "Customers", link: "/admin/customers", icon: <User className="h-5 w-5" /> },
     { name: "Reviews", link: "/admin/reviews", icon: <Star className="h-5 w-5" /> },

@@ -1,6 +1,4 @@
-"use client"
 
-    ;
 import Sidebar from './Sidebar';
 import AdminHeader from './Header';
 import { useAuth } from '@/context/AuthContext';

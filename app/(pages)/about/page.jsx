@@ -11,7 +11,7 @@ export const metadata = {
         title: "About Us | Mobile Phone Spare Parts & Accessories - PhoneR",
         description:
             "Learn more about PhoneR – India’s trusted online store for mobile phone spare parts and accessories.",
-        url: "https://phoner.in/about",
+        url: "https://mobiledisplay.in/about",
         siteName: "PhoneR Mobile Phone Spare Parts Online",
         images: [
             {
@@ -26,11 +26,11 @@ export const metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "About Us | Mobile Phone Spare Parts & Accessories - PhoneR",
+        title: "About Us | Mobile Phone Spare Parts & Accessories - Mobile Display",
         description:
-            "Learn more about PhoneR – India’s trusted online store for mobile phone spare parts and accessories.",
-        site: "@Phonerkolkata",
-        creator: "@Phonerkolkata",
+            "Learn more about mobiledisplay – India’s trusted online store for mobile phone spare parts and accessories.",
+        site: "@mobiledisplaykolkata",
+        creator: "@mobiledisplaykolkata",
         images: [
             "https://phoner.in/wp-content/uploads/2023/02/123-1232782_smart-phone-electronic-parts-cell-doc-mobile-repairing.png",
         ],

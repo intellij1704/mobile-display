@@ -128,12 +128,12 @@ const ComboOffer = ({ products }) => {
                                                     </div>
 
                                                     <div className="flex items-baseline gap-3 mt-2">
-                                                        <span className="text-3xl font-bold text-red-600">
-                                                            ${product.salePrice.toFixed(2)}
+                                                        <span className="text-3xl font-semibold text-red-600">
+                                                            ₹{product.salePrice.toFixed(2)}
                                                         </span>
                                                         {discount > 0 && (
                                                             <span className="text-lg text-gray-500 line-through">
-                                                                ${product.price.toFixed(2)}
+                                                                ₹{product.price.toFixed(2)}
                                                             </span>
                                                         )}
                                                     </div>
