@@ -1,6 +1,6 @@
 // @/lib/firestore/blog/write.js
 import { db, storage } from "@/lib/firebase";
-import { doc, setDoc, updateDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, serverTimestamp, deleteDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { nanoid } from "nanoid";
 

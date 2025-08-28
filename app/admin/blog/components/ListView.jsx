@@ -28,7 +28,7 @@ function ListView() {
     }, []);
 
     const handleEdit = (id) => {
-        router.push(`/admin/blog/edit?id=${id}`);
+        router.push(`/admin/blog?id=${id}`);
     };
 
     const handleDelete = async (id) => {
