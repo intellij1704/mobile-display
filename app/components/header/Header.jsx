@@ -146,7 +146,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="flex flex-col z-[999] bg-white shadow-sm">
+      <header className="flex flex-col z-[99] bg-white shadow-sm ">
         {/* Top Bar */}
         <div className="flex items-center justify-between w-full px-4 py-4 md:px-6 lg:px-8 xl:px-20 border-b border-gray-200">
           {/* Logo */}
@@ -234,7 +234,7 @@ export default function Header() {
         </div>
 
         {/* Mobile Search */}
-        <div className="px-3 py-2 border-b border-gray-200 bg-white lg:hidden" ref={searchRef}>
+        <div className="px-3 py-2 border-b border-gray-200 bg-white lg:hidden " ref={searchRef}>
           <form
             onSubmit={handleSearch}
             className="flex w-full items-center gap-2 rounded-md border border-gray-300 transition-all px-2 py-1"

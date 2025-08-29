@@ -114,7 +114,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
       )}
 
       {/* Action Buttons */}
-      <ActionButtons
+             <ActionButtons
         product={product}
         selectedColor={selectedColor}
         selectedQuality={selectedQuality}

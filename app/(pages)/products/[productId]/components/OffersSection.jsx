@@ -86,7 +86,7 @@ const OffersSection = ({ product }) => {
             </div>
             <span className="text-xs text-gray-600 mt-1">
                 {(hasSale || hasAdditionalOffers) && `(You Save: ₹${totalSavings.toFixed(0)})`}
-                {hasAdditionalOffers && ` Extra ${maxDiscountPerc}% off with bank offers & more`}
+                {hasAdditionalOffers && ` Extra ${maxDiscountPerc}% off with Prepaid offers & more`}
             </span>
 
             {hasAdditionalOffers && (
@@ -109,7 +109,7 @@ const OffersSection = ({ product }) => {
                                 onClick={() => handleOfferClick(offer.termsAndConditions)}
                             >
                                 <span className="text-green-600 mr-2"><TicketPercent /></span>
-                                <span className="text-sm text-gray-700 flex-1">{offer.title} <span className="text-blue-500">T&amp;C</span></span>
+                                <span className="text-sm text-gray-700 flex-1">Get at ₹{effectivePrice.toFixed(0)} Using {offer.offerType} <span className="text-blue-500">T&amp;C</span></span>
                             </div>
                         ))}
                         {visibleOffers < activeOffers.length && (
@@ -128,11 +128,11 @@ const OffersSection = ({ product }) => {
             {isModalOpen && (
                 <>
                     <div
-                        className="fixed inset-0 bg-black bg-opacity-50 z-50 md:z-50"
+                        className="fixed inset-0 bg-black bg-opacity-50 z-[50] md:z-50"
                         onClick={closeModal}
                     />
                     <div
-                        className={`fixed left-0 right-0 bottom-0 bg-white p-6 rounded-t-lg max-h-[80vh] overflow-y-auto z-50 transition-all duration-300 ease-in-out w-full
+                        className={`fixed left-0 right-0 bottom-0 bg-white p-6 rounded-t-lg max-h-[80vh] overflow-y-auto z-[9999] transition-all duration-300 ease-in-out w-full
               md:left-1/2 md:right-auto md:bottom-auto md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:max-w-2xl
               ${animate ? 'translate-y-0 md:opacity-100 md:scale-100' : 'translate-y-full md:opacity-0 md:scale-95'}`}
                         onClick={(e) => e.stopPropagation()}

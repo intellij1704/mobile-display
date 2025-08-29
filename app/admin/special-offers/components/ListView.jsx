@@ -90,11 +90,15 @@ export default function SpecialOfferListView() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Offer Details
+                  Offer Type
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Discount
                 </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Coupon Code
+                </th>
+
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Duration
                 </th>
@@ -172,7 +176,7 @@ function Row({ item, index }) {
       <td className="px-6 py-4">
         <div className="flex flex-col">
           <div className="text-sm font-semibold text-gray-900 mb-1 truncate max-w-[150px] sm:max-w-none">
-            {item?.title}
+            {item?.offerType}
           </div>
         </div>
       </td>
@@ -180,6 +184,11 @@ function Row({ item, index }) {
         <div className="flex items-center">
           <div className="text-xl font-medium text-green-600">{item?.discountPercentage}%</div>
           <div className="ml-2 text-xs text-gray-500">OFF</div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className={`text-sm px-2 py-1 rounded-xl font-medium ${item?.couponCode ? 'bg-green-100' : ""}  text-green-800`}>{item?.couponCode }</div>
         </div>
       </td>
       <td className="px-6 py-4">
