@@ -43,9 +43,18 @@ const OrderDetailPage = () => {
     const subtotal = order?.checkout?.subtotal || 0
     const codFee = order?.checkout?.codFee || 0
     const deliveryFee = order?.checkout?.deliveryFee || 0
+    const returnFee = order?.checkout?.returnFee || 0
+    const returnType = order?.checkout?.metadata?.returnType || null
     const advance = order?.checkout?.advance || 0
     const remaining = order?.checkout?.remaining || 0
     const total = order?.checkout?.total || 0
+
+    const returnOptionsMap = {
+        "easy-return": "Easy Return",
+        "easy-replacement": "Easy Replacement",
+        "self-shipping": "Self Shipping",
+    };
+    const returnTitle = returnType ? returnOptionsMap[returnType] || "Unknown" : "No Return Type Selected";
 
     const formatDate = (date) => {
         if (!date) return "N/A"
@@ -310,7 +319,7 @@ const OrderDetailPage = () => {
                                     >
                                         <span className="text-gray-600">Total fees</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-gray-900">₹{(deliveryFee + codFee).toFixed(0)}</span>
+                                            <span className="text-gray-900">₹{(deliveryFee + codFee + returnFee).toFixed(0)}</span>
                                             <svg
                                                 className={`w-4 h-4 text-gray-400 transition-transform ${showFeesBreakdown ? "rotate-180" : ""}`}
                                                 fill="none"
@@ -338,6 +347,12 @@ const OrderDetailPage = () => {
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-gray-500">COD fee</span>
                                                     <span className="text-gray-700">₹{codFee.toFixed(0)}</span>
+                                                </div>
+                                            )}
+                                            {returnFee > 0 && (
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-gray-500">{returnTitle} Fee</span>
+                                                    <span className="text-gray-700">₹{returnFee.toFixed(0)}</span>
                                                 </div>
                                             )}
                                         </div>

@@ -8,11 +8,13 @@ import { ChevronLeft, CreditCard, Truck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import ReturnType from "./ReturnType";
 
 export default function Checkout({ productList }) {
     const [isLoading, setIsLoading] = useState(false);
     const [paymentMode, setPaymentMode] = useState("cod");
     const [deliveryType, setDeliveryType] = useState("free");
+    const [returnType, setReturnType] = useState(null);
     const [address, setAddress] = useState({
         firstName: "",
         lastName: "",
@@ -42,13 +44,21 @@ export default function Checkout({ productList }) {
         }
     };
 
+    const returnOptionsMap = {
+        "easy-return": { title: "Easy Return", fee: (subtotal) => 160 + 0.05 * subtotal },
+        "easy-replacement": { title: "Easy Replacement", fee: () => 30 },
+        "self-shipping": { title: "Self Shipping", fee: () => 0 },
+    };
+
     const totalPrice = productList?.reduce((prev, curr) => {
         return prev + curr?.quantity * curr?.product?.salePrice;
     }, 0);
 
     const deliveryFee = deliveryType === "free" ? 0 : 99;
     const codFee = paymentMode === "cod" ? 20 : 0;
-    const total = totalPrice + deliveryFee + codFee;
+    const returnFee = returnType ? returnOptionsMap[returnType].fee(totalPrice) : 0;
+    const returnTitle = returnType ? returnOptionsMap[returnType].title : "";
+    const total = totalPrice + deliveryFee + codFee + returnFee;
     const advance = paymentMode === "cod" ? (total * 0.1) : total;
     const remaining = paymentMode === "cod" ? (total * 0.9) : 0;
 
@@ -85,6 +95,7 @@ export default function Checkout({ productList }) {
         if (!address.phone) newErrors.phone = "Phone is required";
         if (!address.email) newErrors.email = "Email is required";
         else if (!/^\S+@\S+\.\S+$/.test(address.email)) newErrors.email = "Email is invalid";
+        if (!returnType) newErrors.returnType = "Please select a return type";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -121,6 +132,7 @@ export default function Checkout({ productList }) {
                         country: address.country
                     },
                     deliveryType: deliveryType,
+                    returnType: returnType,
                 });
 
                 router.push(`/checkout-cod?checkout_id=${checkoutId}`);
@@ -141,7 +153,7 @@ export default function Checkout({ productList }) {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center mb-6">
                 <button
                     onClick={() => router.back()}
@@ -281,6 +293,8 @@ export default function Checkout({ productList }) {
                             </div>
                         </div>
                     </div>
+                    <ReturnType selected={returnType} onSelect={setReturnType} />
+                    {errors.returnType && <p className="text-red-500 text-xs mt-1 mb-6">{errors.returnType}</p>}
                 </div>
 
                 {/* Right Column - Order Summary and Payment */}
@@ -346,6 +360,12 @@ export default function Checkout({ productList }) {
                                     <span>₹{codFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             )}
+                            {returnType && (
+                                <div className="flex justify-between text-gray-600 text-sm mb-2">
+                                    <span>{returnTitle} Fee</span>
+                                    <span>₹{returnFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-200">
                                 <span>Total</span>
                                 <span>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -369,10 +389,10 @@ export default function Checkout({ productList }) {
                             <div className="space-y-3">
                                 <button
                                     onClick={() => setPaymentMode('cod')}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'cod' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'cod' ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
                                 >
                                     <div className="flex items-center">
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'cod' ? 'bg-blue-500' : 'border border-gray-400'}`}>
+                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'cod' ? 'bg-red-500' : 'border border-gray-400'}`}>
                                             {paymentMode === 'cod' && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                         </div>
                                         <div className="flex-1">
@@ -387,10 +407,10 @@ export default function Checkout({ productList }) {
 
                                 <button
                                     onClick={() => setPaymentMode('online')}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'online' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'online' ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
                                 >
                                     <div className="flex items-center">
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'online' ? 'bg-blue-500' : 'border border-gray-400'}`}>
+                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'online' ? 'bg-red-500' : 'border border-gray-400'}`}>
                                             {paymentMode === 'online' && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                         </div>
                                         <div className="flex-1">

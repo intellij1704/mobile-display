@@ -1,4 +1,3 @@
-"use client"
 
 import { useOrdersCounts } from "@/lib/firestore/orders/read_count"
 import { useProductCount } from "@/lib/firestore/products/count/read_client"
@@ -12,7 +11,6 @@ function CountMeter() {
     const { data: totalUser } = useUsersCount()
     const { data: ordersCounts } = useOrdersCounts()
 
-
     return (
         <div>
 
@@ -24,7 +22,7 @@ function CountMeter() {
                             <DollarSign className="h-8 w-8 text-green-500 mr-3" />
                             <div>
                                 <p className="text-gray-500">Total Sales</p>
-                                <p className="text-2xl font-bold">${ordersCounts?.totalRevenue ?? 0}</p>
+                                <p className="text-2xl font-bold">₹{ordersCounts?.totalRevenue ?? 0}</p>
                             </div>
                         </div>
                     </div>

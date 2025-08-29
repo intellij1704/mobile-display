@@ -8,9 +8,8 @@ import ChangeOrderStatus from "./components/ChangeStatus";
 
 function Page() {
     const { orderId } = useParams();
-    console.log(orderId)
     const { data: order, error, isLoading } = useOrder({ id: orderId });
-
+    console.log(order)
     if (!orderId) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -68,7 +67,9 @@ function Page() {
     const subtotal = productItems.reduce((prev, curr) => prev + (curr?.price_data?.unit_amount / 100) * curr?.quantity, 0);
     const codFee = order?.checkout?.codFee || (codFeeItem ? (codFeeItem?.price_data?.unit_amount / 100) * (codFeeItem?.quantity || 1) : 0);
     const deliveryFee = order?.checkout?.deliveryFee || (deliveryFeeItem ? (deliveryFeeItem?.price_data?.unit_amount / 100) * (deliveryFeeItem?.quantity || 1) : 0);
-    const totalAmount = order?.checkout?.total || (subtotal + codFee + deliveryFee);
+    const returnFee = order?.checkout?.returnFee || 0;
+    const returnType = order?.checkout?.metadata?.returnType || null;
+    const totalAmount = order?.checkout?.total || (subtotal + codFee + deliveryFee + returnFee);
 
     const address = JSON.parse(order?.checkout?.metadata?.address ?? "{}");
 
@@ -86,6 +87,12 @@ function Page() {
 
     const isExpressDelivery = deliveryFee > 0;
 
+    const returnOptionsMap = {
+        "easy-return": "Easy Return",
+        "easy-replacement": "Easy Replacement",
+        "self-shipping": "Self Shipping",
+    };
+    const returnTitle = returnType ? returnOptionsMap[returnType] || "Unknown" : "None";
     return (
         <main className="min-h-screen bg-gray-50 rounded-md py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
@@ -127,6 +134,12 @@ function Page() {
                                         <p className="text-sm font-medium text-gray-500">Delivery Type</p>
                                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${isExpressDelivery ? "bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-sm" : "bg-green-100 text-green-800"}`}>
                                             {isExpressDelivery ? "Express Delivery" : "Standard Delivery"}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Return Type</p>
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${returnFee > 0 ? "bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-sm" : "bg-green-100 text-green-800"}`}>
+                                            {returnTitle}
                                         </span>
                                     </div>
                                 </div>
@@ -264,6 +277,20 @@ function Page() {
                                             <span className="text-gray-600">Delivery</span>
                                             <span className="text-green-600 font-medium">Free</span>
                                         </div>
+                                    )}
+
+                                    {returnType && (
+                                        returnFee > 0 ? (
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">{returnTitle} Fee</span>
+                                                <span className="text-gray-900 font-medium">₹{returnFee.toFixed(2)}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">{returnTitle}</span>
+                                                <span className="text-green-600 font-medium">Free</span>
+                                            </div>
+                                        )
                                     )}
 
                                     <Divider className="my-2" />

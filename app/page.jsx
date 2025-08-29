@@ -19,9 +19,9 @@ import ComboOffer from "./components/ComboOffer";
 import ProductSection from "./components/ProductSection";
 import CategoriesNav from "./components/header/CategoriesNav";
 import ShopOwnerSection from "./components/ShopOwnerSection";
+import { serializeFirestoreData } from "@/utils/serializeFirestoreData";
 
 export default async function Home() {
-  // Fetch data from Firestore
   const [bestSelling, newArrivals, collections, categories, products, brands] = await Promise.all([
     getBestSellingProducts(),
     getNewArrivalProducts(),
@@ -31,64 +31,30 @@ export default async function Home() {
     getBrands(),
   ]);
 
-  // Serialize timestampCreate and timestampUpdate to ISO string, with error handling
-  const serializeProduct = (product) => {
-    try {
-      const serialized = {
-        ...product,
-        timestampCreate: null,
-        timestampUpdate: null,
-      };
-
-      if (product.timestampCreate && typeof product.timestampCreate.seconds === 'number' && typeof product.timestampCreate.nanoseconds === 'number') {
-        const date = new Date(product.timestampCreate.seconds * 1000 + product.timestampCreate.nanoseconds / 1000000);
-        if (!isNaN(date.getTime())) {
-          serialized.timestampCreate = date.toISOString();
-        } else {
-          console.warn(`Invalid timestampCreate for product: ${product.id || 'unknown'}`, product.timestampCreate);
-        }
-      }
-
-      if (product.timestampUpdate && typeof product.timestampUpdate.seconds === 'number' && typeof product.timestampUpdate.nanoseconds === 'number') {
-        const date = new Date(product.timestampUpdate.seconds * 1000 + product.timestampUpdate.nanoseconds / 1000000);
-        if (!isNaN(date.getTime())) {
-          serialized.timestampUpdate = date.toISOString();
-        } else {
-          console.warn(`Invalid timestampUpdate for product: ${product.id || 'unknown'}`, product.timestampUpdate);
-        }
-      }
-
-      return serialized;
-    } catch (error) {
-      console.error(`Error serializing product: ${product.id || 'unknown'}`, error, product);
-      return { ...product, timestampCreate: null, timestampUpdate: null };
-    }
-  };
-
-  const bestSellingProducts = bestSelling.map(serializeProduct);
-  const newArrivalProducts = newArrivals.map(serializeProduct);
+  const bestSellingProducts = bestSelling.map(serializeFirestoreData);
+  const newArrivalProducts = newArrivals.map(serializeFirestoreData);
+  const serializedCollections = collections.map(serializeFirestoreData);
+  const serializedCategories = categories.map(serializeFirestoreData);
+  const serializedProducts = products.map(serializeFirestoreData);
+  const serializedBrands = brands.map(serializeFirestoreData);
 
   return (
-    <>
-      <main className="h-screen overflow-x-hidden overflow-y-auto">
-        <Header />
-        <CategoriesNav />
-        <FeaturedProductSlider />
-        <Collections collections={collections} />
-        <Accessories />
-        <ShopOwnerSection />
-        <WhyUsSection />
-        
-        {/* Display Best Selling Products */}
-        <ProductSection title="Best Selling" products={bestSellingProducts} />
+    <main className="h-screen overflow-x-hidden overflow-y-auto">
+      <Header />
+      <CategoriesNav />
+      <FeaturedProductSlider />
+      <Collections collections={serializedCollections} />
+      <Accessories />
+      <ShopOwnerSection />
+      <WhyUsSection />
 
-        {/* Display New Arrivals */}
-        <ProductSection title="New Arrival" products={newArrivalProducts} />
+      <ProductSection title="Best Selling" products={bestSellingProducts} />
+      <ProductSection title="New Arrival" products={newArrivalProducts} />
 
-        <ComboOffer products={bestSellingProducts} />
-        <CustomerReviews />
-        <Footer />
-      </main>
-    </>
+      <ComboOffer products={bestSellingProducts} />
+      <CustomerReviews />
+      <Brands brands={serializedBrands} />
+      <Footer />
+    </main>
   );
 }

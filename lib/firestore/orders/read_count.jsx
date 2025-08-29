@@ -56,7 +56,7 @@ export function useOrdersCounts() {
   const { data, error, isLoading } = useSWR("ordrs_counts", (key) =>
     getOrdersCounts({ date: null })
   );
-  if (error) {
+    if (error) {
     console.log(error?.message);
   }
   return { data, error, isLoading };

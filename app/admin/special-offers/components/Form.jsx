@@ -124,7 +124,7 @@ export default function SpecialOfferForm() {
   const isEditMode = Boolean(specialOfferId);
 
   return (
-    <div className="flex flex-col gap-6 bg-white rounded-2xl p-8 w-full max-w-2xl shadow-lg h-full">
+    <div className="flex flex-col gap-6 bg-white rounded-2xl p-8 w-full max-w-xl mx-auto shadow-lg h-full">
       <h1 className="text-2xl font-bold text-gray-900">
         {isEditMode ? "Edit Special Offer" : "Add Special Offer"}
       </h1>

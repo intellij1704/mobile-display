@@ -3,6 +3,8 @@
 import { useSpecialOffers } from "@/lib/firestore/specialOffers/read";
 import { useEffect, useState } from "react";
 import { TicketPercent, X } from "lucide-react";
+import Image from "next/image";
+import discount from "@/public/icon/discount.svg"
 
 const OffersSection = ({ product }) => {
     const { data, error, isLoading } = useSpecialOffers();
@@ -89,7 +91,16 @@ const OffersSection = ({ product }) => {
 
             {hasAdditionalOffers && (
                 <>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-3 mt-3">Available Offers</h3>
+                    <div className="flex items-center space-x-2 my-3">
+                        <Image
+                            src={discount}
+                            alt="Discount Icon"
+                            width={28}   // smaller size
+                            height={28}
+                            className="rounded-md"
+                        />
+                        <h3 className="text-lg font-semibold text-gray-800">Offers</h3>
+                    </div>
                     <div className="space-y-2">
                         {activeOffers.slice(0, visibleOffers).map((offer) => (
                             <div
