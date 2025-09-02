@@ -1,113 +1,165 @@
-"use client";
+/* eslint-disable react-hooks/exhaustive-deps */
+"use client"
 
-import { useAuth } from "@/context/AuthContext";
-import { useUser } from "@/lib/firestore/user/read";
-import { updateCarts } from "@/lib/firestore/user/write";
-import { Button } from "@nextui-org/react";
-import { useState } from "react";
-import toast from "react-hot-toast";
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import { useRouter } from "next/navigation";
+import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import toast from "react-hot-toast"
+import { useAuth } from "@/context/AuthContext"
+import { useUser } from "@/lib/firestore/user/read"
+import { updateCarts } from "@/lib/firestore/user/write"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import ReturnTypeSelector from "./ReturnTypeSelector"
 
-function AddToCartButton({ productId, type, selectedColor, selectedQuality, isVariable, hasQualityOptions }) {
-    const { user } = useAuth();
-    const { data } = useUser({ uid: user?.uid });
-    const [isLoading, setIsLoading] = useState(false);
-    const router = useRouter();
+export default function AddToCartButton({
+  productId,
+  type = "large",
+  selectedColor,
+  selectedQuality,
+  isVariable,
+  hasQualityOptions,
+  className,
+  productPrice, // new: used to compute Easy Return fee
+}) {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { data } = useUser({ uid: user?.uid })
+  const [isLoading, setIsLoading] = useState(false)
+  const [showSelector, setShowSelector] = useState(false)
 
-    // Check if the product with the specific color and quality is already in the cart
-    const isAdded = data?.carts?.find(
-        (item) =>
-            item?.id === productId &&
-            (!isVariable || item?.selectedColor === selectedColor) &&
-            (!hasQualityOptions || item?.selectedQuality === selectedQuality)
-    );
+  const isAdded = useMemo(() => {
+    return data?.carts?.find(
+      (item) =>
+        item?.id === productId &&
+        (!isVariable || item?.selectedColor === selectedColor) &&
+        (!hasQualityOptions || item?.selectedQuality === selectedQuality),
+    )
+  }, [data?.carts, productId, isVariable, hasQualityOptions, selectedColor, selectedQuality])
 
-    const handleClick = async () => {
-        setIsLoading(true);
-        try {
-            if (!user?.uid) {
-                router.push("/login");
-                throw new Error("Please log in first!");
-            }
-
-            // Validate selectedColor for variable products
-            if (isVariable && !selectedColor && !isAdded) {
-                throw new Error("Please select a color!");
-            }
-
-            // Validate selectedQuality for products with quality options
-            if (hasQualityOptions && !selectedQuality && !isAdded) {
-                throw new Error("Please select a quality!");
-            }
-
-            if (isAdded) {
-                // Remove item from cart if already added
-                const newList = data?.carts?.filter(
-                    (item) =>
-                        !(
-                            item?.id === productId &&
-                            (!isVariable || item?.selectedColor === selectedColor) &&
-                            (!hasQualityOptions || item?.selectedQuality === selectedQuality)
-                        )
-                );
-                await updateCarts({ list: newList, uid: user?.uid });
-                toast.success("Item removed from cart");
-            } else {
-                // Add item to cart (with selectedColor and selectedQuality if applicable)
-                await updateCarts({
-                    list: [
-                        ...(data?.carts ?? []),
-                        {
-                            id: productId,
-                            quantity: 1,
-                            ...(isVariable && { selectedColor }),
-                            ...(hasQualityOptions && { selectedQuality }),
-                        },
-                    ],
-                    uid: user?.uid,
-                });
-                toast.success("Item added to cart");
-            }
-        } catch (error) {
-            toast.error(error?.message);
-        }
-        setIsLoading(false);
-    };
-
-    if (type === "large") {
-        return (
-            <Button
-                size="sm"
-                variant="flat"
-                onClick={handleClick}
-                isLoading={isLoading}
-                isDisabled={isLoading}
-                className="bg-black w-1/2 hover:bg-gray-600 text-white px-5 md:py-5 py-6  rounded-md text-sm md:text-base transition-all duration-200"
-            >
-                {!isAdded && <AddShoppingCartIcon fontSize="small" />}
-                {isAdded && <ShoppingCartIcon fontSize="small" />}
-                {!isAdded && "Add To Cart"}
-                {isAdded && "Click To Remove"}
-            </Button>
-        );
+  const validateSelections = () => {
+    if (isVariable && !selectedColor && !isAdded) {
+      toast.error("Please select a color!")
+      return false
     }
+    if (hasQualityOptions && !selectedQuality && !isAdded) {
+      toast.error("Please select a quality!")
+      return false
+    }
+    return true
+  }
 
+  const handleClick = async () => {
+    try {
+      if (!user?.uid) {
+        router.push("/login")
+        throw new Error("Please log in first!")
+      }
+      if (!validateSelections()) return
+
+      // If already added, remove
+      if (isAdded) {
+        setIsLoading(true)
+        const newList = data?.carts?.filter(
+          (item) =>
+            !(
+              item?.id === productId &&
+              (!isVariable || item?.selectedColor === selectedColor) &&
+              (!hasQualityOptions || item?.selectedQuality === selectedQuality)
+            ),
+        )
+        await updateCarts({ list: newList, uid: user?.uid })
+        toast.success("Item removed from cart")
+        setIsLoading(false)
+        return
+      }
+
+      // Not added yet: show return type selector first
+      setShowSelector(true)
+    } catch (err) {
+      toast.error(err?.message || "Something went wrong")
+      setIsLoading(false)
+    }
+  }
+
+  const handleConfirmReturn = async (choice) => {
+    // choice = { id, title, fee, termsHtml }
+    try {
+      setIsLoading(true)
+      await updateCarts({
+        list: [
+          ...(data?.carts ?? []),
+          {
+            id: productId,
+            quantity: 1,
+            ...(isVariable && { selectedColor }),
+            ...(hasQualityOptions && { selectedQuality }),
+            // Store return meta
+            returnType: choice.id, // 'easy-return' | 'easy-replacement' | 'self-shipping'
+            returnFee: choice.fee,
+          },
+        ],
+        uid: user?.uid,
+      })
+      toast.success("Item added to cart")
+    } catch (err) {
+      toast.error(err?.message || "Failed to add to cart")
+    } finally {
+      setIsLoading(false)
+      setShowSelector(false)
+    }
+  }
+
+  if (type === "large") {
     return (
+      <>
         <Button
-            className={`h-8 w-8 ${isAdded ? "text-gray-900" : "text-gray-600"} bg-gray-100 border border-gray-100 p-4 rounded shadow-md hover:bg-red-500 hover:text-white transition-all duration-200`}
-            isIconOnly
-            size="sm"
-            variant="light"
-            onClick={handleClick}
-            isLoading={isLoading}
-            isDisabled={isLoading}
+          size="sm"
+          variant="default"
+          onClick={handleClick}
+          disabled={isLoading}
+          className={cn(
+            "bg-black hover:bg-gray-700 text-white px-5 md:py-5 py-6 rounded-md text-sm md:text-base transition-all duration-200",
+            "flex-1",
+            className,
+          )}
         >
-            {!isAdded && <AddShoppingCartIcon fontSize="small" />}
-            {isAdded && <ShoppingCartIcon fontSize="small" />}
+          {!isAdded ? "Add To Cart" : "Click To Remove"}
         </Button>
-    );
-}
 
-export default AddToCartButton;
+        <ReturnTypeSelector
+          open={showSelector}
+          onClose={() => setShowSelector(false)}
+          onConfirm={handleConfirmReturn}
+          productPrice={productPrice}
+        />
+      </>
+    )
+  }
+
+  // icon-only variant
+  return (
+    <>
+      <Button
+        className={cn(
+          "h-8 w-8 bg-gray-100 border border-gray-100 rounded shadow-md hover:bg-red-500 hover:text-white transition-all duration-200",
+          isAdded ? "text-gray-900" : "text-gray-600",
+          className,
+        )}
+        size="icon"
+        variant="secondary"
+        onClick={handleClick}
+        disabled={isLoading}
+        aria-label={isAdded ? "Remove from cart" : "Add to cart"}
+      >
+        {isAdded ? "-" : "+"}
+      </Button>
+
+      <ReturnTypeSelector
+        open={showSelector}
+        onClose={() => setShowSelector(false)}
+        onConfirm={handleConfirmReturn}
+        productPrice={productPrice}
+      />
+    </>
+  )
+}

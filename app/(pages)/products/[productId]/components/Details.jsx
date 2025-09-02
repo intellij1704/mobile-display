@@ -71,7 +71,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
               <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-lg">
                 {discount}% OFF
               </span>
-          
+
             </div>
           </>
         )}
@@ -114,11 +114,13 @@ async function Details({ product, selectedColor, selectedQuality }) {
       )}
 
       {/* Action Buttons */}
-             <ActionButtons
-        product={product}
-        selectedColor={selectedColor}
-        selectedQuality={selectedQuality}
-      />
+      <AuthContextProvider>
+        <ActionButtons
+          product={product}
+          selectedColor={selectedColor}
+          selectedQuality={selectedQuality}
+        />
+      </AuthContextProvider>
 
       {/* Stock Info */}
       {product?.stock <= (product?.orders ?? 0) && (

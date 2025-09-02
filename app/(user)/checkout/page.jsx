@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 import Checkout from './components/Checkout'
-import ReturnType from './components/ReturnType'
 
 function page() {
     const { user } = useAuth()

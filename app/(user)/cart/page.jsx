@@ -25,7 +25,6 @@ const CartPage = () => {
   const { data: shippingData, isLoading: isFetching } = useShippingSettings();
 
 
-
   // Memoize the onSubtotalUpdate and onRemove callbacks to prevent unnecessary re-renders
   const onSubtotalUpdate = useCallback((uniqueId, subtotal, quantity) => {
     setCartSubtotals((prev) => ({
@@ -83,7 +82,7 @@ const CartPage = () => {
   };
 
   const summary = calculateSummary();
-
+  console.log(data?.carts)
   const freeShippingThreshold = shippingData?.minFreeDeliveryAmount;
   const freeShippingVal = Math.max(0, freeShippingThreshold - summary.productTotal);
 
@@ -174,37 +173,7 @@ const CartPage = () => {
                         ₹{summary.productTotal.toFixed(2)}
                       </span>
                     </div>
-                    {/* <div className="flex justify-between text-sm">
-                      <div className="text-sm text-gray-600">
-                        Shipping
-                      </div>
-                      <div className="flex flex-col justify-end items-end gap-2">
-                        <label className="flex items-center gap-2">
-                          <span>Free Delivery</span>
-
-                          <input
-                            type="radio"
-                            name="delivery"
-                            value="free"
-                            checked={deliveryType === 'free'}
-                            onChange={() => setDeliveryType('free')}
-                            className="form-radio text-blue-600"
-                          />
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <span>Express Delivery: ₹99.00</span>
-
-                          <input
-                            type="radio"
-                            name="delivery"
-                            value="express"
-                            checked={deliveryType === 'express'}
-                            onChange={() => setDeliveryType('express')}
-                            className="form-radio text-blue-600"
-                          />
-                        </label>
-                      </div>
-                    </div> */}
+               
                   </div>
                   <div className="mt-4 flex justify-between">
                     <span className="text-gray-600">Total</span>
@@ -272,9 +241,13 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
     try {
       const newList = data?.carts?.map((d) =>
         d?.id === item?.id &&
-          d?.selectedColor === item?.selectedColor &&
-          d?.selectedQuality === item?.selectedQuality
-          ? { ...d, quantity: parseInt(newQuantity) }
+        d?.selectedColor === item?.selectedColor &&
+        d?.selectedQuality === item?.selectedQuality
+          ? { 
+              ...d, 
+              quantity: parseInt(newQuantity),
+              ...(d.returnType === "easy-return" ? { returnFee: Math.round(160 + 0.05 * price * newQuantity) } : {})
+            }
           : d
       );
       await updateCarts({ list: newList, uid: user?.uid });
@@ -309,10 +282,23 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
               {product?.title || "Product"}
             </h3>
             {item?.selectedColor && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 capitalize">
                 Color: {item.selectedColor}
               </p>
             )}
+            {item?.returnType && (
+              <p className="text-sm text-gray-500">
+                Return Type: {
+                  {
+                    "easy-return": "Easy Return",
+                    "easy-replacement": "Easy Replacement",
+                    "self-shipping": "Self Shipping",
+                  }[item.returnType] || item.returnType
+                }
+                (₹{item?.returnFee})
+              </p>
+            )}
+
             {item?.selectedQuality && (
               <p className="text-sm text-gray-500">
                 Quality: {item.selectedQuality}
@@ -379,10 +365,25 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
               {product?.title || "Product"}
             </h3>
             {item?.selectedColor && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 capitalize">
                 Color: {item.selectedColor}
               </p>
             )}
+
+            {item?.returnType && (
+              <p className="text-sm text-gray-500">
+                Return Type: {
+                  {
+                    "easy-return": "Easy Return",
+                    "easy-replacement": "Easy Replacement",
+                    "self-shipping": "Self Shipping",
+                  }[item.returnType] || item.returnType
+                }
+                (₹{item?.returnFee})
+              </p>
+            )}
+
+
             {item?.selectedQuality && (
               <p className="text-sm text-gray-500">
                 Quality: {item.selectedQuality}

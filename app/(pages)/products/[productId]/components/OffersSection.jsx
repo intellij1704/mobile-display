@@ -19,7 +19,7 @@ const OffersSection = ({ product }) => {
   const activeOffers =
     data?.filter((offer) => offer.status === "Active" && offer.categories?.includes(product.categoryId)) || []
 
-  const mrp = product.price
+  const mrp = product.salePrice || product.price
   const salePrice = product.salePrice
   const hasSale = !!salePrice
   const basePrice = salePrice || mrp

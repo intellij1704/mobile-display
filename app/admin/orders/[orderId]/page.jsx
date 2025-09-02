@@ -10,6 +10,7 @@ function Page() {
     const { orderId } = useParams();
     const { data: order, error, isLoading } = useOrder({ id: orderId });
     console.log(order)
+    console.log(order)
     if (!orderId) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">

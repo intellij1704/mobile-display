@@ -23,7 +23,7 @@ export const createCheckoutAndGetURL = async ({ uid, products, address }) => {
                         productId: item?.product?.id ?? "",
                     },
                 },
-                unit_amount: item?.product?.salePrice * 100,
+                unit_amount: Math.round(item?.product?.salePrice) * 100,
             },
             quantity: item?.quantity ?? 1,
         });
@@ -89,15 +89,64 @@ export const createCheckoutAndGetURL = async ({ uid, products, address }) => {
 };
 
 
-export const createCheckoutCODAndGetId = async ({ uid, products, address, deliveryType, returnType }) => {
+export const createCheckoutCODAndGetId = async ({ uid, products, address, deliveryType, appliedCoupons, appliedOffers }) => {
     const checkoutId = `cod_${doc(collection(db, `ids`)).id}`;
 
     const ref = doc(db, `users/${uid}/checkout_sessions_cod/${checkoutId}`);
 
-    const deliveryFee = deliveryType === "free" ? 0 : 99;
+    // Fetch shipping settings
+    const shippingRef = doc(db, "settings/shipping");
+    const shippingSnap = await getDoc(shippingRef);
+    const shippingData = shippingSnap.data() || {};
+
+    const minFreeDelivery = shippingData.minFreeDeliveryAmount || 499;
+    const shippingExtraCharges = shippingData.shippingExtraCharges || 0;
+    const airExpressDeliveryCharge = shippingData.airExpressDeliveryCharge || 0;
+
+    // Calculate subtotal before discount
     const subtotal = products.reduce((prev, curr) => prev + curr.quantity * curr.product.salePrice, 0);
-    const returnFee = returnType === "easy-return" ? (160 + 0.05 * subtotal) : returnType === "easy-replacement" ? 30 : 0;
-    const total = subtotal + deliveryFee + returnFee;
+
+    // Calculate discount (for COD, only coupon discounts, no prepaid)
+    const cartCategorySet = new Set(products.map(item => item.product.categoryId));
+    const couponPMap = {};
+    for (const offer of appliedOffers) {
+        const cp = offer.discountPercentage || 0;
+        for (const cat of offer.categories || []) {
+            if (!couponPMap[cat] || cp > couponPMap[cat]) {
+                couponPMap[cat] = cp;
+            }
+        }
+    }
+    let discount = 0;
+    for (const cat of [...cartCategorySet]) {
+        const catSum = products
+            .filter((item) => item.product?.categoryId === cat)
+            .reduce((sum, item) => sum + item.quantity * item.product?.salePrice, 0);
+        const couponP = couponPMap[cat] || 0;
+        const catDiscount = catSum * (couponP / 100);
+        discount += catDiscount;
+    }
+
+    const subtotalAfterDiscount = subtotal - discount;
+
+    // Calculate delivery fees
+    const shippingCharge = subtotalAfterDiscount >= minFreeDelivery ? 0 : shippingExtraCharges;
+    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0;
+    const deliveryFee = shippingCharge + airExpressFee;
+
+    // Calculate return fee (per item based on returnType)
+    let returnFee = 0;
+    products.forEach((item) => {
+        const itemSubtotal = item.quantity * item.product.salePrice;
+        if (item.returnType === "easy-return") {
+            returnFee += 160 + (0.05 * itemSubtotal);
+        } else if (item.returnType === "easy-replacement") {
+            returnFee += 30;
+        } // self-shipping or others: 0
+    });
+
+    // Total and advance
+    const total = subtotalAfterDiscount + deliveryFee + returnFee;
     const advance = total * 0.1;
     const remaining = total - advance;
 
@@ -118,9 +167,10 @@ export const createCheckoutCODAndGetId = async ({ uid, products, address, delive
                         productId: item?.product?.id ?? "",
                         selectedColor: item?.selectedColor || "",
                         selectedQuality: item?.selectedQuality || "",
+                        returnType: item?.returnType || "",
                     },
                 },
-                unit_amount: item?.product?.salePrice * 100,
+                unit_amount: Math.round(item?.product?.salePrice) * 100,
             },
             quantity: item?.quantity ?? 1,
         });
@@ -134,14 +184,19 @@ export const createCheckoutCODAndGetId = async ({ uid, products, address, delive
             uid: uid,
             address: JSON.stringify(address),
             deliveryType: deliveryType,
-            returnType: returnType,
         },
         subtotal: subtotal,
+        discount: discount,
+        subtotalAfterDiscount: subtotalAfterDiscount,
+        shippingCharge: shippingCharge,
+        airExpressFee: airExpressFee,
         deliveryFee: deliveryFee,
         returnFee: returnFee,
         total: total,
         advance: advance,
         remaining: remaining,
+        appliedCoupons: appliedCoupons,
+        appliedOffers: appliedOffers,
         createdAt: Timestamp.now(),
     });
 

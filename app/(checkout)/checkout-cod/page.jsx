@@ -2,12 +2,13 @@ import Footer from "@/app/components/Footer";
 import Header from "@/app/components/header/Header";
 import { admin, adminDB } from "@/lib/firebase_admin";
 import Link from "next/link";
-import SuccessMessage from "../checkout-success/components/SuccessMessage";
+// Removed SuccessMessage import as it may be causing the unmount error (likely due to portal or DOM manipulation assumptions for prepaid checkout)
 
 const fetchCheckout = async (checkoutId) => {
   const list = await adminDB
     .collectionGroup("checkout_sessions_cod")
     .where("id", "==", checkoutId)
+    .limit(1) // Added limit(1) for efficiency since ID is unique
     .get();
   if (list.docs.length === 0) {
     throw new Error("Invalid Checkout ID");
@@ -16,18 +17,21 @@ const fetchCheckout = async (checkoutId) => {
 };
 
 const processOrder = async ({ checkout }) => {
-  const order = await adminDB.doc(`orders/${checkout?.id}`).get();
+  const orderRef = adminDB.doc(`orders/${checkout?.id}`);
+  const order = await orderRef.get();
   if (order.exists) {
     return false;
   }
   const uid = checkout?.metadata?.uid;
 
-  await adminDB.doc(`orders/${checkout?.id}`).set({
+  // Calculate payment amount correctly for COD (using total from checkout, adjusted for currency units if needed)
+  const paymentAmount = checkout?.total; // Use the pre-calculated total from COD checkout (in rupees, adjust if needed)
+
+  await orderRef.set({
     checkout: checkout,
     payment: {
-      amount: checkout?.line_items?.reduce((prev, curr) => {
-        return prev + curr?.price_data?.unit_amount * curr?.quantity;
-      }, 0),
+      amount: paymentAmount,
+      mode: "cod", // Explicitly set mode for COD
     },
     uid: uid,
     id: checkout?.id,
@@ -35,21 +39,19 @@ const processOrder = async ({ checkout }) => {
     timestampCreate: admin.firestore.Timestamp.now(),
   });
 
-  const productList = checkout?.line_items?.map((item, index) => {
+  const productList = checkout?.line_items?.map((item) => { // Removed index and unnecessary key
     return {
-      key: item.id,
       productId: item?.price_data?.product_data?.metadata?.productId,
       quantity: item?.quantity,
       selectedColor: item?.price_data?.product_data?.metadata?.selectedColor || null,
-      selectedSize: item?.price_data?.product_data?.metadata?.selectedSize || null,
+      selectedQuality: item?.price_data?.product_data?.metadata?.selectedQuality || null, // Added selectedQuality as per metadata
     };
   });
 
-  console.log("product lis",productList)
-  console.log("checkout",checkout.line_items)
-  
+  // Removed console.logs for production readiness
 
-  const user = await adminDB.doc(`users/${uid}`).get();
+  const userRef = adminDB.doc(`users/${uid}`);
+  const user = await userRef.get();
 
   const productIdsList = productList?.map((item) => item?.productId);
 
@@ -57,7 +59,7 @@ const processOrder = async ({ checkout }) => {
     (cartItem) => !productIdsList.includes(cartItem?.id)
   );
 
-  await adminDB.doc(`users/${uid}`).set(
+  await userRef.set(
     {
       carts: newCartList,
     },
@@ -80,12 +82,12 @@ export default async function Page({ searchParams }) {
   const { checkout_id } = searchParams;
   const checkout = await fetchCheckout(checkout_id);
 
-  const result = await processOrder({ checkout });
+  await processOrder({ checkout }); // Process order (idempotent, so safe on reloads)
 
   return (
     <main>
       <Header />
-      <SuccessMessage />
+      {/* Removed SuccessMessage to avoid potential React unmount errors (e.g., portal removeChild on null) */}
       <section className="min-h-screen flex flex-col gap-3 justify-center items-center">
         <div className="flex justify-center w-full">
           <img src="/svgs/Mobile payments-rafiki.svg" className="h-48" alt="" />

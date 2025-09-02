@@ -9,15 +9,13 @@ import { ChevronLeft, CreditCard, TicketPercent, Truck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import ReturnType from "./ReturnType";
 import { useCategories } from "@/lib/firestore/categories/read";
 import { useShippingSettings } from "@/lib/firestore/shipping/read";
 
 export default function Checkout({ productList }) {
     const [isLoading, setIsLoading] = useState(false);
     const [paymentMode, setPaymentMode] = useState("cod");
-    const [deliveryType, setDeliveryType] = useState("free");
-    const [returnType, setReturnType] = useState(null);
+    const [deliveryType, setDeliveryType] = useState("standard");
     const [address, setAddress] = useState({
         firstName: "",
         lastName: "",
@@ -119,11 +117,7 @@ export default function Checkout({ productList }) {
     };
     // -----------------------------------------------------------
 
-    const returnOptionsMap = {
-        "easy-return": { title: "Easy Return", fee: (subtotal) => 160 + 0.05 * subtotal },
-        "easy-replacement": { title: "Easy Replacement", fee: () => 30 },
-        "self-shipping": { title: "Self Shipping", fee: () => 0 },
-    };
+
 
     const totalPrice =
         productList?.reduce((prev, curr) => {
@@ -214,14 +208,27 @@ export default function Checkout({ productList }) {
 
     const { data: shippingData } = useShippingSettings();
 
-    const airExpressDelivery = shippingData?.airExpressDeliveryCharge;
+
+    const returnFees = productList.reduce((sum, item) => {
+        return item?.returnType === "easy-return" ? sum + (item.returnFee || 0) : sum;
+    }, 0);
+    const replacementFees = productList.reduce((sum, item) => {
+        return item?.returnType === "easy-replacement" ? sum + (item.returnFee || 0) : sum;
+    }, 0);
+
+    const minFreeDelivery = shippingData?.minFreeDeliveryAmount || 499;
+    const shippingExtraCharges = shippingData?.shippingExtraCharges || 0;
+    const airExpressDeliveryCharge = shippingData?.airExpressDeliveryCharge || 0;
+
     const subtotalAfterDiscount = totalPrice - discount;
-    const deliveryFee = deliveryType === "free" ? 0 : shippingData?.airExpressDeliveryCharge;
-    const returnFee = returnType ? returnOptionsMap[returnType].fee(totalPrice) : 0;
-    const returnTitle = returnType ? returnOptionsMap[returnType].title : "";
-    const total = subtotalAfterDiscount + deliveryFee + returnFee;
-    const advance = paymentMode === "cod" ? total * 0.1 : total;
-    const remaining = paymentMode === "cod" ? total * 0.9 : 0;
+    const standardFee = subtotalAfterDiscount >= minFreeDelivery ? 0 : shippingExtraCharges;
+    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0;
+    const deliveryFee = standardFee + airExpressFee;
+    const total = subtotalAfterDiscount + deliveryFee + returnFees + replacementFees;
+    const advance = paymentMode === "cod" ? subtotalAfterDiscount * 0.1 + standardFee + airExpressFee + returnFees + replacementFees : total;
+    const remaining = paymentMode === "cod" ? total - advance : 0;
+
+
 
     const getEstimatedDelivery = () => {
         const today = new Date();
@@ -259,7 +266,6 @@ export default function Checkout({ productList }) {
         if (!address.phone) newErrors.phone = "Phone is required";
         if (!address.email) newErrors.email = "Email is required";
         else if (!/^\S+@\S+\.\S+$/.test(address.email)) newErrors.email = "Email is invalid";
-        if (!returnType) newErrors.returnType = "Please select a return type";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -278,11 +284,11 @@ export default function Checkout({ productList }) {
             if (paymentMode === "online") {
                 throw new Error("Online Payment Option Not Available");
             } else {
-                let effectiveDiscount = 0;
-                const couponDisc = Math.max(...appliedOffers.map(o => o.discountPercentage || 0), 0);
-                effectiveDiscount = couponDisc > 0
-                    ? (couponDisc < prepaidDiscount ? prepaidDiscount : couponDisc)
-                    : prepaidDiscount;
+                const serializedAppliedOffers = appliedOffers.map(offer => ({
+                    couponCode: offer.couponCode,
+                    discountPercentage: offer.discountPercentage,
+                    categories: offer.categories,
+                }));
                 const checkoutId = await createCheckoutCODAndGetId({
                     uid: user?.uid,
                     products: productList,
@@ -297,9 +303,8 @@ export default function Checkout({ productList }) {
                         country: address.country,
                     },
                     deliveryType,
-                    returnType,
-                    couponCode: appliedCoupons,
-                    discountPercentage: effectiveDiscount,
+                    appliedCoupons,
+                    appliedOffers: serializedAppliedOffers,
                 });
                 router.push(`/checkout-cod?checkout_id=${checkoutId}`);
             }
@@ -333,7 +338,7 @@ export default function Checkout({ productList }) {
                 </button>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col-reverse lg:flex-row gap-8">
                 {/* Left Column */}
                 <div className="lg:w-2/3 w-full">
                     <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100">
@@ -454,8 +459,8 @@ export default function Checkout({ productList }) {
                             </div>
                         </div>
                     </div>
-                    <ReturnType selected={returnType} onSelect={setReturnType} />
-                    {errors.returnType && <p className="text-red-500 text-xs mt-1 mb-6">{errors.returnType}</p>}
+
+
                 </div>
                 {/* Right Column */}
                 <div className="lg:w-1/3 w-full">
@@ -524,37 +529,66 @@ export default function Checkout({ productList }) {
                                     </p>
                                 </div>
                             )}
-                            <div className="flex justify-between text-gray-600 text-sm mb-4">
-                                Shipping
-                                <div className="flex flex-col justify-end items-end gap-3 mt-1">
-                                    <label className="flex items-center gap-2">
-                                        <span>Free Delivery</span>
-                                        <input
-                                            type="radio"
-                                            name="delivery"
-                                            checked={deliveryType === 'free'}
-                                            onChange={() => setDeliveryType('free')}
-                                            className="form-radio text-blue-600"
-                                        />
-                                    </label>
-                                    <label className="flex items-center gap-2">
-                                        <span>Air Express Delivery: {deliveryType === 'express' && `₹${airExpressDelivery}`}</span>
-                                        <input
-                                            type="radio"
-                                            name="delivery"
-                                            checked={deliveryType === 'express'}
-                                            onChange={() => setDeliveryType('express')}
-                                            className="form-radio text-blue-600"
-                                        />
-                                    </label>
+                            <div className="flex flex-col justify-between text-gray-600 text-sm mb-2 ">
+                                <div className="flex justify-between">
+                                    <span>Standard Shipping</span>
+                                    <span> {standardFee > 0 ? `₹ ${standardFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "Free"}</span>
                                 </div>
+                                {standardFee ? <p className="text-xs text-gray-500 mt-1 ">
+                                    {`(Charged due to order value below ₹${minFreeDelivery.toLocaleString("en-IN", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })})`}
+                                </p> : ""}
                             </div>
-                            {returnType && (
+
+                            <div className="text-gray-900 text-md mb-4 max-w-md mx-auto bg-gray-50 border border-gray-200 rounded-lg shadow-sm p-4 my-3">
+                                <label className="flex justify-between items-center gap-3 cursor-pointer select-none">
+
+                                    <span className="text-gray-700 text-base font-medium">
+                                        Air Express Delivery
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={deliveryType === "express"}
+                                        onChange={(e) =>
+                                            setDeliveryType(e.target.checked ? "express" : "standard")
+                                        }
+                                        className="w-5 h-5 accent-red-600 rounded-md cursor-pointer transition-all duration-200"
+                                    />
+                                </label>
+
+
+                                <p className="text-xs text-gray-500 mt-1 ">
+                                    Get faster delivery within 1-2 business days with Air Express. Standard
+                                    delivery may take 4-7 days.
+                                </p>
+                            </div>
+
+                            {deliveryType === "express" && (
                                 <div className="flex justify-between text-gray-600 text-sm mb-2">
-                                    <span>{returnTitle} Fee</span>
-                                    <span>₹{returnFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span>Air Express Shipping</span>
+                                    <span>₹{airExpressDeliveryCharge.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
                                 </div>
                             )}
+
+
+
+                            <div className="flex justify-between text-gray-600 text-sm mb-2">
+                                <span>Return Fees</span>
+                                <span>₹{returnFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+                            </div>
+                            <div className="flex justify-between text-gray-600 text-sm mb-2">
+                                <span>Replacement Fees</span>
+                                <span>₹{replacementFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+                            </div>
+
+
+
+
                             <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-200">
                                 <span>Total</span>
                                 <span>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -644,102 +678,100 @@ export default function Checkout({ productList }) {
                     </div>
                 </div>
             </div>
-          {showDrawer && (
-  <div
-    className="fixed inset-0 z-50 flex justify-end"
-    onClick={() => setShowDrawer(false)}
-  >
-    {/* Overlay with fade-in */}
-    <div className="absolute inset-0 bg-black/50 opacity-0 animate-fadeIn" />
-
-    {/* Drawer with slide-in */}
-    <div
-      className="relative bg-white w-96 p-6 overflow-y-auto shadow-2xl rounded-l-2xl
-                 transform translate-x-full animate-slideIn"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4 border-b pb-2">
-        <h2 className="text-xl font-semibold">Available Coupons</h2>
-        <button
-          onClick={() => setShowDrawer(false)}
-          className="p-1 rounded-md hover:bg-gray-100 transition"
-        >
-          <X className="h-6 w-6 text-gray-600" />
-        </button>
-      </div>
-
-      {/* Loader */}
-      {couponLoading && (
-        <div className="flex justify-center items-center mb-4 animate-pulse">
-          <CircularProgress size={24} thickness={4} color="primary" />
-          <p className="ml-2 text-gray-600">Applying coupon...</p>
-        </div>
-      )}
-
-      {/* Coupon List */}
-      {specialOffers
-        ?.filter((o) => o.couponCode && o.offerType !== "Prepaid Offer")
-        ?.map((offer, idx) => {
-          const eligible = canApplyCoupon(offer);
-          const alreadyApplied = appliedCoupons.includes(
-            offer.couponCode.toUpperCase()
-          );
-          return (
-            <div
-              key={idx}
-              className={`mb-4 p-4 rounded-lg border transition-all duration-300
-                ${
-                  alreadyApplied
-                    ? "border-green-400 bg-green-50"
-                    : eligible
-                    ? "border-gray-200 bg-gray-50 hover:shadow-md"
-                    : "border-gray-100 bg-gray-100 opacity-60"
-                }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    {offer.discountPercentage}% OFF on purchase
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    <span className="font-medium text-gray-700">
-                      {offer.couponCode}
-                    </span>{" "}
-                    – valid on Selected categories
-                  </p>
-                  {!eligible && (
-                    <p className="text-xs text-red-400 mt-1">
-                      Not applicable for your cart
-                    </p>
-                  )}
-                </div>
-                <button
-                  disabled={!eligible || alreadyApplied || couponLoading}
-                  onClick={() => handleAddCoupon(offer.couponCode)}
-                  className={`px-4 py-1.5 rounded-md font-medium border transition-all duration-200
-                    ${
-                      alreadyApplied
-                        ? "bg-gray-400 text-white border-gray-400 cursor-not-allowed"
-                        : eligible
-                        ? "bg-black text-white border-black hover:bg-gray-900"
-                        : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                    }`}
+            {showDrawer && (
+                <div
+                    className="fixed inset-0 z-50 flex justify-end"
+                    onClick={() => setShowDrawer(false)}
                 >
-                  {alreadyApplied ? "Applied" : "Apply"}
-                </button>
-              </div>
-            </div>
-          );
-        })}
+                    {/* Overlay with fade-in */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 animate-fadeIn" />
 
-      {/* Error */}
-      {couponError && (
-        <p className="text-red-500 text-sm mt-3">{couponError}</p>
-      )}
-    </div>
-  </div>
-)}
+                    {/* Drawer with slide-in */}
+                    <div
+                        className="relative bg-white w-96 p-6 overflow-y-auto shadow-2xl rounded-l-2xl
+                 transform translate-x-full animate-slideIn"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-4 border-b pb-2">
+                            <h2 className="text-xl font-semibold">Available Coupons</h2>
+                            <button
+                                onClick={() => setShowDrawer(false)}
+                                className="p-1 rounded-md hover:bg-gray-100 transition"
+                            >
+                                <X className="h-6 w-6 text-gray-600" />
+                            </button>
+                        </div>
+
+                        {/* Loader */}
+                        {couponLoading && (
+                            <div className="flex justify-center items-center mb-4 animate-pulse">
+                                <CircularProgress size={24} thickness={4} color="primary" />
+                                <p className="ml-2 text-gray-600">Applying coupon...</p>
+                            </div>
+                        )}
+
+                        {/* Coupon List */}
+                        {specialOffers
+                            ?.filter((o) => o.couponCode && o.offerType !== "Prepaid Offer")
+                            ?.map((offer, idx) => {
+                                const eligible = canApplyCoupon(offer);
+                                const alreadyApplied = appliedCoupons.includes(
+                                    offer.couponCode.toUpperCase()
+                                );
+                                return (
+                                    <div
+                                        key={idx}
+                                        className={`mb-4 p-4 rounded-lg border transition-all duration-300
+                ${alreadyApplied
+                                                ? "border-green-400 bg-green-50"
+                                                : eligible
+                                                    ? "border-gray-200 bg-gray-50 hover:shadow-md"
+                                                    : "border-gray-100 bg-gray-100 opacity-60"
+                                            }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-base font-semibold text-gray-900">
+                                                    {offer.discountPercentage}% OFF on purchase
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    <span className="font-medium text-gray-700">
+                                                        {offer.couponCode}
+                                                    </span>{" "}
+                                                    – valid on Selected categories
+                                                </p>
+                                                {!eligible && (
+                                                    <p className="text-xs text-red-400 mt-1">
+                                                        Not applicable for your cart
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <button
+                                                disabled={!eligible || alreadyApplied || couponLoading}
+                                                onClick={() => handleAddCoupon(offer.couponCode)}
+                                                className={`px-4 py-1.5 rounded-md font-medium border transition-all duration-200
+                    ${alreadyApplied
+                                                        ? "bg-gray-400 text-white border-gray-400 cursor-not-allowed"
+                                                        : eligible
+                                                            ? "bg-black text-white border-black hover:bg-gray-900"
+                                                            : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                    }`}
+                                            >
+                                                {alreadyApplied ? "Applied" : "Apply"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                        {/* Error */}
+                        {couponError && (
+                            <p className="text-red-500 text-sm mt-3">{couponError}</p>
+                        )}
+                    </div>
+                </div>
+            )}
 
         </div>
     );
