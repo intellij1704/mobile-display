@@ -95,10 +95,9 @@ export const createCheckoutCODAndGetId = async ({ uid, products, address, delive
     const ref = doc(db, `users/${uid}/checkout_sessions_cod/${checkoutId}`);
 
     const deliveryFee = deliveryType === "free" ? 0 : 99;
-    const codFee = 20;
     const subtotal = products.reduce((prev, curr) => prev + curr.quantity * curr.product.salePrice, 0);
     const returnFee = returnType === "easy-return" ? (160 + 0.05 * subtotal) : returnType === "easy-replacement" ? 30 : 0;
-    const total = subtotal + deliveryFee + codFee + returnFee;
+    const total = subtotal + deliveryFee + returnFee;
     const advance = total * 0.1;
     const remaining = total - advance;
 
@@ -139,7 +138,6 @@ export const createCheckoutCODAndGetId = async ({ uid, products, address, delive
         },
         subtotal: subtotal,
         deliveryFee: deliveryFee,
-        codFee: codFee,
         returnFee: returnFee,
         total: total,
         advance: advance,

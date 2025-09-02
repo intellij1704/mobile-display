@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useProduct } from "@/lib/firestore/products/read";
+import { useShippingSettings } from "@/lib/firestore/shipping/read";
 import { useUser } from "@/lib/firestore/user/read";
 import { updateCarts } from "@/lib/firestore/user/write";
 import { CircularProgress } from "@mui/material";
@@ -20,6 +21,10 @@ const CartPage = () => {
   const { data, isLoading } = useUser({ uid: user?.uid });
   const [cartSubtotals, setCartSubtotals] = useState({});
   const [deliveryType, setDeliveryType] = useState('free'); // 'free' or 'express'
+
+  const { data: shippingData, isLoading: isFetching } = useShippingSettings();
+
+
 
   // Memoize the onSubtotalUpdate and onRemove callbacks to prevent unnecessary re-renders
   const onSubtotalUpdate = useCallback((uniqueId, subtotal, quantity) => {
@@ -68,6 +73,7 @@ const CartPage = () => {
     const deliveryFee = deliveryType === 'free' ? 0 : 99;
     const total = productTotal + deliveryFee;
 
+
     return {
       productTotal,
       totalItems,
@@ -77,6 +83,9 @@ const CartPage = () => {
   };
 
   const summary = calculateSummary();
+
+  const freeShippingThreshold = shippingData?.minFreeDeliveryAmount;
+  const freeShippingVal = Math.max(0, freeShippingThreshold - summary.productTotal);
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 xl:px-20">
@@ -111,9 +120,26 @@ const CartPage = () => {
             <h1 className="mb-3 text-2xl font-bold text-gray-900 md:text-3xl">
               Your Cart
             </h1>
+
+
             <div className="flex flex-col gap-6 lg:flex-row">
               {/* Cart Items */}
               <div className="lg:w-2/3">
+
+                <div className=" border-dashed border-2 border-[#0000001b] rounded-md p-3 mb-10">
+                  <p className="text-sm text-gray-700 mb-1">
+                    {freeShippingVal === 0 ? "Your order qualifies for free shipping!" : `Add ₹${freeShippingVal} to cart and get free shipping!`}
+                  </p>
+                  <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, (summary.productTotal / freeShippingThreshold) * 100)}%`,
+                        background: 'repeating-linear-gradient(45deg, #4b5563, #4b5563 10px, #6b7280 10px, #6b7280 20px)',
+                      }}
+                    />
+                  </div>
+                </div>
                 <div className="hidden rounded-t-lg bg-white p-4 shadow-sm md:block">
                   <div className="grid grid-cols-12 gap-4 font-medium text-gray-600">
                     <div className="col-span-5">Product</div>
@@ -148,7 +174,7 @@ const CartPage = () => {
                         ₹{summary.productTotal.toFixed(2)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    {/* <div className="flex justify-between text-sm">
                       <div className="text-sm text-gray-600">
                         Shipping
                       </div>
@@ -178,7 +204,7 @@ const CartPage = () => {
                           />
                         </label>
                       </div>
-                    </div>
+                    </div> */}
                   </div>
                   <div className="mt-4 flex justify-between">
                     <span className="text-gray-600">Total</span>
