@@ -1,7 +1,7 @@
 "use client";
 
 import { useOrder } from "@/lib/firestore/orders/read";
-import { Button, CircularProgress, Divider, Typography } from "@mui/material";
+import { Button, CircularProgress, Divider } from "@mui/material";
 import { Card, CardBody, CardHeader } from "@nextui-org/react";
 import { useParams } from "next/navigation";
 import ChangeOrderStatus from "./components/ChangeStatus";
@@ -9,7 +9,6 @@ import ChangeOrderStatus from "./components/ChangeStatus";
 function Page() {
     const { orderId } = useParams();
     const { data: order, error, isLoading } = useOrder({ id: orderId });
-    console.log(order)
     console.log(order)
     if (!orderId) {
         return (
@@ -58,21 +57,29 @@ function Page() {
         );
     }
 
-    const lineItems = order?.checkout?.line_items || [];
-    const productItems = lineItems.filter(curr => {
-        const name = curr?.price_data?.product_data?.name || "";
-        return name !== "COD Fee" && name !== "Express Delivery";
-    });
-    const codFeeItem = lineItems.find(curr => curr?.price_data?.product_data?.name === "COD Fee");
-    const deliveryFeeItem = lineItems.find(curr => curr?.price_data?.product_data?.name === "Express Delivery");
-    const subtotal = productItems.reduce((prev, curr) => prev + (curr?.price_data?.unit_amount / 100) * curr?.quantity, 0);
-    const codFee = order?.checkout?.codFee || (codFeeItem ? (codFeeItem?.price_data?.unit_amount / 100) * (codFeeItem?.quantity || 1) : 0);
-    const deliveryFee = order?.checkout?.deliveryFee || (deliveryFeeItem ? (deliveryFeeItem?.price_data?.unit_amount / 100) * (deliveryFeeItem?.quantity || 1) : 0);
-    const returnFee = order?.checkout?.returnFee || 0;
-    const returnType = order?.checkout?.metadata?.returnType || null;
-    const totalAmount = order?.checkout?.total || (subtotal + codFee + deliveryFee + returnFee);
+    const checkout = order?.checkout || {};
+    const productItems = checkout?.line_items || [];
+    const subtotal = checkout?.subtotal || 0;
+    const discount = checkout?.discount || 0;
+    const subtotalAfterDiscount = checkout?.subtotalAfterDiscount || 0;
+    const shippingCharge = checkout?.shippingCharge || 0;
+    const airExpressFee = checkout?.airExpressFee || 0;
+    const deliveryFee = checkout?.deliveryFee || 0;
+    const returnFee = checkout?.returnFee || 0;
+    const totalAmount = checkout?.total || 0;
 
-    const address = JSON.parse(order?.checkout?.metadata?.address ?? "{}");
+    const address = JSON.parse(checkout?.metadata?.address ?? "{}");
+    const deliveryType = checkout?.metadata?.deliveryType || "standard";
+    const isExpressDelivery = deliveryType === "express";
+
+    const returnOptionsMap = {
+        "easy-return": "Easy Return",
+        "easy-replacement": "Easy Replacement",
+        "self-shipping": "Self Shipping",
+    };
+
+    const returnTypes = [...new Set(productItems.map(item => item?.price_data?.product_data?.metadata?.returnType).filter(t => t))];
+    const returnTitle = returnTypes.map(t => returnOptionsMap[t] || "Unknown").join(", ") || "None";
 
     const statusColors = {
         pending: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200" },
@@ -86,14 +93,6 @@ function Page() {
     const currentStatus = order?.status || "pending";
     const statusStyle = statusColors[currentStatus] || { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" };
 
-    const isExpressDelivery = deliveryFee > 0;
-
-    const returnOptionsMap = {
-        "easy-return": "Easy Return",
-        "easy-replacement": "Easy Replacement",
-        "self-shipping": "Self Shipping",
-    };
-    const returnTitle = returnType ? returnOptionsMap[returnType] || "Unknown" : "None";
     return (
         <main className="min-h-screen bg-gray-50 rounded-md py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
@@ -137,12 +136,7 @@ function Page() {
                                             {isExpressDelivery ? "Express Delivery" : "Standard Delivery"}
                                         </span>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-500">Return Type</p>
-                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${returnFee > 0 ? "bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-sm" : "bg-green-100 text-green-800"}`}>
-                                            {returnTitle}
-                                        </span>
-                                    </div>
+
                                 </div>
 
                                 <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
@@ -166,8 +160,8 @@ function Page() {
                                 <div className="space-y-5">
                                     {productItems.map((product, index) => {
                                         const metadata = product?.price_data?.product_data?.metadata || {};
-                                        const unitPrice = product?.price_data?.unit_amount / 100;
-                                        const totalPrice = unitPrice * product?.quantity;
+                                        const unitPrice = (product?.price_data?.unit_amount || 0) / 100;
+                                        const totalPrice = unitPrice * (product?.quantity || 1);
 
                                         return (
                                             <div key={index} className="flex items-start space-x-4 py-4 border-b border-gray-100 last:border-0">
@@ -193,6 +187,11 @@ function Page() {
                                                                 Color: {metadata.selectedColor}
                                                             </span>
                                                         )}
+                                                        {metadata.returnType && (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                                Return: {returnOptionsMap[metadata.returnType] || metadata.returnType}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="mt-2 flex items-center">
                                                         <span className="text-gray-900 font-medium">₹{unitPrice.toFixed(2)}</span>
@@ -214,7 +213,7 @@ function Page() {
                     {/* Right Column - Customer & Payment Info */}
                     <div className="space-y-6">
                         {/* Customer Info Card */}
-                        <div className="bg-green-100 rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="px-6 py-5 border-b border-gray-100">
                                 <h2 className="text-lg font-semibold text-gray-800">Customer Information</h2>
                             </div>
@@ -261,38 +260,52 @@ function Page() {
                                         <span className="text-gray-900 font-medium">₹{subtotal.toFixed(2)}</span>
                                     </div>
 
-                                    {codFee > 0 && (
+                                    {discount > 0 && (
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">COD Fee</span>
-                                            <span className="text-gray-900 font-medium">₹{codFee.toFixed(2)}</span>
+                                            <span className="text-gray-600">Discount  <br /><span className="text-xs text-green-600">(Coupons: {checkout?.appliedCoupons?.join(", ") || "N/A"})</span></span>
+                                            <span className="text-green-600 font-medium">-₹{discount.toFixed(2)}</span>
                                         </div>
                                     )}
 
-                                    {deliveryFee > 0 ? (
+                                    {shippingCharge > 0 ? (
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600 font-medium">Express Delivery</span>
-                                            <span className="text-gray-900 font-medium">₹{deliveryFee.toFixed(2)}</span>
+                                            <span className="text-gray-600">Shipping Charge</span>
+                                            <span className="text-gray-900 font-medium">₹{shippingCharge.toFixed(2)}</span>
                                         </div>
                                     ) : (
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Delivery</span>
+                                            <span className="text-gray-600">Shipping Charge</span>
                                             <span className="text-green-600 font-medium">Free</span>
                                         </div>
                                     )}
 
-                                    {returnType && (
-                                        returnFee > 0 ? (
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">{returnTitle} Fee</span>
-                                                <span className="text-gray-900 font-medium">₹{returnFee.toFixed(2)}</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">{returnTitle}</span>
-                                                <span className="text-green-600 font-medium">Free</span>
-                                            </div>
-                                        )
+                                    {airExpressFee > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Air Express Fee</span>
+                                            <span className="text-gray-900 font-medium">₹{airExpressFee.toFixed(2)}</span>
+                                        </div>
                                     )}
+
+                                    {deliveryFee > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Delivery Fee</span>
+                                            <span className="text-gray-900 font-medium">₹{deliveryFee.toFixed(2)}</span>
+                                        </div>
+                                    )}
+
+                                    {returnFee > 0 ? (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Return & Replacement Fee</span>
+                                            <span className="text-gray-900 font-medium">₹{returnFee.toFixed(2)}</span>
+                                        </div>
+                                    ) : returnTitle !== "None" ? (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Return</span>
+                                            <span className="text-green-600 font-medium">Free</span>
+                                        </div>
+                                    ) : null}
+                                
+
 
                                     <Divider className="my-2" />
 

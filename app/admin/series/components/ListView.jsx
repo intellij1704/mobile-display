@@ -1,16 +1,15 @@
-// components/SeriesListView.jsx
-"use client";
+"use client"
 
-import { useSeries } from "@/lib/firestore/series/read";
-import { deleteSeries } from "@/lib/firestore/series/write";
-import { Button, CircularProgress, Chip } from "@nextui-org/react";
-import { Edit2, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import toast from "react-hot-toast";
+import { useSeries } from "@/lib/firestore/series/read"
+import { deleteSeries } from "@/lib/firestore/series/write"
+import { Button, CircularProgress, Chip } from "@nextui-org/react"
+import { Edit2, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import toast from "react-hot-toast"
 
 export default function SeriesListView() {
-  const { data: series, error, isLoading } = useSeries();
+  const { data: series, error, isLoading } = useSeries()
 
   if (isLoading) {
     return (
@@ -18,23 +17,15 @@ export default function SeriesListView() {
         <CircularProgress aria-label="Loading series" />
         <h3 className="mt-2 text-gray-600">Loading series...</h3>
       </div>
-    );
+    )
   }
 
   if (error) {
-    return (
-      <div className="p-5 text-red-500">
-        Error: {error}
-      </div>
-    );
+    return <div className="p-5 text-red-500">Error: {error}</div>
   }
 
   if (!series?.length) {
-    return (
-      <div className="p-5 text-gray-500">
-        No series found. Create a new series to get started.
-      </div>
-    );
+    return <div className="p-5 text-gray-500">No series found. Create a new series to get started.</div>
   }
 
   return (
@@ -47,15 +38,10 @@ export default function SeriesListView() {
               <th className="font-semibold border-y bg-white px-4 py-2 border-l rounded-l-lg text-center text-sm text-gray-600">
                 SN
               </th>
-              <th className="font-semibold border-y bg-white px-4 py-2 text-left text-sm text-gray-600">
-                Series Name
-              </th>
-              <th className="font-semibold border-y bg-white px-4 py-2 text-left text-sm text-gray-600">
-                Category
-              </th>
-              <th className="font-semibold border-y bg-white px-4 py-2 text-left text-sm text-gray-600">
-                Brand
-              </th>
+              <th className="font-semibold border-y bg-white px-4 py-2 text-left text-sm text-gray-600">Image</th>
+              <th className="font-semibold border-y bg-white px-4 py-2 text-left text-sm text-gray-600">Series Name</th>
+              <th className="font-semibold border-y bg-white px-4 py-2 text-left text-sm text-gray-600">Category</th>
+              <th className="font-semibold border-y bg-white px-4 py-2 text-left text-sm text-gray-600">Brand</th>
               <th className="font-semibold border-y bg-white px-4 py-2 border-r rounded-r-lg text-center text-sm text-gray-600">
                 Actions
               </th>
@@ -69,30 +55,29 @@ export default function SeriesListView() {
         </table>
       </div>
     </div>
-  );
+  )
 }
 
 function Row({ item, index }) {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter()
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this series?")) return;
-
-    setIsDeleting(true);
+    if (!confirm("Are you sure you want to delete this series?")) return
+    setIsDeleting(true)
     try {
-      await deleteSeries({ id: item?.id });
-      toast.success("Series deleted successfully");
+      await deleteSeries({ id: item?.id, imagePath: item?.imagePath })
+      toast.success("Series deleted successfully")
     } catch (error) {
-      toast.error(error?.message || "Failed to delete series");
+      toast.error((error && error.message) || "Failed to delete series")
     } finally {
-      setIsDeleting(false);
+      setIsDeleting(false)
     }
-  };
+  }
 
   const handleUpdate = () => {
-    router.push(`/admin/series?id=${item?.id}`);
-  };
+    router.push(`/admin/series?id=${item?.id}`)
+  }
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
@@ -100,16 +85,25 @@ function Row({ item, index }) {
         {index + 1}
       </td>
       <td className="border-y bg-white px-4 py-2 text-sm text-gray-700">
-        {item?.seriesName}
+        {item?.imageUrl ? (
+          <img
+            src={item.imageUrl || "/placeholder.svg"}
+            alt={`${item?.seriesName || "Series"} image`}
+            className="h-10 w-10 object-contain rounded-md border"
+          />
+        ) : (
+          <span className="text-xs text-gray-400">No image</span>
+        )}
       </td>
+      <td className="border-y bg-white px-4 py-2 text-sm text-gray-700">{item?.seriesName}</td>
       <td className="border-y bg-white px-4 py-2 text-sm text-gray-700">
         <Chip size="sm" color="primary" variant="flat">
-          {item?.categoryName}
+          {item?.categoryName || "Unknown"}
         </Chip>
       </td>
       <td className="border-y bg-white px-4 py-2 text-sm text-gray-700">
         <Chip size="sm" color="secondary" variant="flat">
-          {item?.brandName}
+          {item?.brandName || "Unknown"}
         </Chip>
       </td>
       <td className="border-y bg-white px-4 py-2 border-r rounded-r-lg text-center">
@@ -138,5 +132,5 @@ function Row({ item, index }) {
         </div>
       </td>
     </tr>
-  );
+  )
 }

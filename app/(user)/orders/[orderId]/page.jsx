@@ -14,7 +14,6 @@ const OrderDetailPage = () => {
     const router = useRouter()
     const order = orders?.find((o) => o.id === orderId)
     const [showFeesBreakdown, setShowFeesBreakdown] = useState(false)
-
     if (isLoading || !orders) {
         return (
             <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
@@ -41,20 +40,23 @@ const OrderDetailPage = () => {
     const addressData = order?.checkout?.metadata?.address ? JSON.parse(order.checkout.metadata.address) : {}
 
     const subtotal = order?.checkout?.subtotal || 0
-    const codFee = order?.checkout?.codFee || 0
-    const deliveryFee = order?.checkout?.deliveryFee || 0
-    const returnFee = order?.checkout?.returnFee || 0
-    const returnType = order?.checkout?.metadata?.returnType || null
+    const discount = order?.checkout?.discount || 0
+    const appliedCoupons = order?.checkout?.appliedCoupons || []
+    const shippingCharge = order?.checkout?.shippingCharge || 0
+    const airExpressFee = order?.checkout?.airExpressFee || 0
+    const returnFees = order?.checkout?.returnFees || 0
+    const replacementFees = order?.checkout?.replacementFees || 0
+    const returnFee = order?.checkout?.returnFee || (returnFees + replacementFees)
     const advance = order?.checkout?.advance || 0
     const remaining = order?.checkout?.remaining || 0
     const total = order?.checkout?.total || 0
+    const deliveryType = order?.checkout?.metadata?.deliveryType || ""
 
     const returnOptionsMap = {
         "easy-return": "Easy Return",
         "easy-replacement": "Easy Replacement",
         "self-shipping": "Self Shipping",
     };
-    const returnTitle = returnType ? returnOptionsMap[returnType] || "Unknown" : "No Return Type Selected";
 
     const formatDate = (date) => {
         if (!date) return "N/A"
@@ -103,48 +105,61 @@ const OrderDetailPage = () => {
                                     const product = item.price_data.product_data
                                     const unitPrice = item.price_data.unit_amount / 100
                                     const totalPrice = unitPrice * item.quantity
+                                    const returnType = product.metadata?.returnType || null
+                                    const returnTitle = returnType ? returnOptionsMap[returnType] || "No Return Type Selected" : "No Return Type Selected";
 
                                     return (
-                                        <div key={index} className={`flex gap-4 ${index > 0 ? "pt-6 border-t border-gray-100" : ""}`}>
-                                            <div className="flex-shrink-0">
-                                                <img
-                                                    src={product.images?.[0] || "/placeholder.svg?height=120&width=120&query=product"}
-                                                    alt={product.name}
-                                                    className="w-24 h-32 object-cover rounded border"
-                                                />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h2 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h2>
-                                                <p className="text-gray-600 text-sm mb-2">{product.description}</p>
+                                        <div key={index} className={`flex flex-col gap-4 ${index > 0 ? "pt-6 border-t border-gray-100" : ""}`}>
+                                            <div className="flex gap-4">
+                                                <div className="flex-shrink-0">
+                                                    <img
+                                                        src={product.images?.[0] || "/placeholder.svg?height=120&width=120&query=product"}
+                                                        alt={product.name}
+                                                        className="w-24 h-auto object-cover rounded border"
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h2 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h2>
+                                                    <p className="text-gray-600 text-sm mb-2">{product.description}</p>
 
-                                                {/* Product Options */}
-                                                <div className="flex gap-4 mb-3 text-sm">
-                                                    {product.metadata?.selectedColor && (
+                                                    {/* Product Options */}
+                                                    <div className="flex flex-col md:flex-row gap-1 md:gap-4 mb-3 text-sm">
+                                                        {product.metadata?.selectedColor && (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-gray-500">Color:</span>
+                                                                <span className="text-gray-700">{product.metadata.selectedColor}</span>
+                                                            </div>
+                                                        )}
+                                                        {product.metadata?.selectedQuality && (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-gray-500">Quality:</span>
+                                                                <span className="text-gray-700">{product.metadata.selectedQuality}</span>
+                                                            </div>
+                                                        )}
                                                         <div className="flex items-center gap-1">
-                                                            <span className="text-gray-500">Color:</span>
-                                                            <span className="text-gray-700">{product.metadata.selectedColor}</span>
+                                                            <span className="text-gray-500">Qty:</span>
+                                                            <span className="text-gray-700">{item.quantity}</span>
                                                         </div>
-                                                    )}
-                                                    {product.metadata?.selectedQuality && (
                                                         <div className="flex items-center gap-1">
-                                                            <span className="text-gray-500">Quality:</span>
-                                                            <span className="text-gray-700">{product.metadata.selectedQuality}</span>
+                                                            <span className="text-gray-500">Return Type:</span>
+                                                            <span className="text-gray-700">{returnTitle}</span>
                                                         </div>
-                                                    )}
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-gray-500">Qty:</span>
-                                                        <span className="text-gray-700">{item.quantity}</span>
+                                                    </div>
+
+                                                    {/* Product Price */}
+                                                    <div className="flex items-center gap-2">
+                                                        {item.quantity > 1 && (
+                                                            <span className="text-sm text-gray-500">(₹{unitPrice.toFixed(0)} x {item.quantity})</span>
+                                                        )}
+                                                        <span className="text-xl font-bold text-gray-900">₹{totalPrice.toFixed(0)}</span>
+
                                                     </div>
                                                 </div>
-
-                                                {/* Product Price */}
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xl font-bold text-gray-900">₹{totalPrice.toFixed(0)}</span>
-                                                    {item.quantity > 1 && (
-                                                        <span className="text-sm text-gray-500">(₹{unitPrice.toFixed(0)} each)</span>
-                                                    )}
-                                                </div>
                                             </div>
+                                            {/* Return Button */}
+                                            <button className="self-end px-4 py-2 bg-black text-white rounded-lg hover:bg-red-700 transition-colors">
+                                                {returnTitle}
+                                            </button>
                                         </div>
                                     )
                                 })}
@@ -307,69 +322,55 @@ const OrderDetailPage = () => {
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">
-                                        Listing price ({lineItems.length} item{lineItems.length > 1 ? "s" : ""})
+                                        Subtotal ({lineItems.length} item{lineItems.length > 1 ? "s" : ""})
                                     </span>
-                                    <span className="text-gray-900">₹{totalProductPrice.toFixed(0)}</span>
+                                    <span className="text-gray-900">₹{subtotal.toFixed(2)}</span>
                                 </div>
 
-                                <div className="border border-gray-100 rounded-lg">
-                                    <button
-                                        onClick={() => setShowFeesBreakdown(!showFeesBreakdown)}
-                                        className="w-full flex justify-between items-center p-3 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <span className="text-gray-600">Total fees</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-gray-900">₹{(deliveryFee + codFee + returnFee).toFixed(0)}</span>
-                                            <svg
-                                                className={`w-4 h-4 text-gray-400 transition-transform ${showFeesBreakdown ? "rotate-180" : ""}`}
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </div>
-                                    </button>
-
-                                    {showFeesBreakdown && (
-                                        <div className="px-3 pb-3 space-y-2 border-t border-gray-100">
-                                            {deliveryFee > 0 && (
-                                                <div className="flex justify-between text-xs">
-                                                    <span className="text-gray-500">
-                                                        {order?.checkout?.metadata?.deliveryType === "express"
-                                                            ? "Express delivery"
-                                                            : "Delivery fee"}
-                                                    </span>
-                                                    <span className="text-gray-700">₹{deliveryFee.toFixed(0)}</span>
-                                                </div>
-                                            )}
-                                            {codFee > 0 && (
-                                                <div className="flex justify-between text-xs">
-                                                    <span className="text-gray-500">COD fee</span>
-                                                    <span className="text-gray-700">₹{codFee.toFixed(0)}</span>
-                                                </div>
-                                            )}
-                                            {returnFee > 0 && (
-                                                <div className="flex justify-between text-xs">
-                                                    <span className="text-gray-500">{returnTitle} Fee</span>
-                                                    <span className="text-gray-700">₹{returnFee.toFixed(0)}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                <div className="flex justify-between text-green-600">
+                                    <span className="text-gray-600">
+                                        Discount {appliedCoupons.length > 0 ? <span className="text-green-600 text-xs"> <br /> (Coupons: {appliedCoupons.join(", ")})</span> : ""}
+                                    </span>
+                                    <span>-₹{discount.toFixed(2)}</span>
                                 </div>
+
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Shipping Charge</span>
+                                    <span className="text-gray-900">{shippingCharge > 0 ? `₹${shippingCharge.toFixed(2)}` : "Free"}</span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Air Express Fee</span>
+                                    <span className="text-gray-900">₹{airExpressFee.toFixed(2)}</span>
+                                </div>
+
+
+                                {returnFees > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Return Fees</span>
+                                        <span className="text-gray-900">₹{returnFees.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {replacementFees > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Replacement Fees</span>
+                                        <span className="text-gray-900">₹{replacementFees.toFixed(2)}</span>
+                                    </div>
+                                )}
+
+                                
 
                                 <div className="border-t border-gray-100 pt-3 mt-4">
                                     <div className="flex justify-between items-center font-semibold">
-                                        <span className="text-gray-900">Total amount</span>
-                                        <span className="text-gray-900">₹{total.toFixed(0)}</span>
+                                        <span className="text-gray-900">Total</span>
+                                        <span className="text-gray-900">₹{total.toFixed(2)}</span>
                                     </div>
                                 </div>
 
                                 {advance > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">10% advance paid</span>
-                                        <span className="text-green-600">-₹{advance.toFixed(0)}</span>
+                                        <span className="text-green-600">-₹{advance.toFixed(2)}</span>
                                     </div>
                                 )}
 
@@ -377,7 +378,7 @@ const OrderDetailPage = () => {
                                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
                                         <div className="flex justify-between items-center">
                                             <span className="text-orange-800 font-medium">Need to pay on delivery</span>
-                                            <span className="text-orange-800 font-bold">₹{remaining.toFixed(0)}</span>
+                                            <span className="text-orange-800 font-bold">₹{remaining.toFixed(2)}</span>
                                         </div>
                                     </div>
                                 )}

@@ -1,441 +1,344 @@
-"use client";
+/* eslint-disable react-hooks/exhaustive-deps */
+"use client"
 
-import { useAuth } from "@/context/AuthContext";
-import { useProduct } from "@/lib/firestore/products/read";
-import { useShippingSettings } from "@/lib/firestore/shipping/read";
-import { useUser } from "@/lib/firestore/user/read";
-import { updateCarts } from "@/lib/firestore/user/write";
-import { CircularProgress } from "@mui/material";
-import { Button } from "@nextui-org/react";
-import { Minus, Plus } from "lucide-react";
-import Link from "next/link";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import toast from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext"
+import { useUser } from "@/lib/firestore/user/read"
+import { useProduct } from "@/lib/firestore/products/read"
+import { updateCarts } from "@/lib/firestore/user/write"
+import { useShippingSettings } from "@/lib/firestore/shipping/read"
+import { CircularProgress } from "@mui/material"
+import { DeleteForever } from "@mui/icons-material"
+import { Button } from "@nextui-org/react"
+import { Minus, Plus } from "lucide-react"
+import Link from "next/link"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import toast from "react-hot-toast"
 
 const getUniqueId = (item) => {
-  return `${item.id}-${item.selectedColor || ''}-${item.selectedQuality || ''}`;
-};
+  return `${item.id}-${item.selectedColor || ""}-${item.selectedQuality || ""}`
+}
 
 const CartPage = () => {
-  const { user } = useAuth();
-  const { data, isLoading } = useUser({ uid: user?.uid });
-  const [cartSubtotals, setCartSubtotals] = useState({});
-  const [deliveryType, setDeliveryType] = useState('free'); // 'free' or 'express'
+  const { user } = useAuth()
+  const { data, isLoading } = useUser({ uid: user?.uid })
+  const { data: shippingData, isLoading: isFetching } = useShippingSettings()
 
-  const { data: shippingData, isLoading: isFetching } = useShippingSettings();
+  // Track per-line (originalSubtotal, discounted subtotal, quantity, returnFee)
+  const [cartSubtotals, setCartSubtotals] = useState({})
 
-
-  // Memoize the onSubtotalUpdate and onRemove callbacks to prevent unnecessary re-renders
-  const onSubtotalUpdate = useCallback((uniqueId, subtotal, quantity) => {
+  // Keep parent-subtotal map updated by children
+  const onSubtotalUpdate = useCallback((uniqueId, subtotal, quantity, originalSubtotal, returnFee) => {
     setCartSubtotals((prev) => ({
       ...prev,
-      [uniqueId]: { subtotal, quantity },
-    }));
-  }, []);
+      [uniqueId]: { subtotal, quantity, originalSubtotal, returnFee },
+    }))
+  }, [])
 
   const onRemove = useCallback((uniqueId) => {
     setCartSubtotals((prev) => {
-      const updated = { ...prev };
-      delete updated[uniqueId];
-      return updated;
-    });
-  }, []);
+      const updated = { ...prev }
+      delete updated[uniqueId]
+      return updated
+    })
+  }, [])
 
-  if (isLoading) {
+  // Compute total return/replacement fees from children's computed values (accurate on initial render and updates)
+  const totalReturnReplacementFees = useMemo(() => {
+    return Object.values(cartSubtotals).reduce((sum, row) => sum + (row?.returnFee || 0), 0)
+  }, [cartSubtotals])
+
+  // Summaries (product total, discount, final total)
+  const calculateSummary = useCallback(() => {
+    if (!data?.carts || !Array.isArray(data.carts)) {
+      return {
+        productTotal: 0,
+        discount: 0,
+        discountPercent: 0,
+        total: 0,
+      }
+    }
+
+    let productTotal = 0
+    let discount = 0
+
+    Object.values(cartSubtotals).forEach(({ originalSubtotal, subtotal }) => {
+      productTotal += originalSubtotal || 0
+      discount += originalSubtotal - subtotal || 0
+    })
+
+    const discountPercent = productTotal > 0 ? ((discount / productTotal) * 100).toFixed(0) : 0
+    const total = productTotal - discount + totalReturnReplacementFees
+
+    return { productTotal, discount, discountPercent, total }
+  }, [cartSubtotals, totalReturnReplacementFees, data?.carts])
+
+  const summary = useMemo(() => calculateSummary(), [calculateSummary])
+  const freeShippingThreshold = shippingData?.minFreeDeliveryAmount || 0
+  const freeShippingVal = Math.max(0, freeShippingThreshold - summary.productTotal)
+
+  if (isLoading || isFetching) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100">
         <CircularProgress size={50} thickness={4} color="primary" />
         <p className="mt-4 text-gray-600 font-medium">Loading Cart...</p>
       </div>
-    );
+    )
   }
 
-  const calculateSummary = () => {
-    if (!data?.carts || !Array.isArray(data.carts)) {
-      return {
-        productTotal: 0,
-        totalItems: 0,
-        deliveryFee: 0,
-        total: 0,
-      };
-    }
-
-    let productTotal = 0;
-    let totalItems = 0;
-
-    // Sum up the subtotals from cartSubtotals
-    Object.values(cartSubtotals).forEach(({ subtotal, quantity }) => {
-      productTotal += subtotal || 0;
-      totalItems += quantity || 0;
-    });
-
-    const deliveryFee = deliveryType === 'free' ? 0 : 99;
-    const total = productTotal + deliveryFee;
-
-
-    return {
-      productTotal,
-      totalItems,
-      deliveryFee,
-      total,
-    };
-  };
-
-  const summary = calculateSummary();
-  console.log(data?.carts)
-  const freeShippingThreshold = shippingData?.minFreeDeliveryAmount;
-  const freeShippingVal = Math.max(0, freeShippingThreshold - summary.productTotal);
-
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 xl:px-20">
+    <div className="min-h-screen bg-white px-4 py-8 sm:px-6 lg:px-12">
       <div className="mx-auto max-w-7xl">
         {!data?.carts || data.carts.length === 0 ? (
           <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg bg-white p-8 text-center shadow-sm">
-            <img
-              className="mb-8 h-60 w-auto"
-              src="/svgs/Empty-pana.svg"
-              alt="Empty cart"
-            />
-            <h2 className="mb-2 text-2xl font-semibold text-gray-700">
-              Your Cart is Empty
-            </h2>
+            <img className="mb-8 h-60 w-auto" src="/svgs/Empty-pana.svg" alt="Empty cart" />
+            <h2 className="mb-2 text-2xl font-semibold text-gray-700">Your Cart is Empty</h2>
             <p className="mb-6 max-w-md text-gray-500">
               Looks like you haven't added any products yet. Start shopping now!
             </p>
             <Link href="/">
-              <Button className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">
-                Continue Shopping
-              </Button>
+              <Button className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">Continue Shopping</Button>
             </Link>
-            <p className="mt-4 text-sm text-gray-400">
-              Need help?{" "}
-              <Link href="#" className="text-indigo-500 hover:underline">
-                Contact support
-              </Link>
-            </p>
           </div>
         ) : (
-          <>
-            <h1 className="mb-3 text-2xl font-bold text-gray-900 md:text-3xl">
-              Your Cart
-            </h1>
-
-
-            <div className="flex flex-col gap-6 lg:flex-row">
-              {/* Cart Items */}
-              <div className="lg:w-2/3">
-
-                <div className=" border-dashed border-2 border-[#0000001b] rounded-md p-3 mb-10">
-                  <p className="text-sm text-gray-700 mb-1">
-                    {freeShippingVal === 0 ? "Your order qualifies for free shipping!" : `Add ₹${freeShippingVal} to cart and get free shipping!`}
-                  </p>
-                  <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (summary.productTotal / freeShippingThreshold) * 100)}%`,
-                        background: 'repeating-linear-gradient(45deg, #4b5563, #4b5563 10px, #6b7280 10px, #6b7280 20px)',
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="hidden rounded-t-lg bg-white p-4 shadow-sm md:block">
-                  <div className="grid grid-cols-12 gap-4 font-medium text-gray-600">
-                    <div className="col-span-5">Product</div>
-                    <div className="col-span-2 text-center">Price</div>
-                    <div className="col-span-2 text-center">Quantity</div>
-                    <div className="col-span-2 text-center">Subtotal</div>
-                    <div className="col-span-1"></div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  {data.carts.map((item) => (
-                    <CartItem
-                      key={getUniqueId(item)}
-                      item={item}
-                      user={user}
-                      data={data}
-                      onSubtotalUpdate={onSubtotalUpdate}
-                      onRemove={onRemove}
-                    />
-                  ))}
+          <div className="flex flex-col gap-8 lg:flex-row">
+            {/* Cart Items */}
+            <div className="w-full lg:w-2/3">
+              <div className="border-dashed border-2 border-[#0000001b] rounded-md p-3 mb-10">
+                <p className="text-sm text-gray-700 mb-1">
+                  {freeShippingVal === 0
+                    ? "Your order qualifies for free shipping!"
+                    : `Add ₹${freeShippingVal} to cart and get free shipping!`}
+                </p>
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{
+                      width: `${Math.min(100, (summary.productTotal / freeShippingThreshold) * 100)}%`,
+                      background: "repeating-linear-gradient(45deg, #4b5563, #4b5563 10px, #6b7280 10px, #6b7280 20px)",
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* Order Summary */}
-              <div className="lg:w-1/3">
-                <div className="rounded-lg bg-white p-6 shadow-md">
-                  <h2 className="mb-4 text-2xl font-medium">Cart totals</h2>
-                  <div className="space-y-3 border-b border-gray-200 pb-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium">
-                        ₹{summary.productTotal.toFixed(2)}
-                      </span>
-                    </div>
-               
+              <h1 className="text-3xl font-bold text-gray-900 mb-6">YOUR CART</h1>
+
+              <div className="space-y-4 bg-white shadow-lg py-4">
+                {data.carts.map((item) => (
+                  <CartItem
+                    key={getUniqueId(item)}
+                    item={item}
+                    user={user}
+                    data={data}
+                    onSubtotalUpdate={onSubtotalUpdate}
+                    onRemove={onRemove}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            <div className="w-full lg:w-1/3 lg:ml-8 mt-14">
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-semibold mb-4 text-gray-900">Order Summary</h2>
+                <div className="space-y-3 text-sm border-b border-gray-200 pb-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">₹{summary.productTotal.toFixed(2)}</span>
                   </div>
-                  <div className="mt-4 flex justify-between">
-                    <span className="text-gray-600">Total</span>
-                    <span className="text-lg font-bold">
-                      ₹{summary.total.toFixed(2)}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Discount</span>
+                    <span className="font-medium text-green-600">
+                      -₹{summary.discount.toFixed(2)} ({summary.discountPercent}%)
                     </span>
                   </div>
-                  <Link href="/checkout?type=cart" className="mt-6 block">
-                    <Button className="w-full bg-red-600 py-3 text-white hover:bg-red-700">
-                      Proceed to Checkout
-                    </Button>
-                  </Link>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Return & Replacement Fees</span>
+                    <span className="font-medium">₹{totalReturnReplacementFees.toFixed(2)}</span>
+                  </div>
                 </div>
+                <div className="flex justify-between mt-4 text-lg font-bold">
+                  <span>Total</span>
+                  <span className="text-red-600">₹{summary.total.toFixed(2)}</span>
+                </div>
+                <Link href="/checkout?type=cart" className="mt-6 block w-full">
+                  <Button className="w-full bg-red-600 text-white py-3 rounded hover:bg-red-700">
+                    Proceed to Checkout
+                  </Button>
+                </Link>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
 const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const { data: product } = useProduct({ productId: item?.id });
-  // Memoize price and quantity to prevent unnecessary recalculations
-  const price = useMemo(
-    () => product?.salePrice || product?.price || item?.salePrice || item?.price || 0,
-    [product, item]
-  );
-  const quantity = useMemo(() => item.quantity || 1, [item.quantity]);
-  const subtotal = useMemo(() => price * quantity, [price, quantity]);
-  const uniqueId = useMemo(() => getUniqueId(item), [item]);
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const { data: product } = useProduct({ productId: item?.id })
 
-  const isOutOfStock = product?.stock === 0;
+  // Pricing
+  const hasSale = product?.salePrice && product?.salePrice < product?.price
+  const listPrice = useMemo(() => product?.price || item?.price || 0, [product, item])
+  const effectivePrice = useMemo(
+    () => (hasSale ? product?.salePrice : listPrice) || item?.salePrice || item?.price || 0,
+    [hasSale, product, listPrice, item],
+  )
 
-  // Update parent with the subtotal and quantity
+  const quantity = useMemo(() => item.quantity || 1, [item.quantity])
+  const subtotal = useMemo(() => effectivePrice * quantity, [effectivePrice, quantity])
+  const originalSubtotal = useMemo(() => listPrice * quantity, [listPrice, quantity])
+  const uniqueId = useMemo(() => getUniqueId(item), [item])
+
+  const computedReturnFee = useMemo(() => {
+    if (item?.returnType === "easy-return") {
+      return Math.round(160 + 0.05 * effectivePrice * quantity)
+    }
+    if (item?.returnType === "easy-replacement" || item?.returnType === "self-shipping") {
+      // treat as per-unit fee times quantity for display/summary consistency
+      const perUnit = item?.returnFee || 0
+      return perUnit 
+    }
+    return 0
+  }, [item?.returnType, item?.returnFee, effectivePrice, quantity])
+
+  // report subtotals and returnFee to parent
   useEffect(() => {
-    onSubtotalUpdate(uniqueId, subtotal, quantity);
-  }, [uniqueId, subtotal, quantity, onSubtotalUpdate]); // Dependencies are stable now
+    onSubtotalUpdate(uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee)
+  }, [uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee, onSubtotalUpdate])
 
-  const handleRemove = async () => {
-    if (!confirm("Are you sure you want to remove this item?")) return;
-    setIsRemoving(true);
+  const handleRemove = useCallback(async () => {
+    if (!confirm("Remove this item from cart?")) return
+    setIsRemoving(true)
     try {
-      const newList = data?.carts?.filter((d) => !(
-        d?.id === item?.id &&
-        d?.selectedColor === item?.selectedColor &&
-        d?.selectedQuality === item?.selectedQuality
-      ));
-      await updateCarts({ list: newList, uid: user?.uid });
-      toast.success("Item removed from cart");
-      onRemove(uniqueId); // Notify parent to remove this item's subtotal
+      const newList = data?.carts?.filter(
+        (d) =>
+          !(
+            d?.id === item?.id &&
+            d?.selectedColor === item?.selectedColor &&
+            d?.selectedQuality === item?.selectedQuality
+          ),
+      )
+      await updateCarts({ list: newList, uid: user?.uid })
+      toast.success("Item removed from cart")
+      onRemove(uniqueId)
     } catch (error) {
-      toast.error(error?.message || "Failed to remove item");
+      toast.error(error?.message || "Failed to remove item")
     } finally {
-      setIsRemoving(false);
+      setIsRemoving(false)
     }
-  };
+  }, [data?.carts, item, user?.uid, uniqueId, onRemove])
 
-  const handleUpdate = async (newQuantity) => {
-    if (newQuantity < 1 || isOutOfStock) return;
-    setIsUpdating(true);
-    try {
-      const newList = data?.carts?.map((d) =>
-        d?.id === item?.id &&
-        d?.selectedColor === item?.selectedColor &&
-        d?.selectedQuality === item?.selectedQuality
-          ? { 
-              ...d, 
-              quantity: parseInt(newQuantity),
-              ...(d.returnType === "easy-return" ? { returnFee: Math.round(160 + 0.05 * price * newQuantity) } : {})
+  const handleUpdate = useCallback(
+    async (newQuantity) => {
+      if (newQuantity < 1) return
+      setIsUpdating(true)
+      try {
+        const qty = Number.parseInt(newQuantity, 10)
+        const newList = data?.carts?.map((d) => {
+          if (
+            d?.id === item?.id &&
+            d?.selectedColor === item?.selectedColor &&
+            d?.selectedQuality === item?.selectedQuality
+          ) {
+            const next = { ...d, quantity: qty }
+            if (d.returnType === "easy-return") {
+              next.returnFee = Math.round(160 + 0.05 * effectivePrice * qty)
             }
-          : d
-      );
-      await updateCarts({ list: newList, uid: user?.uid });
-      toast.success("Cart updated");
-    } catch (error) {
-      toast.error(error?.message || "Failed to update quantity");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+            return next
+          }
+          return d
+        })
+
+        await updateCarts({ list: newList, uid: user?.uid })
+        toast.success("Cart updated")
+      } catch (error) {
+        toast.error(error?.message || "Failed to update quantity")
+      } finally {
+        setIsUpdating(false)
+      }
+    },
+    [data?.carts, item, user?.uid, effectivePrice],
+  )
 
   return (
-    <div
-      className={`rounded-lg bg-white p-4 shadow-sm ${isOutOfStock ? "opacity-60" : ""
-        }`}
-    >
-      {/* Mobile View */}
-      <div className="flex flex-col gap-4 md:hidden">
-        {isOutOfStock && (
-          <span className="rounded bg-red-100 px-2 py-1 text-sm text-red-600">
-            Out of Stock
-          </span>
-        )}
-        <div className="flex gap-4">
+    <div className="flex items-center justify-between p-4 bg-white rounded-lg">
+      <div className="flex space-x-4">
+        {/* Image + Quantity */}
+        <div className="flex items-center flex-col gap-2">
           <img
             src={product?.featureImageURL || "/cart-item.png"}
             alt={product?.title || "Product"}
-            className="h-24 w-24 rounded object-cover"
+            className="w-28 h-auto object-cover rounded"
           />
-          <div>
-            <h3 className="text-base font-medium text-gray-800">
-              {product?.title || "Product"}
-            </h3>
-            {item?.selectedColor && (
-              <p className="text-sm text-gray-500 capitalize">
-                Color: {item.selectedColor}
-              </p>
-            )}
-            {item?.returnType && (
-              <p className="text-sm text-gray-500">
-                Return Type: {
-                  {
-                    "easy-return": "Easy Return",
-                    "easy-replacement": "Easy Replacement",
-                    "self-shipping": "Self Shipping",
-                  }[item.returnType] || item.returnType
-                }
-                (₹{item?.returnFee})
-              </p>
-            )}
-
-            {item?.selectedQuality && (
-              <p className="text-sm text-gray-500">
-                Quality: {item.selectedQuality}
-              </p>
-            )}
+          <div className="flex items-center space-x-5 border border-[#929292]">
+            <button
+              onClick={() => handleUpdate(quantity - 1)}
+              disabled={isUpdating || quantity <= 1}
+              className="w-6 h-6 rounded-l flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+            >
+              <Minus size={12} />
+            </button>
+            <span className="w-8 text-center text-sm">{quantity}</span>
+            <button
+              onClick={() => handleUpdate(quantity + 1)}
+              disabled={isUpdating}
+              className="w-6 h-6 rounded-r flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+            >
+              <Plus size={12} />
+            </button>
           </div>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium">₹{price.toFixed(2)}</span>
-          {isOutOfStock ? (
-            <span className="text-sm text-red-600">Unavailable</span>
+
+        {/* Product Info */}
+        <div className="max-w-md">
+          <h3 className="text-sm font-medium text-gray-800">{product?.title || "Product"}</h3>
+          {item?.selectedColor && <p className="text-xs text-gray-500 capitalize">Color: {item.selectedColor}</p>}
+          {item?.selectedQuality && (
+            <p className="text-xs text-gray-500 capitalize">Item Quality: {item.selectedQuality}</p>
+          )}
+
+          {/* Price Section */}
+          {hasSale ? (
+            <p className="text-xs text-gray-500">
+              <span className="line-through mr-2">₹{listPrice.toFixed(2)}</span>
+              <span className="text-black font-semibold text-lg">₹{effectivePrice.toFixed(2)}</span>
+              <span className="ml-2 text-green-600 text-sm font-medium">
+                ({Math.round(((listPrice - effectivePrice) / listPrice) * 100)}% OFF)
+              </span>
+            </p>
           ) : (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handleUpdate(quantity - 1)}
-                disabled={isUpdating || quantity <= 1}
-                className="rounded-l border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
-              >
-                <Minus size={16} />
-              </button>
-              <span className="border-y px-3 py-1 text-sm">{quantity}</span>
-              <button
-                onClick={() => handleUpdate(quantity + 1)}
-                disabled={isUpdating}
-                className="rounded-r border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
-              >
-                <Plus size={16} />
-              </button>
-            </div>
+            <p className="font-semibold text-lg text-black">₹{listPrice.toFixed(2)}</p>
+          )}
+
+          {/* Return Fee (per line) */}
+          {item?.returnType && (
+            <p className="text-xs text-gray-500">
+              + ₹{computedReturnFee}{" "}
+              {item.returnType === "easy-return"
+                ? "Easy Return Fee"
+                : item.returnType === "easy-replacement"
+                  ? "Easy Replacement Fee"
+                  : "Self Shipping Fee"}
+            </p>
           )}
         </div>
-        <div className="flex justify-between border-t pt-2">
-          <span className="text-sm text-gray-600">Subtotal</span>
-          <span className="font-medium">₹{subtotal.toFixed(2)}</span>
-        </div>
-        <button
-          onClick={handleRemove}
-          disabled={isRemoving}
-          className="self-end text-gray-400 hover:text-red-500"
-        >
-          {isRemoving ? (
-            <CircularProgress size={16} />
-          ) : (
-            <img src="/icon/tursh.svg" alt="Remove" className="h-5 w-5" />
-          )}
-        </button>
       </div>
 
-      {/* Desktop View */}
-      <div className="hidden md:grid grid-cols-12 gap-4">
-        {isOutOfStock && (
-          <span className="col-span-12 rounded bg-red-100 px-2 py-1 text-sm text-red-600">
-            Out of Stock
+      {/* Remove Button */}
+      <button onClick={handleRemove} disabled={isRemoving} className="text-gray-400 hover:text-red-500">
+        {isRemoving ? (
+          <CircularProgress size={16} />
+        ) : (
+          <span className="text-xl">
+            <DeleteForever />
           </span>
         )}
-        <div className="col-span-5 flex gap-4">
-          <img
-            src={product?.featureImageURL || "/cart-item.png"}
-            alt={product?.title || "Product"}
-            className="h-20 w-20 rounded object-cover"
-          />
-          <div>
-            <h3 className="text-base font-medium text-gray-800">
-              {product?.title || "Product"}
-            </h3>
-            {item?.selectedColor && (
-              <p className="text-sm text-gray-500 capitalize">
-                Color: {item.selectedColor}
-              </p>
-            )}
-
-            {item?.returnType && (
-              <p className="text-sm text-gray-500">
-                Return Type: {
-                  {
-                    "easy-return": "Easy Return",
-                    "easy-replacement": "Easy Replacement",
-                    "self-shipping": "Self Shipping",
-                  }[item.returnType] || item.returnType
-                }
-                (₹{item?.returnFee})
-              </p>
-            )}
-
-
-            {item?.selectedQuality && (
-              <p className="text-sm text-gray-500">
-                Quality: {item.selectedQuality}
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="col-span-2 text-center font-medium">
-          ₹{price.toFixed(2)}
-        </div>
-        <div className="col-span-2 text-center">
-          {isOutOfStock ? (
-            <span className="text-sm text-red-600">Unavailable</span>
-          ) : (
-            <div className="inline-flex items-center gap-1">
-              <button
-                onClick={() => handleUpdate(quantity - 1)}
-                disabled={isUpdating || quantity <= 1}
-                className="rounded-l border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
-              >
-                <Minus size={16} />
-              </button>
-              <span className="border-y px-3 py-1 text-sm">{quantity}</span>
-              <button
-                onClick={() => handleUpdate(quantity + 1)}
-                disabled={isUpdating}
-                className="rounded-r border bg-gray-100 p-1 hover:bg-gray-200 disabled:opacity-50"
-              >
-                <Plus size={16} />
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="col-span-2 text-center font-medium">
-          ₹{subtotal.toFixed(2)}
-        </div>
-        <div className="col-span-1 text-right">
-          <button
-            onClick={handleRemove}
-            disabled={isRemoving}
-            className="text-gray-400 hover:text-red-500"
-          >
-            {isRemoving ? (
-              <CircularProgress size={16} />
-            ) : (
-              <img src="/icon/tursh.svg" alt="Remove" className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-      </div>
+      </button>
     </div>
-  );
-};
+  )
+}
 
-export default CartPage;
+export default CartPage

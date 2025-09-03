@@ -1,21 +1,23 @@
-"use client";
+// This component mirrors your original UI logic and includes Air Express toggle and fee lines.
 
-import { useAuth } from "@/context/AuthContext";
-import { createCheckoutCODAndGetId } from "@/lib/firestore/checkout/write";
-import { useSpecialOffers } from "@/lib/firestore/specialOffers/read";
-import { CircularProgress } from "@mui/material";
-import { Button } from "@nextui-org/react";
-import { ChevronLeft, CreditCard, TicketPercent, Truck, X } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import { useCategories } from "@/lib/firestore/categories/read";
-import { useShippingSettings } from "@/lib/firestore/shipping/read";
+"use client"
+
+import { useAuth } from "@/context/AuthContext"
+import { createCheckoutCODAndGetId } from "@/lib/firestore/checkout/write"
+import { useSpecialOffers } from "@/lib/firestore/specialOffers/read"
+import { CircularProgress } from "@mui/material"
+import { Button } from "@nextui-org/react"
+import { ChevronLeft, CreditCard, Truck, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import toast from "react-hot-toast"
+import { useCategories } from "@/lib/firestore/categories/read"
+import { useShippingSettings } from "@/lib/firestore/shipping/read"
 
 export default function Checkout({ productList }) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [paymentMode, setPaymentMode] = useState("cod");
-    const [deliveryType, setDeliveryType] = useState("standard");
+    const [isLoading, setIsLoading] = useState(false)
+    const [paymentMode, setPaymentMode] = useState("cod")
+    const [deliveryType, setDeliveryType] = useState("standard")
     const [address, setAddress] = useState({
         firstName: "",
         lastName: "",
@@ -26,320 +28,302 @@ export default function Checkout({ productList }) {
         pinCode: "",
         phone: "",
         email: "",
-    });
-    const { categoriesMap } = useCategories();
+    })
 
-    const [errors, setErrors] = useState({});
-    const [appliedCoupons, setAppliedCoupons] = useState([]);
-    const [appliedOffers, setAppliedOffers] = useState([]);
-    const [couponError, setCouponError] = useState(null);
-    const [showDrawer, setShowDrawer] = useState(false);
-    const [couponLoading, setCouponLoading] = useState(false);
-    const router = useRouter();
-    const { user } = useAuth();
-    const { data: specialOffers, isLoading: offersLoading } = useSpecialOffers();
+    const { categoriesMap } = useCategories()
+    const [errors, setErrors] = useState({})
+    const [appliedCoupons, setAppliedCoupons] = useState([])
+    const [appliedOffers, setAppliedOffers] = useState([])
+    const [couponError, setCouponError] = useState(null)
+    const [showDrawer, setShowDrawer] = useState(false)
+    const [couponLoading, setCouponLoading] = useState(false)
+    const router = useRouter()
+    const { user } = useAuth()
+    const { data: specialOffers, isLoading: offersLoading } = useSpecialOffers()
 
-    const cartCategorySet = new Set(productList?.map((item) => item.product?.categoryId));
-    const allCategories = [...cartCategorySet];
+    const cartCategorySet = new Set(productList?.map((item) => item.product?.categoryId))
+    const allCategories = [...cartCategorySet]
 
-    // Only allow coupons for matching categories
     const canApplyCoupon = (coupon) => {
-        const couponCategories = coupon?.categories || [];
-        return couponCategories.some((cat) => cartCategorySet.has(cat));
-    };
+        const couponCategories = coupon?.categories || []
+        return couponCategories.some((cat) => cartCategorySet.has(cat))
+    }
 
     const getCategoryName = (categoryId) => {
-        const category = categoriesMap.get(categoryId);
-        return category ? category.name : "Unknown Category";
-    };
-
-    useEffect(() => {
-        // Force change payment method if coupon is applied
-        if (appliedCoupons.length > 0 && paymentMode === "cod") {
-            setPaymentMode("online");
-        }
-    }, [appliedCoupons, paymentMode]);
+        const category = categoriesMap.get(categoryId)
+        return category ? category.name : "Unknown Category"
+    }
 
     const handleAddressChange = (e) => {
-        const { name, value } = e.target;
-        setAddress((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-        if (errors[name]) {
-            setErrors((prev) => ({
-                ...prev,
-                [name]: null,
-            }));
-        }
-    };
+        const { name, value } = e.target
+        setAddress((prev) => ({ ...prev, [name]: value }))
+        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }))
+    }
 
-    // ------------------- Coupon Logic --------------------------
+    // Coupons
     const handleAddCoupon = async (code) => {
-        setCouponError(null);
-        setCouponLoading(true);
+        setCouponError(null)
+        setCouponLoading(true)
         try {
             if (offersLoading) {
-                setCouponError("Loading offers, please wait...");
-                return;
+                setCouponError("Loading offers, please wait...")
+                return
             }
-            const upperNew = code.toUpperCase().trim();
-
+            const upperNew = (code || "").toUpperCase().trim()
+            if (!upperNew) return
             if (appliedCoupons.includes(upperNew)) {
-                setCouponError("This coupon is already applied");
-                return;
+                setCouponError("This coupon is already applied")
+                return
             }
             const offer = specialOffers?.find(
-                (o) => o.couponCode?.toUpperCase() === upperNew && o.offerType !== "Prepaid Offer"
-            );
-            // Validate
+                (o) => o.couponCode?.toUpperCase() === upperNew && o.offerType !== "Prepaid Offer",
+            )
             if (!offer) {
-                setCouponError("Invalid Coupon");
-                return;
+                setCouponError("Invalid Coupon")
+                return
             }
             if (!canApplyCoupon(offer)) {
-                setCouponError("This coupon does not apply to your cart");
-                return;
+                setCouponError("This coupon does not apply to your cart")
+                return
             }
-            setAppliedOffers([...appliedOffers, offer]);
-            setAppliedCoupons([...appliedCoupons, upperNew]);
+            setAppliedOffers((prev) => [...prev, offer])
+            setAppliedCoupons((prev) => [...prev, upperNew])
         } finally {
-            setCouponLoading(false);
+            setCouponLoading(false)
         }
-    };
+    }
 
     const handleRemoveCoupon = (code) => {
-        const index = appliedCoupons.findIndex((c) => c === code);
-        if (index > -1) {
-            setAppliedCoupons(appliedCoupons.filter((_, i) => i !== index));
-            setAppliedOffers(appliedOffers.filter((_, i) => i !== index));
+        const idx = appliedCoupons.findIndex((c) => c === code)
+        if (idx > -1) {
+            setAppliedCoupons(appliedCoupons.filter((_, i) => i !== idx))
+            setAppliedOffers(appliedOffers.filter((_, i) => i !== idx))
         }
-    };
-    // -----------------------------------------------------------
-
-
+    }
 
     const totalPrice =
-        productList?.reduce((prev, curr) => {
-            return prev + curr?.quantity * curr?.product?.salePrice;
-        }, 0) || 0;
+        productList?.reduce((prev, curr) => prev + (curr?.quantity || 0) * (curr?.product?.salePrice || 0), 0) || 0
 
-    const prepaidOffers = specialOffers?.filter((o) => o.offerType === "Prepaid Offer") || [];
-    const prepaidDiscount = Math.max(...prepaidOffers.map((o) => o.discountPercentage || 0), 0);
-
-    // Category-specific prepaid offer lookup
-    const categoryMaxPrepaid = {};
+    const prepaidOffers = specialOffers?.filter((o) => o.offerType === "Prepaid Offer") || []
+    const categoryMaxPrepaid = {}
     for (const cat of allCategories) {
-        let maxP = 0;
+        let maxP = 0
         for (const po of prepaidOffers) {
-            if (po.categories?.includes(cat)) {
-                maxP = Math.max(maxP, po.discountPercentage || 0);
-            }
+            if (po.categories?.includes(cat)) maxP = Math.max(maxP, po.discountPercentage || 0)
         }
-        if (maxP > 0) categoryMaxPrepaid[cat] = maxP;
+        if (maxP > 0) categoryMaxPrepaid[cat] = maxP
     }
 
-    // Coupon percentage by category
-    const couponPMap = {};
+    const couponPMap = {}
     for (const offer of appliedOffers) {
-        const cp = offer.discountPercentage || 0;
+        const cp = offer.discountPercentage || 0
         for (const cat of offer.categories || []) {
-            if (!couponPMap[cat] || cp > couponPMap[cat]) {
-                couponPMap[cat] = cp;
-            }
+            if (!couponPMap[cat] || cp > couponPMap[cat]) couponPMap[cat] = cp
         }
     }
 
-    // Calculate discounts
-    const discountLines = [];
-    let discount = 0;
+    const discountLines = []
+    let discount = 0
     for (const cat of allCategories) {
         const catSum = productList
             .filter((item) => item.product?.categoryId === cat)
-            .reduce((sum, item) => sum + item.quantity * item.product?.salePrice, 0);
-        if (catSum === 0) continue;
+            .reduce((sum, item) => sum + (item.quantity || 0) * (item.product?.salePrice || 0), 0)
+        if (!catSum) continue
 
-        const couponP = couponPMap[cat] || 0;
-        const prepaidP = categoryMaxPrepaid[cat] || 0;
+        const couponP = couponPMap[cat] || 0
+        const prepaidP = categoryMaxPrepaid[cat] || 0
 
-        let effectiveP = 0;
-        let displayCouponP = 0;
-        let displayAdditionalP = 0;
+        let effectiveP = 0
+        let displayCouponP = 0
+        let displayAdditionalP = 0
 
         if (paymentMode === "cod") {
-            effectiveP = couponP;
-            displayCouponP = couponP;
+            effectiveP = couponP
+            displayCouponP = couponP
         } else {
             if (couponP > 0) {
                 if (couponP < prepaidP) {
-                    displayCouponP = couponP;
-                    displayAdditionalP = prepaidP - couponP;
-                    effectiveP = prepaidP;
+                    displayCouponP = couponP
+                    displayAdditionalP = prepaidP - couponP
+                    effectiveP = prepaidP
                 } else {
-                    displayCouponP = couponP;
-                    effectiveP = couponP;
+                    displayCouponP = couponP
+                    effectiveP = couponP
                 }
             } else {
-                displayAdditionalP = prepaidP;
-                effectiveP = prepaidP;
+                displayAdditionalP = prepaidP
+                effectiveP = prepaidP
             }
         }
 
-        const catDiscount = catSum * (effectiveP / 100);
-        discount += catDiscount;
+        const catDiscount = catSum * (effectiveP / 100)
+        discount += catDiscount
 
         if (displayCouponP > 0) {
-            const amt = catSum * (displayCouponP / 100);
             discountLines.push({
                 label: `Coupon Discount for ${getCategoryName(cat)} (${displayCouponP}%)`,
-                amount: -amt,
-            });
+                amount: -(catSum * (displayCouponP / 100)),
+            })
         }
-
         if (displayAdditionalP > 0) {
-            const amt = catSum * (displayAdditionalP / 100);
-            const prefix = displayCouponP > 0 ? "Additional " : "";
+            const prefix = displayCouponP > 0 ? "Additional " : ""
             discountLines.push({
                 label: `${prefix}Prepaid Discount for ${getCategoryName(cat)} (${displayAdditionalP}%)`,
-                amount: -amt,
-            });
+                amount: -(catSum * (displayAdditionalP / 100)),
+            })
         }
     }
 
-    const { data: shippingData } = useShippingSettings();
-
+    const { data: shippingData } = useShippingSettings()
+    const minFreeDelivery = shippingData?.minFreeDeliveryAmount || 499
+    const shippingExtraCharges = shippingData?.shippingExtraCharges || 0
+    const airExpressDeliveryCharge = shippingData?.airExpressDeliveryCharge || 0
 
     const returnFees = productList.reduce((sum, item) => {
-        return item?.returnType === "easy-return" ? sum + (item.returnFee || 0) : sum;
-    }, 0);
+        if (item?.returnType === "easy-return") {
+            const itemSubtotal = (item?.quantity || 0) * (item?.product?.salePrice || 0)
+            return sum + 160 + 0.05 * itemSubtotal
+        }
+        return sum
+    }, 0)
+
     const replacementFees = productList.reduce((sum, item) => {
-        return item?.returnType === "easy-replacement" ? sum + (item.returnFee || 0) : sum;
-    }, 0);
+        if (item?.returnType === "easy-replacement") {
+            return sum + 30
+        }
+        return sum
+    }, 0)
 
-    const minFreeDelivery = shippingData?.minFreeDeliveryAmount || 499;
-    const shippingExtraCharges = shippingData?.shippingExtraCharges || 0;
-    const airExpressDeliveryCharge = shippingData?.airExpressDeliveryCharge || 0;
+    const subtotalAfterDiscount = totalPrice - discount
+    const shippingCharge = subtotalAfterDiscount >= minFreeDelivery ? 0 : shippingExtraCharges
+    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0
 
-    const subtotalAfterDiscount = totalPrice - discount;
-    const standardFee = subtotalAfterDiscount >= minFreeDelivery ? 0 : shippingExtraCharges;
-    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0;
-    const deliveryFee = standardFee + airExpressFee;
-    const total = subtotalAfterDiscount + deliveryFee + returnFees + replacementFees;
-    const advance = paymentMode === "cod" ? subtotalAfterDiscount * 0.1 + standardFee + airExpressFee + returnFees + replacementFees : total;
-    const remaining = paymentMode === "cod" ? total - advance : 0;
-
-
+    const total = subtotalAfterDiscount + shippingCharge + airExpressFee + returnFees + replacementFees
+    const advance =
+        paymentMode === "cod"
+            ? subtotalAfterDiscount * 0.1 + shippingCharge + airExpressFee + returnFees + replacementFees
+            : total
+    const remaining = paymentMode === "cod" ? total - advance : 0
 
     const getEstimatedDelivery = () => {
-        const today = new Date();
-        let startDays = deliveryType === "express" ? 2 : 4;
-        let endDays = deliveryType === "express" ? 5 : 7;
-        const start = new Date(today);
-        start.setDate(start.getDate() + startDays);
-        const end = new Date(today);
-        end.setDate(end.getDate() + endDays);
+        const today = new Date()
+        const startDays = deliveryType === "express" ? 2 : 4
+        const endDays = deliveryType === "express" ? 5 : 7
+        const start = new Date(today)
+        start.setDate(start.getDate() + startDays)
+        const end = new Date(today)
+        end.setDate(end.getDate() + endDays)
         const months = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ];
-        const formatDate = (date) => `${date.getDate()} ${months[date.getMonth()]}, ${date.getFullYear()}`;
-        const startStr = formatDate(start);
-        const endStr = formatDate(end);
-        const [startDay, startRest] = startStr.split(' ', 2);
-        const [endDay, endRest] = endStr.split(' ', 2);
-        if (startRest === endRest) {
-            return `${startDay}-${endDay} ${startRest}`;
-        } else {
-            return `${startStr} - ${endStr}`;
-        }
-    };
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+        const fmt = (d) => `${d.getDate()} ${months[d.getMonth()]}, ${d.getFullYear()}`
+        const s = fmt(start),
+            e = fmt(end)
+        const [sd, sr] = s.split(" ", 2)
+        const [ed, er] = e.split(" ", 2)
+        return sr === er ? `${sd}-${ed} ${sr}` : `${s} - ${e}`
+    }
 
-    const estimatedDelivery = getEstimatedDelivery();
+    const estimatedDelivery = getEstimatedDelivery()
 
     const validateForm = () => {
-        const newErrors = {};
-        if (!address.firstName) newErrors.firstName = "First name is required";
-        if (!address.streetAddress) newErrors.streetAddress = "Address is required";
-        if (!address.city) newErrors.city = "City is required";
-        if (!address.state) newErrors.state = "State is required";
-        if (!address.pinCode) newErrors.pinCode = "PIN code is required";
-        if (!address.phone) newErrors.phone = "Phone is required";
-        if (!address.email) newErrors.email = "Email is required";
-        else if (!/^\S+@\S+\.\S+$/.test(address.email)) newErrors.email = "Email is invalid";
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+        const newErrors = {}
+        if (!address.firstName) newErrors.firstName = "First name is required"
+        if (!address.streetAddress) newErrors.streetAddress = "Address is required"
+        if (!address.city) newErrors.city = "City is required"
+        if (!address.state) newErrors.state = "State is required"
+        if (!address.pinCode) newErrors.pinCode = "PIN code is required"
+        if (!address.phone) newErrors.phone = "Phone is required"
+        if (!address.email) newErrors.email = "Email is required"
+        else if (!/^\S+@\S+\.\S+$/.test(address.email)) newErrors.email = "Email is invalid"
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
 
     const handlePlaceOrder = async () => {
         if (!validateForm()) {
-            toast.error("Please fill all required fields correctly");
-            return;
+            toast.error("Please fill all required fields correctly")
+            return
         }
-
-        setIsLoading(true);
+        setIsLoading(true)
         try {
-            if (totalPrice <= 0) throw new Error("Price should be greater than 0");
-            if (!productList || productList?.length === 0) throw new Error("Product List Is Empty");
+            if (totalPrice <= 0) throw new Error("Price should be greater than 0")
+            if (!productList || productList.length === 0) throw new Error("Product List Is Empty")
             if (paymentMode === "online") {
-                throw new Error("Online Payment Option Not Available");
-            } else {
-                const serializedAppliedOffers = appliedOffers.map(offer => ({
-                    couponCode: offer.couponCode,
-                    discountPercentage: offer.discountPercentage,
-                    categories: offer.categories,
-                }));
-                const checkoutId = await createCheckoutCODAndGetId({
-                    uid: user?.uid,
-                    products: productList,
-                    address: {
-                        fullName: `${address.firstName} ${address.lastName}`,
-                        mobile: address.phone,
-                        email: address.email,
-                        addressLine1: address.streetAddress,
-                        city: address.city,
-                        state: address.state,
-                        pincode: address.pinCode,
-                        country: address.country,
-                    },
-                    deliveryType,
-                    appliedCoupons,
-                    appliedOffers: serializedAppliedOffers,
-                });
-                router.push(`/checkout-cod?checkout_id=${checkoutId}`);
+                throw new Error("Online Payment Option Not Available")
             }
-        } catch (error) {
-            toast.error(error?.message);
+            const serializedAppliedOffers = appliedOffers.map((offer) => ({
+                couponCode: offer.couponCode,
+                discountPercentage: offer.discountPercentage,
+                categories: offer.categories,
+            }))
+            const checkoutId = await createCheckoutCODAndGetId({
+                uid: user?.uid,
+                products: productList,
+                address: {
+                    fullName: `${address.firstName} ${address.lastName}`,
+                    mobile: address.phone,
+                    email: address.email,
+                    addressLine1: address.streetAddress,
+                    city: address.city,
+                    state: address.state,
+                    pincode: address.pinCode,
+                    country: address.country,
+                },
+                deliveryType,
+                appliedCoupons,
+                appliedOffers: serializedAppliedOffers,
+            })
+            router.push(`/checkout-cod?checkout_id=${checkoutId}`)
+        } catch (err) {
+            toast.error(err?.message || "Failed to place order")
         }
-        setIsLoading(false);
-    };
+        setIsLoading(false)
+    }
 
     const bestOffer = specialOffers
-        ?.filter(o => o.couponCode && o.offerType !== "Prepaid Offer" && o.categories?.some(cat => allCategories.includes(cat)))
-        ?.sort((a, b) => b.discountPercentage - a.discountPercentage)[0];
+        ?.filter(
+            (o) => o.couponCode && o.offerType !== "Prepaid Offer" && o.categories?.some((c) => allCategories.includes(c)),
+        )
+        ?.sort((a, b) => b.discountPercentage - a.discountPercentage)?.[0]
 
-    // --------------- RENDER ---------------
-
+    // Loader
     if (isLoading) {
         return (
             <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
                 <CircularProgress size={50} thickness={4} color="primary" />
                 <p className="mt-4 text-gray-600 font-medium">Processing your order...</p>
             </div>
-        );
+        )
     }
 
     return (
         <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center mb-6">
-                <button onClick={() => router.back()} className="flex items-center text-gray-600 hover:text-gray-900 transition-colors">
+                <button
+                    onClick={() => router.back()}
+                    className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                >
                     <ChevronLeft className="h-5 w-5 mr-1" />
                     Back to cart
                 </button>
             </div>
+
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+
             <div className="flex flex-col-reverse lg:flex-row gap-8">
-                {/* Left Column */}
+                {/* Left */}
                 <div className="lg:w-2/3 w-full">
                     <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100">
                         <h2 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-100">Contact Information</h2>
@@ -351,7 +335,7 @@ export default function Checkout({ productList }) {
                                     name="firstName"
                                     value={address.firstName}
                                     onChange={handleAddressChange}
-                                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all ${errors.firstName ? 'border-red-500' : 'border-gray-300'}`}
+                                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all ${errors.firstName ? "border-red-500" : "border-gray-300"}`}
                                     placeholder="John"
                                 />
                                 {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
@@ -368,6 +352,7 @@ export default function Checkout({ productList }) {
                                 />
                             </div>
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
@@ -394,6 +379,7 @@ export default function Checkout({ productList }) {
                                 {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                             </div>
                         </div>
+
                         <h2 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-100 mt-8">Shipping Address</h2>
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Country/Region *</label>
@@ -459,13 +445,13 @@ export default function Checkout({ productList }) {
                             </div>
                         </div>
                     </div>
-
-
                 </div>
-                {/* Right Column */}
+
+                {/* Right */}
                 <div className="lg:w-1/3 w-full">
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 sticky top-4">
                         <h2 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-100">SUBTOTAL</h2>
+
                         <div className="space-y-4 mb-6">
                             {productList?.map((item, index) => (
                                 <div key={index} className="flex justify-between items-start">
@@ -478,28 +464,49 @@ export default function Checkout({ productList }) {
                                             />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900 text-sm">{item?.product?.title}{item?.selectedQuality ? ` - ${item.selectedQuality}` : ''}{item?.selectedColor ? ` - ${item.selectedColor}` : ''}</p>
+                                            <p className="font-medium text-gray-900 text-sm">
+                                                {item?.product?.title}
+                                                {item?.selectedQuality ? ` - ${item.selectedQuality}` : ""}
+                                                {item?.selectedColor ? ` - ${item.selectedColor}` : ""}
+                                            </p>
                                             <p className="text-sm text-gray-500">QTN : {item?.quantity}</p>
                                             <p className="text-sm text-gray-500">Category : {getCategoryName(item?.product?.categoryId)}</p>
                                             <p className="text-sm text-gray-500">Estimated delivery on {estimatedDelivery}</p>
                                         </div>
                                     </div>
-                                    <p className="font-medium text-gray-900 text-sm">₹{(item?.product?.salePrice * item?.quantity).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                    <p className="font-medium text-gray-900 text-sm">
+                                        ₹
+                                        {((item?.product?.salePrice || 0) * (item?.quantity || 0)).toLocaleString("en-IN", {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}
+                                    </p>
                                 </div>
                             ))}
                         </div>
+
                         <div className="border-t border-gray-200 pt-4 mb-4">
                             <div className="flex justify-between text-gray-600 text-sm mb-2">
                                 <span>Subtotal</span>
-                                <span>₹{totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span>
+                                    ₹{totalPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
                             </div>
+
                             {discountLines.map((line, idx) => (
                                 <div key={idx} className="flex justify-between text-gray-600 text-sm mb-2">
                                     <span>{line.label}</span>
-                                    <span>{line.amount < 0 ? '-' : ''}₹{Math.abs(line.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span>
+                                        {line.amount < 0 ? "-" : ""}₹
+                                        {Math.abs(line.amount).toLocaleString("en-IN", {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}
+                                    </span>
                                 </div>
                             ))}
-                            {/* Coupon Codes link */}
+
+                            {/* Coupons */}
                             <div className="mb-2 text-gray-600 text-sm">
                                 <div className="flex flex-row justify-between items-center">
                                     <span>Coupon Codes</span>
@@ -511,111 +518,115 @@ export default function Checkout({ productList }) {
                                 <div className="mt-2">
                                     {appliedOffers.map((offer, idx) => (
                                         <div key={idx} className="flex items-center gap-2 text-green-500 text-xs">
-                                            <p>Coupon applied: {appliedCoupons[idx]} ({offer.discountPercentage}% off)</p>
-                                            <p className="cursor-pointer text-red-500" onClick={() => handleRemoveCoupon(appliedCoupons[idx])}>Remove</p>
+                                            <p>
+                                                Coupon applied: {appliedCoupons[idx]} ({offer.discountPercentage}% off)
+                                            </p>
+                                            <p
+                                                className="cursor-pointer text-red-500"
+                                                onClick={() => handleRemoveCoupon(appliedCoupons[idx])}
+                                            >
+                                                Remove
+                                            </p>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            {bestOffer && (
-                                <div className="max-w-md mx-auto bg-gray-50 border border-gray-200 rounded-lg shadow-sm p-4 my-3">
-                                    <p className="font-medium text-sm text-black">
-                                        More coupons available in drawer
-                                    </p>
-                                    <hr className="my-3 border-gray-200" />
-                                    <p className="text-center text-sm text-gray-700 font-medium cursor-pointer hover:underline"
-                                        onClick={() => setShowDrawer(true)}>
-                                        View all coupons →
-                                    </p>
-                                </div>
-                            )}
-                            <div className="flex flex-col justify-between text-gray-600 text-sm mb-2 ">
+
+                            {/* Standard Shipping */}
+                            <div className="flex flex-col justify-between text-gray-600 text-sm mb-2">
                                 <div className="flex justify-between">
                                     <span>Standard Shipping</span>
-                                    <span> {standardFee > 0 ? `₹ ${standardFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "Free"}</span>
+                                    <span>
+                                        {shippingCharge > 0
+                                            ? `₹ ${shippingCharge.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                            : "Free"}
+                                    </span>
                                 </div>
-                                {standardFee ? <p className="text-xs text-gray-500 mt-1 ">
-                                    {`(Charged due to order value below ₹${minFreeDelivery.toLocaleString("en-IN", {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                    })})`}
-                                </p> : ""}
+                                {shippingCharge ? (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        (Charged due to order value below ₹
+                                        {minFreeDelivery.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                    </p>
+                                ) : null}
                             </div>
 
+                            {/* Air Express Toggle */}
                             <div className="text-gray-900 text-md mb-4 max-w-md mx-auto bg-gray-50 border border-gray-200 rounded-lg shadow-sm p-4 my-3">
                                 <label className="flex justify-between items-center gap-3 cursor-pointer select-none">
-
-                                    <span className="text-gray-700 text-base font-medium">
-                                        Air Express Delivery
-                                    </span>
+                                    <span className="text-gray-700 text-base font-medium">Air Express Delivery</span>
                                     <input
                                         type="checkbox"
                                         checked={deliveryType === "express"}
-                                        onChange={(e) =>
-                                            setDeliveryType(e.target.checked ? "express" : "standard")
-                                        }
+                                        onChange={(e) => setDeliveryType(e.target.checked ? "express" : "standard")}
                                         className="w-5 h-5 accent-red-600 rounded-md cursor-pointer transition-all duration-200"
                                     />
                                 </label>
-
-
-                                <p className="text-xs text-gray-500 mt-1 ">
-                                    Get faster delivery within 1-2 business days with Air Express. Standard
-                                    delivery may take 4-7 days.
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Get faster delivery within 1-2 business days with Air Express. Standard delivery may take 4-7 days.
                                 </p>
                             </div>
 
                             {deliveryType === "express" && (
                                 <div className="flex justify-between text-gray-600 text-sm mb-2">
                                     <span>Air Express Shipping</span>
-                                    <span>₹{airExpressDeliveryCharge.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-
+                                    <span>
+                                        ₹{airExpressFee.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
                                 </div>
                             )}
 
-
-
+                            {/* Return/Replacement */}
                             <div className="flex justify-between text-gray-600 text-sm mb-2">
                                 <span>Return Fees</span>
-                                <span>₹{returnFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-
+                                <span>
+                                    ₹{returnFees.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
                             </div>
                             <div className="flex justify-between text-gray-600 text-sm mb-2">
                                 <span>Replacement Fees</span>
-                                <span>₹{replacementFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-
+                                <span>
+                                    ₹{replacementFees.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
                             </div>
 
-
-
-
+                            {/* Total */}
                             <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-200">
                                 <span>Total</span>
-                                <span>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span>₹{total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
+
+                        {/* COD Advance / Remaining */}
                         {paymentMode === "cod" && (
                             <div className="space-y-2 mb-6 border-t border-gray-200 pt-4 text-sm text-gray-600">
                                 <div className="flex justify-between">
                                     <span>10% Advance is charged to get Rid Off Non-Genuine Buyers.</span>
-                                    <span>₹{advance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span>
+                                        ₹{advance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Pay Remaining Balance on Delivery in Cash</span>
-                                    <span>₹{remaining.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span>
+                                        ₹{remaining.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
                                 </div>
                             </div>
                         )}
+
+                        {/* Payment Mode */}
                         <div className="mb-6">
                             <div className="space-y-3">
                                 <button
-                                    onClick={() => setPaymentMode('cod')}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'cod' ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'} ${appliedCoupons.length > 0 ? "bg-gray-100 cursor-not-allowed" : " cursor-pointer"}`}
+                                    onClick={() => setPaymentMode("cod")}
+                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === "cod" ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-gray-300"} ${appliedCoupons.length > 0 ? "bg-gray-100 cursor-not-allowed" : " cursor-pointer"}`}
                                     disabled={appliedCoupons.length > 0}
                                 >
                                     <div className="flex items-center">
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'cod' ? 'bg-red-500' : 'border border-gray-400'}`}>
-                                            {paymentMode === 'cod' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                        <div
+                                            className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === "cod" ? "bg-red-500" : "border border-gray-400"}`}
+                                        >
+                                            {paymentMode === "cod" && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-center">
@@ -631,13 +642,16 @@ export default function Checkout({ productList }) {
                                         </div>
                                     </div>
                                 </button>
+
                                 <button
-                                    onClick={() => setPaymentMode('online')}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === 'online' ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                    onClick={() => setPaymentMode("online")}
+                                    className={`w-full text-left p-4 rounded-xl border transition-all ${paymentMode === "online" ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-gray-300"}`}
                                 >
                                     <div className="flex items-center">
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === 'online' ? 'bg-red-500' : 'border border-gray-400'}`}>
-                                            {paymentMode === 'online' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                        <div
+                                            className={`flex items-center justify-center w-5 h-5 rounded-full mr-3 ${paymentMode === "online" ? "bg-red-500" : "border border-gray-400"}`}
+                                        >
+                                            {paymentMode === "online" && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-center">
@@ -650,13 +664,21 @@ export default function Checkout({ productList }) {
                                 </button>
                             </div>
                         </div>
+
                         <div className="bg-gray-100 p-4 rounded-md mb-4 text-sm text-gray-600">
-                            <img src="https://imgstatic.phonepe.com/images/online-merchant-assets/plugins/woocommerce/2529/405/payment_gateway_logo.png" alt="PhonePe" className="h-8 mb-2" />
+                            <img
+                                src="https://imgstatic.phonepe.com/images/online-merchant-assets/plugins/woocommerce/2529/405/payment_gateway_logo.png"
+                                alt="PhonePe"
+                                className="h-8 mb-2"
+                            />
                             <p>All UPI apps, Debit and Credit Cards, and NetBanking accepted | Powered by PhonePe</p>
                         </div>
+
                         <p className="text-sm text-gray-600 mb-4">
-                            Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our privacy policy.
+                            Your personal data will be used to process your order, support your experience, and for other purposes
+                            described in our privacy policy.
                         </p>
+
                         <div className="flex items-start mb-6">
                             <input
                                 type="checkbox"
@@ -668,6 +690,7 @@ export default function Checkout({ productList }) {
                                 I have read and agree to the website terms and conditions *
                             </label>
                         </div>
+
                         <Button
                             onClick={handlePlaceOrder}
                             className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-medium transition-colors"
@@ -678,57 +701,38 @@ export default function Checkout({ productList }) {
                     </div>
                 </div>
             </div>
-            {showDrawer && (
-                <div
-                    className="fixed inset-0 z-50 flex justify-end"
-                    onClick={() => setShowDrawer(false)}
-                >
-                    {/* Overlay with fade-in */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 animate-fadeIn" />
 
-                    {/* Drawer with slide-in */}
+            {/* Coupons Drawer */}
+            {showDrawer && (
+                <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setShowDrawer(false)}>
+                    <div className="absolute inset-0 bg-black/50" />
                     <div
-                        className="relative bg-white w-96 p-6 overflow-y-auto shadow-2xl rounded-l-2xl
-                 transform translate-x-full animate-slideIn"
+                        className="relative bg-white w-96 p-6 overflow-y-auto shadow-2xl rounded-l-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Header */}
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
                             <h2 className="text-xl font-semibold">Available Coupons</h2>
-                            <button
-                                onClick={() => setShowDrawer(false)}
-                                className="p-1 rounded-md hover:bg-gray-100 transition"
-                            >
+                            <button onClick={() => setShowDrawer(false)} className="p-1 rounded-md hover:bg-gray-100 transition">
                                 <X className="h-6 w-6 text-gray-600" />
                             </button>
                         </div>
 
-                        {/* Loader */}
                         {couponLoading && (
-                            <div className="flex justify-center items-center mb-4 animate-pulse">
+                            <div className="flex justify-center items-center mb-4">
                                 <CircularProgress size={24} thickness={4} color="primary" />
                                 <p className="ml-2 text-gray-600">Applying coupon...</p>
                             </div>
                         )}
 
-                        {/* Coupon List */}
                         {specialOffers
                             ?.filter((o) => o.couponCode && o.offerType !== "Prepaid Offer")
                             ?.map((offer, idx) => {
-                                const eligible = canApplyCoupon(offer);
-                                const alreadyApplied = appliedCoupons.includes(
-                                    offer.couponCode.toUpperCase()
-                                );
+                                const eligible = canApplyCoupon(offer)
+                                const alreadyApplied = appliedCoupons.includes(offer.couponCode.toUpperCase())
                                 return (
                                     <div
                                         key={idx}
-                                        className={`mb-4 p-4 rounded-lg border transition-all duration-300
-                ${alreadyApplied
-                                                ? "border-green-400 bg-green-50"
-                                                : eligible
-                                                    ? "border-gray-200 bg-gray-50 hover:shadow-md"
-                                                    : "border-gray-100 bg-gray-100 opacity-60"
-                                            }`}
+                                        className={`mb-4 p-4 rounded-lg border ${alreadyApplied ? "border-green-400 bg-green-50" : eligible ? "border-gray-200 bg-gray-50" : "border-gray-100 bg-gray-100 opacity-60"}`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
@@ -736,43 +740,27 @@ export default function Checkout({ productList }) {
                                                     {offer.discountPercentage}% OFF on purchase
                                                 </p>
                                                 <p className="text-xs text-gray-500">
-                                                    <span className="font-medium text-gray-700">
-                                                        {offer.couponCode}
-                                                    </span>{" "}
-                                                    – valid on Selected categories
+                                                    <span className="font-medium text-gray-700">{offer.couponCode}</span> – valid on Selected
+                                                    categories
                                                 </p>
-                                                {!eligible && (
-                                                    <p className="text-xs text-red-400 mt-1">
-                                                        Not applicable for your cart
-                                                    </p>
-                                                )}
+                                                {!eligible && <p className="text-xs text-red-400 mt-1">Not applicable for your cart</p>}
                                             </div>
                                             <button
                                                 disabled={!eligible || alreadyApplied || couponLoading}
                                                 onClick={() => handleAddCoupon(offer.couponCode)}
-                                                className={`px-4 py-1.5 rounded-md font-medium border transition-all duration-200
-                    ${alreadyApplied
-                                                        ? "bg-gray-400 text-white border-gray-400 cursor-not-allowed"
-                                                        : eligible
-                                                            ? "bg-black text-white border-black hover:bg-gray-900"
-                                                            : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                                    }`}
+                                                className={`px-4 py-1.5 rounded-md font-medium border ${alreadyApplied ? "bg-gray-400 text-white border-gray-400" : eligible ? "bg-black text-white border-black" : "bg-gray-100 text-gray-400 border-gray-200"}`}
                                             >
                                                 {alreadyApplied ? "Applied" : "Apply"}
                                             </button>
                                         </div>
                                     </div>
-                                );
+                                )
                             })}
 
-                        {/* Error */}
-                        {couponError && (
-                            <p className="text-red-500 text-sm mt-3">{couponError}</p>
-                        )}
+                        {couponError && <p className="text-red-500 text-sm mt-3">{couponError}</p>}
                     </div>
                 </div>
             )}
-
         </div>
-    );
+    )
 }
