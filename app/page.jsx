@@ -39,7 +39,7 @@ export default async function Home() {
   const serializedBrands = brands.map(serializeFirestoreData);
 
   return (
-    <main className="h-screen overflow-x-hidden overflow-y-auto">
+    <main className="">
       <Header />
       <CategoriesNav />
       <FeaturedProductSlider />

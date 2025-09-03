@@ -1,17 +1,25 @@
+/* eslint-disable react/jsx-key */
+
+// Brand Series Page with custom red scrollbars
+
 "use client"
-import React, { useState } from "react";
-import Link from "next/link";
-import { ChevronRight, AlertCircle } from "lucide-react";
-import { useBrands } from "@/lib/firestore/brands/read";
-import { useSeriesByBrand } from "@/lib/firestore/series/read";
-import { useModelsByBrand } from "@/lib/firestore/models/read";
-import { useParams } from "next/navigation";
+
+import { useMemo, useState, useEffect } from "react"
+import Link from "next/link"
+import { ChevronRight } from "lucide-react"
+import { useParams } from "next/navigation"
+
+import { useBrands } from "@/lib/firestore/brands/read"
+import { useSeriesByBrand } from "@/lib/firestore/series/read"
+import { useModelsByBrand } from "@/lib/firestore/models/read"
 
 function SeriesNotFound({ brandName }) {
     return (
         <div className="min-h-[60vh] flex items-center justify-center px-4 py-8">
             <div className="text-center max-w-md mx-auto">
-                <AlertCircle className="mx-auto h-16 w-16 text-gray-500 mb-4 animate-pulse" />
+                <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                    <div className="h-3 w-3 rounded-full bg-gray-500 animate-pulse" />
+                </div>
                 <h1 className="text-2xl font-bold mb-2">Series Not Found</h1>
                 <p className="text-gray-600 mb-6">
                     Sorry, we couldn't find any series for {brandName}.
@@ -24,110 +32,218 @@ function SeriesNotFound({ brandName }) {
                 </Link>
             </div>
         </div>
-    );
+    )
 }
 
 export default function BrandSeriesPage() {
-    const params = useParams();
-    const brandId = params.brandId;
+    const params = useParams()
+    const brandId = params?.brandId
 
-    const [selectedSeriesId, setSelectedSeriesId] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedSeriesId, setSelectedSeriesId] = useState(null)
+    const [searchQuery, setSearchQuery] = useState("")
 
-    // Fetch series, brand name, and all models for the brand
-    const { data: series, isLoading, error } = useSeriesByBrand(brandId);
-    const { data: brands } = useBrands();
-    const { data: allModels, isLoading: loadingModels } = useModelsByBrand(brandId);
+    const { data: series, isLoading: loadingSeries, error } = useSeriesByBrand(brandId)
+    const { data: brands } = useBrands()
+    const { data: allModels, isLoading: loadingModels } = useModelsByBrand(brandId)
 
-    const brand = brands?.find((b) => b.id === brandId);
-    const brandName = brand?.name || brandId;
+    const brandName = useMemo(() => {
+        const b = brands?.find((x) => x.id === brandId)
+        return b?.name || brandId || "Brand"
+    }, [brands, brandId])
 
-    // Filter models by selected series and search query
-    const filteredModels = allModels
-        ?.filter((model) =>
-            selectedSeriesId ? model.seriesId === selectedSeriesId : true
-        )
-        .filter((model) =>
-            model.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+    const handleSeriesClick = (id) => {
+        setSelectedSeriesId((prev) => (prev === id ? null : id))
+    }
 
-    // Loading and error handling
-    if (isLoading) return <p className="text-center py-20 text-gray-500">Loading series...</p>;
-    if (error) return <p className="text-center text-red-500 py-20">Failed to load series: {error}</p>;
-    if (!series || series.length === 0) return <SeriesNotFound brandName={brandName} />;
+    const filteredModels = useMemo(() => {
+        const list = Array.isArray(allModels) ? allModels : []
+        const bySeries = selectedSeriesId
+            ? list.filter((m) => m.seriesId === selectedSeriesId)
+            : list
+        if (!searchQuery) return bySeries
+        const q = searchQuery.toLowerCase()
+        return bySeries.filter((m) => (m.name || "").toLowerCase().includes(q))
+    }, [allModels, selectedSeriesId, searchQuery])
+
+    if (loadingSeries)
+        return <p className="text-center py-20 text-gray-500">Loading series...</p>
+
+    if (error)
+        return <p className="text-center text-red-500 py-20">Failed to load series</p>
+
+    if (!series || series.length === 0)
+        return <SeriesNotFound brandName={brandName} />
 
     return (
-        <main className="max-w-7xl mx-auto px-6 py-10">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
             {/* Breadcrumb */}
-            <div className="flex items-center text-sm text-gray-500 mb-6">
-                <Link href="/" className="hover:underline">Home</Link>
+            <div className="flex items-center text-sm text-gray-500 mb-4">
+                <Link href="/" className="hover:underline">
+                    Home
+                </Link>
                 <ChevronRight className="h-4 w-4 mx-1" />
                 <span className="font-medium text-gray-800">{brandName}</span>
             </div>
 
-            <h1 className="text-2xl font-bold mb-6">Select {brandName} Series</h1>
-
-            {/* Series Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
-                {series.map((item) => (
-                    <div
-                        key={item.id}
-                        onClick={() => setSelectedSeriesId(item.id)}
-                        className={`cursor-pointer p-4 border rounded-md shadow text-center transition hover:shadow-md ${selectedSeriesId === item.id ? "border-blue-600" : ""
-                            }`}
-                    >
-                        <p className="font-medium">{item.seriesName}</p>
+            {/* Head row with top search (mobile only) */}
+            <div className="grid grid-cols-12 items-center mb-3">
+                <div className="col-span-12 md:col-span-3" />
+                <div className="col-span-12 md:col-span-9 flex items-center gap-4">
+                    <div className="w-full max-w-xs mx-auto md:hidden block">
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search your phone model..."
+                            className="w-full px-3 py-2 rounded-full border bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            aria-label="Search models"
+                        />
                     </div>
-                ))}
-            </div>
-
-            {/* Clear Filter Button */}
-            {selectedSeriesId && (
-                <div className="text-center mb-6">
-                    <button
-                        onClick={() => setSelectedSeriesId(null)}
-                        className="text-sm text-blue-600 underline hover:text-blue-800"
-                    >
-                        Clear Filter
-                    </button>
                 </div>
-            )}
-
-            {/* Search Input */}
-            <div className="max-w-md mx-auto mb-6">
-                <input
-                    type="text"
-                    placeholder="Search your phone model..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-2 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                />
             </div>
 
-            {/* Models List */}
-            <div>
-                <h2 className="text-xl font-semibold mb-4">
-                    {selectedSeriesId ? "Filtered Models" : "All Models"}
-                </h2>
+            {/* Two-column layout */}
+            <div className="grid grid-cols-12 gap-4">
+                {/* Left: Series (scrollable list) */}
+                <aside className="col-span-4 md:col-span-2">
+                    <div className="h-[70vh] overflow-y-auto pr-1 rounded-md custom-scroll">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                            Series
+                        </span>
 
-                {loadingModels ? (
-                    <p className="text-gray-500">Loading models...</p>
-                ) : filteredModels && filteredModels.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {filteredModels.map((model) => (
-                            <Link href={`/models/${model.id}`} key={model.id} className=" ">
-                                <div className="p-4 border rounded-md shadow hover:shadow-md transition text-center cursor-pointer flex justify-center items-center flex-col">
-                                    <img src={model.imageURL} alt={model.name} />
-                                    <p className="font-medium mt-2">{model.name}</p>
-                                </div>
-                            </Link>
+                        <ul className="space-y-2 bg-white md:shadow-lg md:p-4 p-1 rounded">
+                            {series.map((s) => {
+                                const active = selectedSeriesId === s.id
+                                return (
+                                    <li key={s.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSeriesClick(s.id)}
+                                            className={`relative w-full text-center border rounded-md transition flex items-center justify-center gap-3 p-3
+                        ${active
+                                                    ? "shadow-md"
+                                                    : "bg-white border-gray-200 hover:shadow-sm"
+                                                }`}
+                                            style={
+                                                active
+                                                    ? {
+                                                        background:
+                                                            "linear-gradient(180deg, #FFFFFF 29.58%, #FFCAC9 100%)",
+                                                        boxShadow: "0px 0px 40px 0px #00000010",
+                                                    }
+                                                    : {}
+                                            }
+                                            aria-pressed={active}
+                                        >
+                                            <span
+                                                aria-hidden="true"
+                                                className={`absolute right-0 top-0 h-full w-1 rounded-l ${active ? "bg-red-500" : "bg-transparent"
+                                                    }`}
+                                            />
 
-                        ))}
+                                            <div className="flex flex-col justify-center items-center gap-2">
+                                                <img
+                                                    src={
+                                                        s.imageUrl ||
+                                                        "/placeholder.svg?height=48&width=48&query=series%20image"
+                                                    }
+                                                    alt={s.seriesName}
+                                                    className="h-auto w-20 object-contain"
+                                                />
+                                                <span className="text-sm font-medium text-gray-800">
+                                                    {s.seriesName}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    </li>
+                                )
+                            })}
+                        </ul>
                     </div>
-                ) : (
-                    <p className="text-gray-500">No models found.</p>
-                )}
+                </aside>
+
+                {/* Right: Models */}
+                <section className="col-span-8 md:col-span-10">
+                    <div className="h-[70vh] overflow-y-auto custom-scroll">
+                        <div className="flex md:flex-row flex-col md:items-center gap-4 md:mb-5 md:mt-4 md:mr-2 justify-between">
+                            <h2 className="text-base font-semibold mb-3">
+                                {selectedSeriesId ? "Filtered Models" : "All Models"}
+                            </h2>
+
+                            {/* Desktop search */}
+                            <div className="w-full max-w-xs hidden md:block">
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search your phone model..."
+                                    className="w-full px-3 py-2 rounded-full border bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                    aria-label="Search models"
+                                />
+                            </div>
+                        </div>
+
+                        {loadingModels ? (
+                            <p className="text-gray-500">Loading models...</p>
+                        ) : filteredModels && filteredModels.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                {filteredModels.map((model) => (
+                                    <Link
+                                        href={`/models/${model.id}`}
+                                        key={model.id}
+                                        className="group"
+                                    >
+                                        <div className="p-4 h-full gap-4 border rounded-md shadow hover:shadow-md transition text-center cursor-pointer flex flex-col items-center">
+                                            <img
+                                                src={
+                                                    model.imageURL ||
+                                                    "/placeholder.svg?height=48&width=48&query=model%20image"
+                                                }
+                                                alt={model.name}
+                                                className="h-16 w-16 object-contain"
+                                            />
+                                            <p className="font-medium mt-2 text-xs sm:text-sm text-gray-800 group-hover:text-gray-900 text-center">
+                                                {model.name}
+                                            </p>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-gray-500">No models found.</p>
+                        )}
+                    </div>
+                </section>
             </div>
+
+            {/* Scoped Custom Scrollbar Styles */}
+            <style jsx>{`
+        .custom-scroll::-webkit-scrollbar {
+          width: 8px;
+        
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+          background: #f5f5f5;
+          border-radius: 10px;
+          
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, #ff5a5a, #c40000);
+          border-radius: 10px;
+          border: 2px solid #f5f5f5;
+          
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, #ff7777, #a00000);
+        }
+
+        /* Firefox support */
+        .custom-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #c40000 #f5f5f5;
+          
+        }
+      `}</style>
         </main>
-    );
+    )
 }

@@ -6,6 +6,39 @@ import { collection, query, onSnapshot, where } from "firebase/firestore"
 import { getCategory } from "@/lib/firestore/categories/read_server"
 import { getBrand } from "@/lib/firestore/brands/read_server"
 
+// ✅ shared enrichment function
+const enrichSeries = async (series) => {
+  let categoryName = "Unknown"
+  let brandName = "Unknown"
+
+  try {
+    if (series.categoryId) {
+      const category = await getCategory({ id: series.categoryId })
+      categoryName = category?.name || "Unknown"
+    }
+  } catch (err) {
+    console.warn(`Category fetch failed for series ${series.id}:`, err?.message)
+  }
+
+  try {
+    if (series.brandId) {
+      const brand = await getBrand({ id: series.brandId })
+      brandName = brand?.name || "Unknown"
+    }
+  } catch (err) {
+    console.warn(`Brand fetch failed for series ${series.id}:`, err?.message)
+  }
+
+  return {
+    ...series,
+    imageUrl: series.imageUrl || null,   // ✅ enforce imageUrl field
+    imagePath: series.imagePath || null, // ✅ enforce imagePath field
+    categoryName,
+    brandName,
+  }
+}
+
+// ✅ Hook: fetch all series
 export const useSeries = () => {
   const [data, setData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -14,6 +47,7 @@ export const useSeries = () => {
   useEffect(() => {
     setIsLoading(true)
     const q = query(collection(db, "series"))
+
     const unsubscribe = onSnapshot(
       q,
       async (snapshot) => {
@@ -23,41 +57,11 @@ export const useSeries = () => {
             ...docSnap.data(),
           }))
 
-          const enrichedSeries = await Promise.all(
-            seriesList.map(async (series) => {
-              let categoryName = "Unknown"
-              let brandName = "Unknown"
-
-              try {
-                if (series.categoryId) {
-                  const category = await getCategory({ id: series.categoryId })
-                  categoryName = (category && category.name) || "Unknown"
-                }
-              } catch (err) {
-                console.warn(`Failed to fetch category for series ${series.id}:`, err?.message)
-              }
-
-              try {
-                if (series.brandId) {
-                  const brand = await getBrand({ id: series.brandId })
-                  brandName = (brand && brand.name) || "Unknown"
-                }
-              } catch (err) {
-                console.warn(`Failed to fetch brand for series ${series.id}:`, err?.message)
-              }
-
-              return {
-                ...series,
-                categoryName,
-                brandName,
-              }
-            }),
-          )
-
-          setData(enrichedSeries)
+          const enriched = await Promise.all(seriesList.map(enrichSeries))
+          setData(enriched)
           setError(null)
         } catch (err) {
-          console.error("Error enriching series data:", err)
+          console.error("Error enriching series:", err)
           setError(err?.message || "Failed to fetch series")
           setData([])
         } finally {
@@ -71,12 +75,14 @@ export const useSeries = () => {
         setData([])
       },
     )
+
     return () => unsubscribe()
   }, [])
 
   return { data, isLoading, error }
 }
 
+// ✅ Hook: fetch series by brand
 export const useSeriesByBrand = (brandId) => {
   const [data, setData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -88,8 +94,10 @@ export const useSeriesByBrand = (brandId) => {
       setIsLoading(false)
       return
     }
+
     setIsLoading(true)
     const q = query(collection(db, "series"), where("brandId", "==", brandId))
+
     const unsubscribe = onSnapshot(
       q,
       async (snapshot) => {
@@ -98,7 +106,9 @@ export const useSeriesByBrand = (brandId) => {
             id: docSnap.id,
             ...docSnap.data(),
           }))
-          setData(seriesList)
+
+          const enriched = await Promise.all(seriesList.map(enrichSeries))
+          setData(enriched)
           setError(null)
         } catch (err) {
           console.error("Error fetching series by brand:", err)

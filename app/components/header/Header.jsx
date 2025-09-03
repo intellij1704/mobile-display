@@ -1,169 +1,264 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Menu, Search, X } from "lucide-react";
-import Link from "next/link";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { toast } from "react-hot-toast";
-import { AuthContextProvider } from "@/context/AuthContext";
-import HeaderClientButtons from "./header-client-buttons";
-import UserDropdown from "./user-dropdown";
-import MobileMenu from "./mobile-menu";
-import SearchResults from "./search-results";
-import { searchProducts } from "@/lib/firestore/products/read";
-import { useCategories } from "@/lib/firestore/categories/read";
-import CategoryDropdown from "./category-dropdown";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react"
+import { Menu, Search, X } from "lucide-react"
+import Link from "next/link"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { toast } from "react-hot-toast"
+import { AuthContextProvider } from "@/context/AuthContext"
+import HeaderClientButtons from "./header-client-buttons"
+import UserDropdown from "./user-dropdown"
+import MobileMenu from "./mobile-menu"
+import SearchResults from "./search-results"
+import { searchProducts } from "@/lib/firestore/products/read"
+import { useCategories } from "@/lib/firestore/categories/read"
+import CategoryDropdown from "./category-dropdown"
 
 export default function Header() {
-  const [user, setUser] = useState(null);
-  const [username, setUsername] = useState("");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
+  // Auth + UI state
+  const [user, setUser] = useState(null)
+  const [username, setUsername] = useState("")
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  const { categoriesList, isLoading, error } = useCategories();
+  // Search state
+  const [selectedCategory, setSelectedCategory] = useState("All Categories")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filteredProducts, setFilteredProducts] = useState([])
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
 
-  const searchRef = useRef(null);
-  const mobileMenuRef = useRef(null);
-  const inputRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(false)
 
+  const [showTopBarMobile, setShowTopBarMobile] = useState(true)
+  const topBarRef = useRef(null)
+  const [topBarHeight, setTopBarHeight] = useState(0)
+
+  const desktopSearchRef = useRef(null)
+  const mobileSearchRef = useRef(null)
+  const mobileMenuRef = useRef(null)
+
+  const lastScrollYRef = useRef(0)
+  const tickingRef = useRef(false)
+
+  const { categoriesList, error } = useCategories()
+
+  // Search handler
   const handleSearch = useCallback(
     async (e) => {
-      e?.preventDefault();
+      e?.preventDefault()
       if (!searchTerm.trim()) {
-        setFilteredProducts([]);
-        return;
+        setFilteredProducts([])
+        return
       }
 
-      setIsSearching(true);
+      setIsSearching(true)
       try {
-        let results = await searchProducts(searchTerm.trim());
+        let results = await searchProducts(searchTerm.trim())
 
-        // Only filter by category if not "All Categories"
         if (selectedCategory !== "All Categories") {
-          results = results.filter(
-            (product) => product.category === selectedCategory
-          );
+          results = results.filter((product) => product.category === selectedCategory)
         }
 
-        setFilteredProducts(results);
-      } catch (error) {
-        console.error("Search error:", error);
-        toast.error("Failed to search products");
-        setFilteredProducts([]);
+        setFilteredProducts(results)
+      } catch (err) {
+        console.error("Search error:", err)
+        toast.error("Failed to search products")
+        setFilteredProducts([])
       } finally {
-        setIsSearching(false);
+        setIsSearching(false)
       }
     },
-    [searchTerm, selectedCategory]
-  );
+    [searchTerm, selectedCategory],
+  )
 
-  // Debounce search updates
+  // Debounce search input
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchTerm.trim()) {
-        handleSearch();
+        handleSearch()
       } else {
-        setFilteredProducts([]);
+        setFilteredProducts([])
       }
-    }, 300);
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, selectedCategory, handleSearch])
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, selectedCategory, handleSearch]);
-
-  // Handle clicks outside search and mobile menu
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        if (!event.target.closest(".search-result-item")) {
-          setIsSearchFocused(false);
-        }
+      const inDesktopSearch = desktopSearchRef.current?.contains(event.target)
+      const inMobileSearch = mobileSearchRef.current?.contains(event.target)
+      const inResultsItem = event.target.closest?.(".search-result-item")
+      const inMenuOrButton =
+        mobileMenuRef.current?.contains(event.target) || event.target.closest?.(".mobile-menu-button")
+
+      if (!inDesktopSearch && !inMobileSearch && !inResultsItem) {
+        setIsSearchFocused(false)
       }
 
-      if (
-        mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(event.target) &&
-        !event.target.closest(".mobile-menu-button")
-      ) {
-        setIsMobileMenuOpen(false);
+      if (!inMenuOrButton) {
+        // do nothing here; we close menu only when clicking outside menu AND not on toggle
+      } else {
+        // clicked menu or toggle, ignore
       }
-    };
+    }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   // Firebase auth listener
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (currentUser) {
-        setUser(currentUser);
-        setUsername(
-          currentUser.displayName || currentUser.email?.split("@")[0] || "User"
-        );
+        setUser(currentUser)
+        setUsername(currentUser.displayName || currentUser.email?.split("@")[0] || "User")
       } else {
-        setUser(null);
-        setUsername("");
+        setUser(null)
+        setUsername("")
       }
-    });
+    })
 
-    return () => unsubscribe();
-  }, []);
+    return () => unsubscribe()
+  }, [])
 
   const handleLogout = async () => {
-    if (!confirm("Are you sure you want to logout?")) return;
+    if (!confirm("Are you sure you want to logout?")) return
     try {
       await toast.promise(signOut(auth), {
         loading: "Logging out...",
         success: "Successfully logged out",
         error: (e) => e?.message || "Logout failed",
-      });
-    } catch (error) {
-      toast.error(error?.message || "Logout failed");
+      })
+    } catch (err) {
+      toast.error(err?.message || "Logout failed")
     }
-  };
+  }
 
-  const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev);
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev)
+  const closeMobileMenu = () => setIsMobileMenuOpen(false)
 
   const handleSearchResultClick = () => {
-    setIsSearchFocused(false);
-    setSearchTerm("");
-    setFilteredProducts([]);
-    closeMobileMenu();
-  };
+    setIsSearchFocused(false)
+    setSearchTerm("")
+    setFilteredProducts([])
+    closeMobileMenu()
+  }
 
-  const cartCount = user?.carts?.length || 0;
-  const wishlistCount = user?.favorites?.length || 0;
+  const cartCount = user?.carts?.length || 0
+  const wishlistCount = user?.favorites?.length || 0
 
   if (error) {
-    toast.error("Failed to load categories");
+    toast.error("Failed to load categories")
   }
+
+  // Mobile detection
+  useEffect(() => {
+    const computeIsMobile = () => setIsMobile(window.innerWidth < 1024)
+    computeIsMobile()
+    window.addEventListener("resize", computeIsMobile)
+    return () => window.removeEventListener("resize", computeIsMobile)
+  }, [])
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (topBarRef.current) {
+        const rect = topBarRef.current.getBoundingClientRect()
+        setTopBarHeight(rect.height || 0)
+      }
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
+
+  useEffect(() => {
+    const threshold = 12
+
+    const onScroll = () => {
+      const currentY = window.scrollY || 0
+
+      if (!tickingRef.current) {
+        window.requestAnimationFrame(() => {
+          if (!isMobile) {
+            if (!showTopBarMobile) setShowTopBarMobile(true)
+            lastScrollYRef.current = currentY
+            tickingRef.current = false
+            return
+          }
+
+          if (currentY <= 0) {
+            // Always show at top
+            if (!showTopBarMobile) setShowTopBarMobile(true)
+          } else {
+            const lastY = lastScrollYRef.current
+            const delta = currentY - lastY
+
+            if (delta > threshold && showTopBarMobile) {
+              setShowTopBarMobile(false)
+            } else if (delta < -threshold && !showTopBarMobile) {
+              setShowTopBarMobile(true)
+            }
+          }
+
+          lastScrollYRef.current = currentY
+          tickingRef.current = false
+        })
+        tickingRef.current = true
+      }
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+    }
+  }, [isMobile, showTopBarMobile])
+
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (
+        isMobileMenuOpen &&
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target) &&
+        !e.target.closest(".mobile-menu-button")
+      ) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", onDocClick)
+    return () => document.removeEventListener("mousedown", onDocClick)
+  }, [isMobileMenuOpen])
 
   return (
     <>
-      <header className="flex flex-col z-[99] bg-white shadow-sm ">
+      <header className="sticky top-0 z-[99] bg-white">
         {/* Top Bar */}
-        <div className="flex items-center justify-between w-full px-4 py-4 md:px-6 lg:px-8 xl:px-20 border-b border-gray-200">
+        <div
+          ref={topBarRef}
+          className={[
+            "w-full px-4 md:px-6 lg:px-8 xl:px-20 border-b h-20 border-gray-200 items-center justify-between transition-all duration-300 ease-out",
+            "lg:flex",
+            isMobile
+              ? showTopBarMobile
+                ? "flex py-4 opacity-100 translate-y-0"
+                : "flex py-0 opacity-0 -translate-y-2"
+              : "flex py-4 opacity-100 translate-y-0",
+          ].join(" ")}
+          style={{
+            height: isMobile ? (showTopBarMobile ? topBarHeight : 0) : "auto",
+            overflow: isMobile ? "hidden" : undefined,
+          }}
+
+        >
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" aria-label="Mobile Display - Home">
-              <img
-                src="/logo.png"
-                alt="Mobile Display"
-                className="h-10 w-auto md:h-12"
-                width={120}
-                height={48}
-              />
+              <img src="/logo.png" alt="Mobile Display" className="h-10 w-auto md:h-12" width={120} height={48} />
             </Link>
           </div>
 
           {/* Desktop Search */}
-          <div className="hidden lg:flex flex-1 max-w-2xl mx-4 relative" ref={searchRef}>
+          <div className="hidden lg:flex flex-1 max-w-2xl mx-4 relative" ref={desktopSearchRef}>
             <form
               onSubmit={handleSearch}
               className="flex w-full items-center rounded-full border border-gray-300 transition-all"
@@ -176,7 +271,6 @@ export default function Header() {
 
               <input
                 type="text"
-                ref={inputRef}
                 placeholder="Search for products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -223,18 +317,14 @@ export default function Header() {
               closeMobileMenu={closeMobileMenu}
             />
 
-            <button
-              onClick={toggleMobileMenu}
-              className="md:hidden mobile-menu-button p-1"
-              aria-label="Toggle menu"
-            >
+            <button onClick={toggleMobileMenu} className="md:hidden mobile-menu-button p-1" aria-label="Toggle menu">
               {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Search */}
-        <div className="px-3 py-2 border-b border-gray-200 bg-white lg:hidden " ref={searchRef}>
+        {/* Mobile Search (always visible on mobile; sits at top when top bar is hidden) */}
+        <div className="px-3 py-2 border-b border-gray-200 bg-white lg:hidden" ref={mobileSearchRef}>
           <form
             onSubmit={handleSearch}
             className="flex w-full items-center gap-2 rounded-md border border-gray-300 transition-all px-2 py-1"
@@ -262,9 +352,9 @@ export default function Header() {
               disabled={isSearching}
             >
               {isSearching ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray600" />
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600" />
               ) : (
-                <Search size={18} />
+                <Search size={22} className="text-gray-700" />
               )}
             </button>
           </form>
@@ -293,5 +383,5 @@ export default function Header() {
         wishlistCount={wishlistCount}
       />
     </>
-  );
+  )
 }

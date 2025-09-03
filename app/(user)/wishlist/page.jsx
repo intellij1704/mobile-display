@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { useState } from "react";
 import { Button } from "@nextui-org/react";
 import { FaTrashAlt } from "react-icons/fa";
+import ReturnTypeSelector from "@/app/components/ReturnTypeSelector";
 
 const WishlistPage = () => {
     const { user } = useAuth();
@@ -71,23 +72,42 @@ const WishlistPage = () => {
 const WishlistItem = ({ productId, user, data }) => {
     const { data: product } = useProduct({ productId });
     const [isLoading, setIsLoading] = useState(false);
+    const [showSelector, setShowSelector] = useState(false);
     const isOutOfStock = product?.stock === 0;
     const alreadyInCart = data?.carts?.some((item) => item.id === productId);
+    const productPrice = product?.salePrice || product?.price || 0;
 
     const handleAddToCart = async () => {
+        if (alreadyInCart) {
+            toast("Product already in cart", { icon: "ℹ️" });
+            return;
+        }
+        if (isOutOfStock) return;
+
+        setShowSelector(true);
+    };
+
+    const handleConfirmReturn = async (choice) => {
+        // choice = { id, title, fee, termsHtml }
         setIsLoading(true);
         try {
-            if (!alreadyInCart) {
-                const updatedCart = [...(data?.carts || []), { id: productId, quantity: 1 }];
-                await updateCarts({ uid: user?.uid, list: updatedCart });
-                toast.success("Added to cart");
-            } else {
-                toast("Product already in cart", { icon: "ℹ️" });
-            }
+            const updatedCart = [
+                ...(data?.carts || []),
+                {
+                    id: productId,
+                    quantity: 1,
+                    returnType: choice.id, // 'easy-return' | 'easy-replacement' | 'self-shipping'
+                    returnFee: choice.fee,
+                },
+            ];
+            await updateCarts({ uid: user?.uid, list: updatedCart });
+            toast.success("Added to cart");
         } catch (error) {
             toast.error(error?.message || "Something went wrong");
+        } finally {
+            setIsLoading(false);
+            setShowSelector(false);
         }
-        setIsLoading(false);
     };
 
     const handleRemoveFromWishlist = async () => {
@@ -123,7 +143,7 @@ const WishlistItem = ({ productId, user, data }) => {
 
             {/* Price */}
             <div className="sm:col-span-2 text-left sm:text-center text-lg font-medium text-gray-700">
-                ₹{product?.salePrice || product?.price || 0}
+                ₹{productPrice}
             </div>
 
             {/* Stock status */}
@@ -151,6 +171,13 @@ const WishlistItem = ({ productId, user, data }) => {
                     <FaTrashAlt />
                 </button>
             </div>
+
+            <ReturnTypeSelector
+                open={showSelector}
+                onClose={() => setShowSelector(false)}
+                onConfirm={handleConfirmReturn}
+                productPrice={productPrice}
+            />
         </div>
     );
 };
