@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
 import { ChevronLeft, CreditCard, Truck, X } from "lucide-react"
@@ -670,6 +670,122 @@ export default function Checkout({ productList }) {
     }
     const estimatedDelivery = getEstimatedDelivery()
 
+
+// function loadRazorpayScript(src) {
+//   return new Promise((resolve) => {
+//     const script = document.createElement("script")
+//     script.src = src
+//     script.onload = () => {
+//       resolve(true)
+//     }
+//     script.onerror = () => {
+//       resolve(false)
+//     }
+//     document.body.appendChild(script)
+//   })
+// }
+// async function handlePlaceOrder() {
+//   if (!validateForm()) {
+//     toast.error("Please fill all required fields correctly")
+//     return
+//   }
+
+//   try {
+//     if (totalPrice <= 0) throw new Error("Price should be greater than 0")
+//     if (!productList || productList.length === 0) throw new Error("Product List Is Empty")
+
+//     setPlacing(true)
+
+//     const serializedAppliedOffers = appliedOffers.map((offer) => ({
+//       couponCode: offer.couponCode,
+//       discountPercentage: offer.discountPercentage,
+//       categories: offer.categories,
+//     }))
+
+//     // COD flow
+//     if (paymentMode === "cod") {
+//       const checkoutId = await createCheckoutCODAndGetId({
+//         uid: user?.uid,
+//         products: productList,
+//         address: {
+//           fullName: `${address.firstName} ${address.lastName}`.trim(),
+//           mobile: address.phone,
+//           email: address.email,
+//           addressLine1: address.streetAddress,
+//           city: address.city,
+//           state: address.state,
+//           pincode: address.pinCode,
+//           country: address.country,
+//         },
+//         deliveryType,
+//         appliedCoupons,
+//         appliedOffers: serializedAppliedOffers,
+//       })
+
+//       router.push(`/checkout-cod?checkout_id=${checkoutId}`)
+//       return
+//     }
+
+//     // ONLINE payment flow
+//     if (paymentMode === "online") {
+//       const res = await loadRazorpayScript("https://checkout.razorpay.com/v1/checkout.js")
+//       if (!res) {
+//         toast.error("Razorpay SDK failed to load. Check your connection.")
+//         return
+//       }
+
+//       const options = {
+//         key: "rzp_test_RDFIUPgeHWbQNG", // replace with your Razorpay Test Key
+//         amount: total * 100,
+//         currency: "INR",
+//         name: "Mobile Display",
+//         description: "Test Transaction",
+//         handler: async function (response) {
+//           // After successful payment → create order
+//           const checkoutId = await createCheckoutCODAndGetId({
+//             uid: user?.uid,
+//             products: productList,
+//             address: {
+//               fullName: `${address.firstName} ${address.lastName}`.trim(),
+//               mobile: address.phone,
+//               email: address.email,
+//               addressLine1: address.streetAddress,
+//               city: address.city,
+//               state: address.state,
+//               pincode: address.pinCode,
+//               country: address.country,
+//             },
+//             deliveryType,
+//             appliedCoupons,
+//             appliedOffers: serializedAppliedOffers,
+//             paymentInfo: {
+//               paymentId: response.razorpay_payment_id,
+//               status: "paid",
+//             },
+//           })
+
+//           router.push(`/checkout-online?checkout_id=${checkoutId}`)
+//         },
+//         prefill: {
+//           name: `${address.firstName} ${address.lastName}`.trim(),
+//           email: address.email,
+//           contact: address.phone,
+//         },
+//         theme: {
+//           color: "#F37254",
+//         },
+//       }
+
+//       const rzp = new window.Razorpay(options)
+//       rzp.open()
+//     }
+//   } catch (err) {
+//     toast.error(err?.message || "Failed to place order")
+//   } finally {
+//     setPlacing(false)
+//   }
+// }
+
     async function handlePlaceOrder() {
         if (!validateForm()) {
             toast.error("Please fill all required fields correctly")
@@ -754,6 +870,14 @@ export default function Checkout({ productList }) {
     }
 
     const disableCOD = appliedCoupons.length > 0
+
+    useEffect(() => {
+        // Force change payment method if coupon is applied
+        if (appliedCoupons.length > 0 && paymentMode === "cod") {
+            setPaymentMode("online");
+        }
+    }, [appliedCoupons, paymentMode]);
+
 
     // Best offer (preserved)
     const bestOffer = (specialOffers || [])
@@ -945,7 +1069,7 @@ export default function Checkout({ productList }) {
                                         <span className="ml-2">Placing order...</span>
                                     </>
                                 ) : (
-                                    "Place Order"
+                                    "Proceed to Pay"
                                 )}
                             </button>
                         </SectionCard>
