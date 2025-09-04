@@ -15,7 +15,7 @@ export default function ShopOwnerBanner() {
             <div className="absolute inset-0 bg-black/50" />
 
             {/* Content */}
-            <div className="relative z-10  max-w-8xl mx-auto px-4 sm:px-6 lg:px-20 flex flex-col md:flex-row items-center justify-between w-full">
+            <div className="relative z-10  max-w-7xl mx-auto  flex flex-col md:flex-row items-center justify-between w-full">
                 {/* Left Text */}
                 <div className="text-center md:text-left mb-6 md:mb-0">
                     <h2 className="text-3xl md:text-6xl font-bold text-white">

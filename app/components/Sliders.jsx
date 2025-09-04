@@ -69,7 +69,7 @@ export default function HeroSectionSlider() {
       <Slider ref={sliderRef} {...settings}>
         {slides.map((slide) => (
           <div key={slide.id}>
-            <Link href={"/product"} >            <div className="relative w-full h-[160px] sm:h-[250px] md:h-[300px] lg:h-[350px] xl:h-[500px]">
+            <Link href={"/product"} >            <div className="relative w-full h-[200px] sm:h-[300px] md:h-[600px] lg:h-[600px] xl:h-[700px]">
               <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${slide.imageUrl})` }}
@@ -83,17 +83,18 @@ export default function HeroSectionSlider() {
       <CustomArrow direction="right" />
 
       {/* Dot Navigation */}
-      <div className="flex justify-center mt-4 gap-2">
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 mb-2 bg-[#FFFFFF52] px-5 py-1 rounded-full">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => sliderRef.current?.slickGoTo(index)}
-            className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? "w-8 bg-red-600" : "w-2 bg-gray-300"
+            className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? "w-8 bg-red-600" : "w-2 bg-black"
               }`}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>
+
     </div>
   );
 }

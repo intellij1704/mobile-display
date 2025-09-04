@@ -210,7 +210,7 @@ function ProductRow({ item, estimatedDelivery, getCategoryName }) {
                     </p>
                     <p className="text-xs text-gray-500">Qty: {qty}</p>
                     <p className="text-xs text-gray-500">Category: {getCategoryName(item?.product?.categoryId)}</p>
-                    <p className="text-xs text-gray-500">Category:{item?.returnType}</p>
+                    <p className="text-xs text-gray-500">Return Type:{item?.returnType}</p>
                     {/* <p className="text-xs text-gray-500">ETA: {estimatedDelivery}</p> */}
                 </div>
             </div>
@@ -871,12 +871,12 @@ export default function Checkout({ productList }) {
 
     const disableCOD = appliedCoupons.length > 0
 
-    useEffect(() => {
-        // Force change payment method if coupon is applied
-        if (appliedCoupons.length > 0 && paymentMode === "cod") {
-            setPaymentMode("online");
-        }
-    }, [appliedCoupons, paymentMode]);
+    // useEffect(() => {
+    //     // Force change payment method if coupon is applied
+    //     if (appliedCoupons.length > 0 && paymentMode === "cod") {
+    //         setPaymentMode("online");
+    //     }
+    // }, [appliedCoupons, paymentMode]);
 
 
     // Best offer (preserved)

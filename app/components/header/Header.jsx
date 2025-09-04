@@ -231,12 +231,12 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-[99] bg-white">
+      <header className="sticky top-0 z-[99] bg-white border-b border-gray-200">
         {/* Top Bar */}
         <div
           ref={topBarRef}
           className={[
-            "w-full px-4 md:px-6 lg:px-8 xl:px-20 border-b h-20 border-gray-200 items-center justify-between transition-all duration-300 ease-out",
+            "w-full mx-auto px-4 md:px-6 lg:px-8 xl:px-28  h-20 items-center justify-between transition-all duration-300 ease-out",
             "lg:flex",
             isMobile
               ? showTopBarMobile
@@ -253,12 +253,12 @@ export default function Header() {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" aria-label="Mobile Display - Home">
-              <img src="/logo.png" alt="Mobile Display" className="h-10 w-auto md:h-12" width={120} height={48} />
+              <img src="/logo.png" alt="Mobile Display" className="h-10 w-auto md:h-16" width={120} height={48} />
             </Link>
           </div>
 
           {/* Desktop Search */}
-          <div className="hidden lg:flex flex-1 max-w-2xl mx-4 relative" ref={desktopSearchRef}>
+          <div className="hidden lg:flex flex-1 md:max-w-4xl xl:max-w-3xl mx-4 relative" ref={desktopSearchRef}>
             <form
               onSubmit={handleSearch}
               className="flex w-full items-center rounded-full border border-gray-300 transition-all"

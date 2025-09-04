@@ -9,26 +9,32 @@ export const createCheckoutCODAndGetId = async ({
     appliedCoupons,
     appliedOffers,
 }) => {
+    if (!uid) {
+        throw new Error("User ID is required");
+    }
+    if (!products || products.length === 0) {
+        throw new Error("No products provided");
+    }
+
     const checkoutId = `cod_${doc(collection(db, "ids")).id}`
     const ref = doc(db, `users/${uid}/checkout_sessions_cod/${checkoutId}`)
 
-    // ✅ Load shipping settings correctly
+    // Load shipping settings
     const shippingRef = doc(db, "shippingSettings", "global")
     const shippingSnap = await getDoc(shippingRef)
     const shippingData = shippingSnap.exists() ? shippingSnap.data() : {}
-
     const minFreeDelivery = shippingData.minFreeDeliveryAmount ?? 499
     const shippingExtraCharges = shippingData.shippingExtraCharges ?? 0
     const airExpressDeliveryCharge = shippingData.airExpressDeliveryCharge ?? 0
 
     // Subtotal before discount
-    const subtotal = (products || []).reduce(
-        (prev, curr) => prev + (curr?.quantity || 0) * (curr?.product?.salePrice || 0),
+    const subtotal = products.reduce(
+        (prev, curr) => prev + (curr?.quantity || 0) * (curr?.product?.salePrice || curr?.product?.price || 0),
         0
     )
 
     // Calculate discounts (category-wise)
-    const cartCategorySet = new Set((products || []).map((item) => item?.product?.categoryId))
+    const cartCategorySet = new Set(products.map((item) => item?.product?.categoryId))
     const couponPMap = {}
     for (const offer of appliedOffers || []) {
         const cp = offer?.discountPercentage || 0
@@ -41,43 +47,47 @@ export const createCheckoutCODAndGetId = async ({
 
     let discount = 0
     for (const cat of [...cartCategorySet]) {
-        const catSum = (products || [])
+        const catSum = products
             .filter((item) => item?.product?.categoryId === cat)
-            .reduce((sum, item) => sum + (item?.quantity || 0) * (item?.product?.salePrice || 0), 0)
+            .reduce((sum, item) => sum + (item?.quantity || 0) * (item?.product?.salePrice || item?.product?.price || 0), 0)
         const couponP = couponPMap[cat] || 0
         discount += catSum * (couponP / 100)
     }
 
     const subtotalAfterDiscount = subtotal - discount
 
-    // ✅ Apply shipping + delivery charges
+    // Apply shipping + delivery charges
     const shippingCharge = subtotalAfterDiscount >= minFreeDelivery ? 0 : shippingExtraCharges
     const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0
 
-    // ✅ Return & Replacement fees
-    const returnFees = (products || []).reduce((sum, item) => {
-        if (item?.returnType === "easy-return") {
-            const itemSubtotal = (item?.quantity || 0) * (item?.product?.salePrice || 0)
-            return sum + 160 + 0.05 * itemSubtotal
+    // Return & Replacement fees
+    let returnFees = 0
+    let replacementFees = 0
+    products.forEach((item) => {
+        const itemSubtotal = (item?.quantity || 0) * (item?.product?.salePrice || item?.product?.price || 0)
+        if (item?.returnFee) {
+            if (item?.returnType === "easy-return") {
+                returnFees += item.returnFee
+            } else if (item?.returnType === "easy-replacement") {
+                replacementFees += item.returnFee
+            }
+            // self-shipping assumes 0, no add
+        } else {
+            if (item?.returnType === "easy-return") {
+                returnFees += 160 + 0.05 * itemSubtotal
+            } else if (item?.returnType === "easy-replacement") {
+                replacementFees += 30
+            }
         }
-        return sum
-    }, 0)
-
-    const replacementFees = (products || []).reduce((sum, item) => {
-        if (item?.returnType === "easy-replacement") {
-            return sum + 30
-        }
-        return sum
-    }, 0)
-
+    })
     const returnFee = returnFees + replacementFees
 
-    // ✅ Totals
+    // Totals
     const total = subtotalAfterDiscount + shippingCharge + airExpressFee + returnFee
     const advance = subtotalAfterDiscount * 0.1 + shippingCharge + airExpressFee + returnFee
     const remaining = total - advance
 
-    const line_items = (products || []).map((item) => ({
+    const line_items = products.map((item) => ({
         price_data: {
             currency: "inr",
             product_data: {
@@ -89,9 +99,10 @@ export const createCheckoutCODAndGetId = async ({
                     selectedColor: item?.selectedColor || "",
                     selectedQuality: item?.selectedQuality || "",
                     returnType: item?.returnType || "",
+                    returnFee: item?.returnFee || 0,
                 },
             },
-            unit_amount: Math.round(item?.product?.salePrice || 0) * 100,
+            unit_amount: Math.round(item?.product?.salePrice || item?.product?.price || 0) * 100,
         },
         quantity: item?.quantity ?? 1,
     }))
@@ -99,7 +110,7 @@ export const createCheckoutCODAndGetId = async ({
     const metadata = {
         checkoutId,
         uid,
-        address: JSON.stringify(address),
+        address: JSON.stringify(address || {}),
         deliveryType,
     }
 

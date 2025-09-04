@@ -38,7 +38,7 @@ export default function Brands({ brands }) {
     };
 
     return (
-        <div className="flex flex-col gap-8 justify-center px-4 md:px-8 lg:px-16 py-10">
+        <div className="flex flex-col gap-8 justify-center max-w-7xl mx-auto py-10">
 
             <Slider {...settings}>
                 {brandsSlides.map((brand) => (

@@ -104,11 +104,11 @@ export default function CategoriesNav() {
   );
 
   return (
-    <div className="relative bg-white">
+    <div className="relative bg-white border-b border-gray-200">
       {/* Categories Navigation - Desktop */}
       <nav
         ref={navRef}
-        className="hidden lg:flex max-w-8xl items-center justify-between px-16 py-3 border-b border-gray-200"
+        className="hidden lg:flex max-w-7xl mx-auto items-center justify-between py-3 "
       >
         <Link
           href="/categories"

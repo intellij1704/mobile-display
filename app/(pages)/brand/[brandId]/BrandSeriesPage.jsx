@@ -111,7 +111,7 @@ export default function BrandSeriesPage() {
                             Series
                         </span>
 
-                        <ul className="space-y-2 bg-white md:shadow-lg md:p-4 p-1 rounded">
+                        <ul className="space-y-2 bg-white md:shadow-lg md:p-0 p-1 rounded">
                             {series.map((s) => {
                                 const active = selectedSeriesId === s.id
                                 return (
@@ -137,7 +137,7 @@ export default function BrandSeriesPage() {
                                         >
                                             <span
                                                 aria-hidden="true"
-                                                className={`absolute right-0 top-0 h-full w-1 rounded-l ${active ? "bg-red-500" : "bg-transparent"
+                                                className={`absolute right-0 top-0 h-full w-[5px] rounded-l ${active ? "bg-[#BB0300]" : "bg-transparent"
                                                     }`}
                                             />
 
@@ -219,28 +219,13 @@ export default function BrandSeriesPage() {
             {/* Scoped Custom Scrollbar Styles */}
             <style jsx>{`
         .custom-scroll::-webkit-scrollbar {
-          width: 8px;
-        
+          width: 4px;
         }
-        .custom-scroll::-webkit-scrollbar-track {
-          background: #f5f5f5;
-          border-radius: 10px;
-          
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #ff5a5a, #c40000);
-          border-radius: 10px;
-          border: 2px solid #f5f5f5;
-          
-        }
-        .custom-scroll::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #ff7777, #a00000);
-        }
+
 
         /* Firefox support */
         .custom-scroll {
           scrollbar-width: thin;
-          scrollbar-color: #c40000 #f5f5f5;
           
         }
       `}</style>

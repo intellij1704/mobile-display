@@ -45,8 +45,8 @@ const sliderSettings = {
     autoplaySpeed: 3000,
     pauseOnHover: true,
     responsive: [
-        { breakpoint: 480, settings: { slidesToShow: 1.2 } },
-        { breakpoint: 640, settings: { slidesToShow: 1.5 } },
+        { breakpoint: 480, settings: { slidesToShow: 2 } },
+        { breakpoint: 640, settings: { slidesToShow: 3 } },
         { breakpoint: 768, settings: { slidesToShow: 2, centerMode: false } },
         { breakpoint: 1024, settings: { slidesToShow: 3, centerMode: false } },
         { breakpoint: 1280, settings: "unslick" },
@@ -65,7 +65,7 @@ const AccessoriesCard = ({ category, isSlider = false }) => (
       transition-all duration-300
       ${isSlider ? 'mx-2' : ''}
     `}>
-            <div className="flex items-center justify-center p-4 bg-white h-40 sm:h-48">
+            <div className="flex items-center justify-center p-4 bg-white md:h-40 h-28 ">
                 <img
                     src={category.imageURL}
                     alt={category.name}
@@ -88,16 +88,19 @@ const AccessoriesCard = ({ category, isSlider = false }) => (
 export default function Accessories() {
     return (
         <section className="w-full bg-[#FFFFF] py-12 px-4 sm:px-6 lg:px-20">
-            <div className="max-w-8xl mx-auto">
-                <div className="flex items-center justify-between mb-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex items-center justify-between mb-8 px-2 ">
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-900 uppercase tracking-tight">
                         Other Accessories
+
                     </h2>
+
                     <Link
-                        href="/product"
-                        className="text-sm sm:text-base text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 hover:underline"
+                        href={"/product"}
+                        className="md:text-2xl text-lg text-[#005EB7] hover:text-blue-800 font-medium transition-all duration-200 hover:underline flex justify-center items-center gap-3  "
                     >
-                        View All
+                        See All
+                        <img src="/icon/btn-right.svg" alt="Right Arrow" className="md:h-8 md:w-8 h-6 w-6" />
                     </Link>
                 </div>
 

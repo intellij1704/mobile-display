@@ -19,7 +19,7 @@ const cardData = [
 
 const WhyUsSection = () => {
     return (
-        <section className="max-w-8xl bg-[#FFFFF] py-16 px-4 md:px-20 h-auto">
+        <section className="max-w-7xl bg-[#FFFFF] py-16  mx-auto h-auto">
             <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-10">
                 Why We're the Smart Choice <br className="hidden md:block" />
                 for Mobile Spare Parts

@@ -9,10 +9,12 @@ import { AuthContextProvider, useAuth } from "@/context/AuthContext"
 import { createCheckoutCODAndGetId } from "@/lib/firestore/checkout/write"
 import AddToCartButton from "@/app/components/AddToCartButton"
 import ReturnTypeSelector from "@/app/components/ReturnTypeSelector"
+import { useUser } from "@/lib/firestore/user/read"
 
 export default function ActionButtons({ product, selectedColor, selectedQuality }) {
   const { data, error, isLoading } = useSpecialOffers()
   const { user } = useAuth()
+  const { data: userData, isLoading: isLoadingUser } = useUser({ uid: user?.uid })
   const router = useRouter()
 
   const [isLoadingBuyNow, setIsLoadingBuyNow] = useState(false)
@@ -57,34 +59,34 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
   }
 
   const beginBuyNow = async () => {
-    // open selector; after selection we will call API
     setPendingBuy(true)
     setShowSelector(true)
   }
 
   const onConfirmReturnForBuy = async (choice) => {
-    // choice = { id, fee, title }
     try {
       setIsLoadingBuyNow(true)
+      if (isLoadingUser || !userData) {
+        throw new Error("User data not loaded. Please try again.")
+      }
       const checkoutId = await createCheckoutCODAndGetId({
         uid: user?.uid,
         products: [
           {
             product,
             quantity: 1,
-            selectedColor,
-            selectedQuality,
+            selectedColor: selectedColor || null, // Ensure null if not selected (though validation prevents)
+            selectedQuality: selectedQuality || null, // Ensure null if not selected
+            returnType: choice.id,
           },
         ],
-        address: {}, // TODO: pass real address
+        address: userData?.address || {},
         deliveryType: "standard",
-        returnType: choice.id, // 'easy-return' | 'easy-replacement' | 'self-shipping'
-        returnFee: choice.fee,
         appliedCoupons: [],
         appliedOffers: activeOffers,
       })
 
-      router.push(`/checkout?type=buynow&productId=R3vU3061QWSML1gi6TL0&checkoutId=${checkoutId}`)
+      router.push(`/checkout?type=buynow&productId=${product?.id}&checkoutId=${checkoutId}`)
     } catch (err) {
       toast.error(err?.message || "Something went wrong")
     } finally {
@@ -161,7 +163,7 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
 
           <Button
             onClick={handleBuyNowClick}
-            disabled={isLoadingBuyNow}
+            disabled={isLoadingBuyNow || isLoadingUser}
             className="flex-1 w-full text-sm sm:text-base md:py-[0.42rem] py-[0.86rem] px-3 sm:px-6 text-red-500 font-normal border border-red-500 rounded-lg shadow hover:bg-red-500 hover:text-white transition duration-300 disabled:opacity-60 bg-white"
             variant="outline"
           >
