@@ -34,7 +34,7 @@ function ProductSection({ title, products = [], seeAllLink = "/product" }) {
         dots: false,
         infinite: products.length > 1,
         speed: 500,
-        slidesToShow: 1.1,
+        slidesToShow: 1,
         slidesToScroll: 1,
         autoplay: true,
         autoplaySpeed: 3000,
@@ -49,10 +49,27 @@ function ProductSection({ title, products = [], seeAllLink = "/product" }) {
     return (
         <section className="w-full px-3 max-w-7xl mx-auto py-8 bg-white relative">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 uppercase">{title || "Featured Products"}</h2>
-                <Link href={seeAllLink} className="text-sm text-blue-600 hover:underline">
-                    See all
+
+
+                <h2 className="text-2xl sm:text-3xl font-normal text-[#2F2F2F] capitalize tracking-tight">
+                    {title.split(" ")[0]}{" "}
+                    <span className="relative inline-block font-semibold text-[#2F2F2F]">
+                        {title.split(" ").slice(1).join(" ")}
+                        <span className="absolute bottom-0 right-0 w-1/2 h-[2px] mt-10 bg-[#BB0300]"></span>
+                    </span>
+                </h2>
+
+                <Link href={seeAllLink} className="md:text-2xl text-lg text-[#005EB7] hover:text-blue-800 font-medium transition-all duration-200 hover:underline flex justify-center items-center gap-3"
+                >
+                    See All
+                    <img
+                        src="/icon/btn-right.svg"
+                        alt="Right Arrow"
+                        className="md:h7 md:w-7 h-6 w-6"
+                    />
                 </Link>
+
+
             </div>
 
             {!isValidProducts ? (

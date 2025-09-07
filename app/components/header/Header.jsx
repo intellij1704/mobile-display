@@ -34,6 +34,10 @@ export default function Header() {
   const topBarRef = useRef(null)
   const [topBarHeight, setTopBarHeight] = useState(0)
 
+  const [isSticky, setIsSticky] = useState(false)
+  const [headerHeight, setHeaderHeight] = useState(0)
+  const headerRef = useRef(null)
+
   const desktopSearchRef = useRef(null)
   const mobileSearchRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -95,12 +99,6 @@ export default function Header() {
       if (!inDesktopSearch && !inMobileSearch && !inResultsItem) {
         setIsSearchFocused(false)
       }
-
-      if (!inMenuOrButton) {
-        // do nothing here; we close menu only when clicking outside menu AND not on toggle
-      } else {
-        // clicked menu or toggle, ignore
-      }
     }
 
     document.addEventListener("mousedown", handleClickOutside)
@@ -160,6 +158,7 @@ export default function Header() {
     return () => window.removeEventListener("resize", computeIsMobile)
   }, [])
 
+  // Measure top bar height
   useLayoutEffect(() => {
     const measure = () => {
       if (topBarRef.current) {
@@ -172,23 +171,30 @@ export default function Header() {
     return () => window.removeEventListener("resize", measure)
   }, [])
 
+  // Measure header height for desktop sticky trigger
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.clientHeight || 0)
+      }
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [isMobile])
+
+  // Mobile top bar hide/show on scroll
   useEffect(() => {
     const threshold = 12
 
     const onScroll = () => {
+      if (!isMobile) return
+
       const currentY = window.scrollY || 0
 
       if (!tickingRef.current) {
         window.requestAnimationFrame(() => {
-          if (!isMobile) {
-            if (!showTopBarMobile) setShowTopBarMobile(true)
-            lastScrollYRef.current = currentY
-            tickingRef.current = false
-            return
-          }
-
           if (currentY <= 0) {
-            // Always show at top
             if (!showTopBarMobile) setShowTopBarMobile(true)
           } else {
             const lastY = lastScrollYRef.current
@@ -209,10 +215,19 @@ export default function Header() {
     }
 
     window.addEventListener("scroll", onScroll, { passive: true })
-    return () => {
-      window.removeEventListener("scroll", onScroll)
-    }
+    return () => window.removeEventListener("scroll", onScroll)
   }, [isMobile, showTopBarMobile])
+
+  // Desktop sticky on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY
+      setIsSticky(!isMobile && scrollY > headerHeight)
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [isMobile, headerHeight])
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -231,24 +246,45 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-[99] bg-white border-b border-gray-200">
+      <style jsx global>{`
+        @keyframes slideDown {
+          from {
+            transform: translateY(-100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        .animate-slideDown {
+          animation: slideDown 0.5s ease forwards;
+        }
+      `}</style>
+      <header
+        ref={headerRef}
+        className={`bg-white border-b border-gray-200 z-[99] ${isMobile
+          ? "sticky top-0"
+          : isSticky
+            ? "fixed top-0 left-0 w-full shadow-[0_4px_6px_rgba(0,0,0,0.1)] animate-slideDown"
+            : "relative"
+          }`}
+      >
         {/* Top Bar */}
         <div
           ref={topBarRef}
           className={[
-            "w-full mx-auto px-4 md:px-6 lg:px-8 xl:px-28  h-20 items-center justify-between transition-all duration-300 ease-out",
-            "lg:flex",
+            "w-full mx-auto px-4 md:px-6 lg:px-8 xl:px-28 items-center justify-between",
             isMobile
               ? showTopBarMobile
                 ? "flex py-4 opacity-100 translate-y-0"
                 : "flex py-0 opacity-0 -translate-y-2"
               : "flex py-4 opacity-100 translate-y-0",
+            isSticky ? "py-[15px]" : "",
           ].join(" ")}
           style={{
             height: isMobile ? (showTopBarMobile ? topBarHeight : 0) : "auto",
             overflow: isMobile ? "hidden" : undefined,
+            transition: "all 0.3s ease-out",
           }}
-
         >
           {/* Logo */}
           <div className="flex-shrink-0">
@@ -258,51 +294,53 @@ export default function Header() {
           </div>
 
           {/* Desktop Search */}
-          <div className="hidden lg:flex flex-1 md:max-w-4xl xl:max-w-3xl mx-4 relative" ref={desktopSearchRef}>
-            <form
-              onSubmit={handleSearch}
-              className="flex w-full items-center rounded-full border border-gray-300 transition-all"
-            >
-              <CategoryDropdown
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                categories={["All Categories", ...categoriesList.map((cat) => cat.name)]}
-              />
-
-              <input
-                type="text"
-                placeholder="Search for products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                className="flex-1 px-4 py-2 focus:outline-none text-sm h-10"
-                aria-label="Search products"
-              />
-
-              <button
-                type="submit"
-                className="p-2 h-10 rounded-none bg-transparent hover:bg-gray-100 transition-colors"
-                aria-label="Submit search"
-                disabled={isSearching}
+          {!isMobile && (
+            <div className="hidden lg:flex flex-1 max-w-2xl xl:max-w-3xl mx-6 relative" ref={desktopSearchRef}>
+              <form
+                onSubmit={handleSearch}
+                className="flex w-full items-center rounded-full border-2 border-gray-200 bg-white shadow-md hover:shadow-lg hover:border-red-300 transition-all duration-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-100"
               >
-                {isSearching ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600" />
-                ) : (
-                  <Search size={18} />
-                )}
-              </button>
-            </form>
+                <CategoryDropdown
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  categories={["All Categories", ...categoriesList.map((cat) => cat.name)]}
+                />
 
-            {isSearchFocused && (searchTerm.trim() || filteredProducts.length > 0) && (
-              <SearchResults
-                filteredProducts={filteredProducts}
-                handleSearchResultClick={handleSearchResultClick}
-                isLoading={isSearching}
-                searchTerm={searchTerm}
-                selectedCategory={selectedCategory}
-              />
-            )}
-          </div>
+                <input
+                  type="text"
+                  placeholder="Search for premium products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  className="flex-1 px-6 py-4 focus:outline-none text-sm bg-transparent placeholder-gray-400"
+                  aria-label="Search products"
+                />
+
+                <button
+                  type="submit"
+                  className="p-4 rounded-r-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  aria-label="Submit search"
+                  disabled={isSearching}
+                >
+                  {isSearching ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                  ) : (
+                    <Search size={20} />
+                  )}
+                </button>
+              </form>
+
+              {isSearchFocused && (searchTerm.trim() || filteredProducts.length > 0) && (
+                <SearchResults
+                  filteredProducts={filteredProducts}
+                  handleSearchResultClick={handleSearchResultClick}
+                  isLoading={isSearching}
+                  searchTerm={searchTerm}
+                  selectedCategory={selectedCategory}
+                />
+              )}
+            </div>
+          )}
 
           {/* User Actions */}
           <div className="flex items-center gap-2 md:gap-4">
@@ -323,52 +361,54 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Search (always visible on mobile; sits at top when top bar is hidden) */}
-        <div className="px-3 py-2 border-b border-gray-200 bg-white lg:hidden" ref={mobileSearchRef}>
-          <form
-            onSubmit={handleSearch}
-            className="flex w-full items-center gap-2 rounded-md border border-gray-300 transition-all px-2 py-1"
-          >
-            <CategoryDropdown
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-              categories={["All Categories", ...categoriesList.map((cat) => cat.name)]}
-            />
-
-            <input
-              type="text"
-              placeholder="Search for products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              className="flex-1 min-w-0 px-2 py-1 text-sm h-9 focus:outline-none"
-              aria-label="Search products"
-            />
-
-            <button
-              type="submit"
-              className="p-2 h-9 bg-transparent hover:bg-gray-100 transition-colors flex items-center justify-center"
-              aria-label="Submit search"
-              disabled={isSearching}
+        {/* Mobile Search */}
+        {isMobile && (
+          <div className={`px-3 py-2 border-b border-gray-200 bg-white `} ref={mobileSearchRef}>
+            <form
+              onSubmit={handleSearch}
+              className="flex w-full items-center gap-2   rounded-full border border-gray-300 transition-all px-2 py-1"
             >
-              {isSearching ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600" />
-              ) : (
-                <Search size={22} className="text-gray-700" />
-              )}
-            </button>
-          </form>
+              <CategoryDropdown
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                categories={["All Categories", ...categoriesList.map((cat) => cat.name)]}
+              />
 
-          {isSearchFocused && (searchTerm.trim() || filteredProducts.length > 0) && (
-            <SearchResults
-              filteredProducts={filteredProducts}
-              handleSearchResultClick={handleSearchResultClick}
-              isLoading={isSearching}
-              searchTerm={searchTerm}
-              selectedCategory={selectedCategory}
-            />
-          )}
-        </div>
+              <input
+                type="text"
+                placeholder="Search for products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                className="flex-1 min-w-0 px-2 py-1 text-sm h-9 focus:outline-none"
+                aria-label="Search products"
+              />
+
+              <button
+                type="submit"
+                className="p-2 h-9 bg-transparent hover:bg-gray-100 transition-colors flex items-center justify-center"
+                aria-label="Submit search"
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600" />
+                ) : (
+                  <Search size={22} className="text-gray-700" />
+                )}
+              </button>
+            </form>
+
+            {isSearchFocused && (searchTerm.trim() || filteredProducts.length > 0) && (
+              <SearchResults
+                filteredProducts={filteredProducts}
+                handleSearchResultClick={handleSearchResultClick}
+                isLoading={isSearching}
+                searchTerm={searchTerm}
+                selectedCategory={selectedCategory}
+              />
+            )}
+          </div>
+        )}
       </header>
 
       <MobileMenu

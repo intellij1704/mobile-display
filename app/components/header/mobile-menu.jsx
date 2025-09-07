@@ -26,21 +26,23 @@ export default function MobileMenu({
 
   return (
     <div
-      className={`fixed inset-0 z-[1000] bg-black bg-opacity-50 transition-all duration-300 ease-in-out ${
-        isOpen ? "opacity-100 visible" : "opacity-0 invisible"
-      }`}
+      className={`fixed inset-0 z-[1000] bg-black bg-opacity-50 transition-all duration-300 ease-in-out ${isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+        }`}
       aria-hidden={!isOpen}
     >
       <div
         ref={mobileMenuRef}
-        className={`fixed left-0 top-0 h-full w-80 bg-white shadow-lg transform transition-transform duration-300 ease-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed left-0 top-0 h-full w-80 bg-white shadow-lg transform transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex justify-between items-center p-4 border-b border-gray-200">
-            <h3 className="font-bold text-lg">Menu</h3>
+            <div className="flex-shrink-0">
+              <Link href="/" aria-label="Mobile Display - Home">
+                <img src="/logo.png" alt="Mobile Display" className="h-10 w-auto md:h-16" width={120} height={48} />
+              </Link>
+            </div>
             <button onClick={closeMobileMenu} className="p-2 rounded-full hover:bg-gray-100" aria-label="Close menu">
               <X size={20} />
             </button>
@@ -151,9 +153,9 @@ export default function MobileMenu({
               </Link>
             </div>
 
-       
-          </div>       
-    
+
+          </div>
+
 
           {/* Footer with logout button for logged-in users */}
           {user && (

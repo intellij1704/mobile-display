@@ -83,12 +83,12 @@ export default function HeroSectionSlider() {
       <CustomArrow direction="right" />
 
       {/* Dot Navigation */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 mb-2 bg-[#FFFFFF52] px-5 py-1 rounded-full">
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 mb-2 bg-[#FFFFFF52] px-3 py-1 rounded-full">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => sliderRef.current?.slickGoTo(index)}
-            className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? "w-8 bg-red-600" : "w-2 bg-black"
+            className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? "w-8 bg-red-600" : "w-2 bg-gray-500"
               }`}
             aria-label={`Go to slide ${index + 1}`}
           />

@@ -259,10 +259,10 @@ export default function BasicDetails({ data, handleData }) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-gray-500 text-sm font-medium">New Arrival</label>
+        <label className="text-gray-500 text-sm font-medium">Top Pick Products</label>
         <select
-          value={data?.isNewArrival ? "yes" : "no"}
-          onChange={(e) => handleData("isNewArrival", e.target.value === "yes")}
+          value={data?.isTopPick ? "yes" : "no"}
+          onChange={(e) => handleData("isTopPick", e.target.value === "yes")}
           className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
           required
         >

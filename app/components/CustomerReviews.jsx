@@ -58,10 +58,14 @@ export default function CustomerReviews() {
     return (
         <div className="py-10 max-w-7xl mx-auto bg-[#FFFFF] max-w-8xl">
             <div className=" mb-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-                    What our Customer says
+                <h2 className="text-2xl sm:text-3xl font-normal text-[#2F2F2F] capitalize tracking-tight">
+                    What Our {" "}
+                    <span className="relative inline-block font-semibold text-[#2F2F2F]">
+                        Coustomer Says
+                        <span className="absolute bottom-0 right-0 w-1/3 h-[2px] bg-[#BB0300]"></span>
+                    </span>
                 </h2>
-        
+
             </div>
             <Slider {...settings}>
                 {reviews.map((review, index) => (

@@ -69,12 +69,12 @@ export const getBestSellingProducts = async (limitCount = 10) => {
 };
 
 // ✅ Get new arrivals
-export const getNewArrivalProducts = async (limitCount = 10) => {
+export const getTopPickProducts = async (limitCount = 10) => {
   try {
     const list = await getDocs(
       query(
         collection(db, "products"),
-        where("isNewArrival", "==", true),
+        where("isTopPick", "==", true),
         orderBy("timestampCreate", "desc"),
         limit(limitCount)
       )
@@ -84,7 +84,7 @@ export const getNewArrivalProducts = async (limitCount = 10) => {
       ...snap.data(),
     }));
   } catch (error) {
-    console.error("Error fetching new arrivals:", error);
+    console.error("Error fetching Top:", error);
     return [];
   }
 };
