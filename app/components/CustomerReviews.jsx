@@ -62,7 +62,7 @@ export default function CustomerReviews() {
                     What Our {" "}
                     <span className="relative inline-block font-semibold text-[#2F2F2F]">
                         Coustomer Says
-                        <span className="absolute bottom-0 right-0 w-1/3 h-[2px] bg-[#BB0300]"></span>
+                        <span className="absolute bottom-0 right-0 w-1/2 h-[4px] bg-[#BB0300]"></span>
                     </span>
                 </h2>
 
