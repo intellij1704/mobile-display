@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Upload, Phone, User, Camera, CheckCircle } from "lucide-react"
+import { LocationCity } from "@mui/icons-material"
 
 export default function ShopOwnerBanner() {
   const [isOpen, setIsOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
+    city: "",
     mobile: "",
     images: [],
   })
@@ -49,6 +51,7 @@ export default function ShopOwnerBanner() {
 
     const newErrors = {}
     if (!formData.name.trim()) newErrors.name = "Shop name is required"
+    if (!formData.city.trim()) newErrors.city = "Shop City is required"
     if (!formData.mobile.trim()) newErrors.mobile = "Mobile number is required"
     else if (!/^\d{10}$/.test(formData.mobile.replace(/\D/g, ""))) {
       newErrors.mobile = "Please enter a valid 10-digit mobile number"
@@ -133,7 +136,7 @@ export default function ShopOwnerBanner() {
     <section className="relative w-full max-w-7xl mx-auto h-[250px] md:h-[350px] lg:h-[600px] flex items-center justify-center">
       {/* Background Image */}
       <img
-        src="/shop-repair-banner.png"
+        src="/shop-repair-banner.avif"
         alt="Mobile repair shop banner"
         className="absolute inset-0 w-full h-full object-contain rounded-lg"
       />
@@ -216,6 +219,28 @@ export default function ShopOwnerBanner() {
                       )}
                     </div>
 
+
+
+                    <div>
+                      <label className="block text-sm font-bold text-gray-800 mb-1">
+                        <LocationCity className="inline mr-1 text-red-600" size={14} />
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-gray-50 focus:bg-white"
+                        placeholder="City name"
+                      />
+                      {errors.city && (
+                        <p className="text-red-500 text-xs mt-1 flex items-center bg-red-50 p-1.5 rounded-md">
+                          <X size={10} className="mr-1" />
+                          {errors.city}
+                        </p>
+                      )}
+                    </div>
+
                     <div>
                       <label className="block text-sm font-bold text-gray-800 mb-1">
                         <Phone className="inline mr-1 text-red-600" size={14} />
@@ -243,8 +268,8 @@ export default function ShopOwnerBanner() {
                       </label>
                       <div
                         className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer ${dragActive
-                            ? "border-red-500 bg-red-50 scale-105"
-                            : "border-gray-300 hover:border-red-400 hover:bg-gray-50"
+                          ? "border-red-500 bg-red-50 scale-105"
+                          : "border-gray-300 hover:border-red-400 hover:bg-gray-50"
                           }`}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}

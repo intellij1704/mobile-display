@@ -17,7 +17,10 @@ import {
     Tag,
     Percent,
     TicketPercent,
-    Truck
+    Truck,
+    Radio,
+    BadgeDollarSign,
+    ThumbsUp
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { signOut } from "firebase/auth";
@@ -32,9 +35,12 @@ const menuList = [
     { name: "Models", link: "/admin/models", icon: <Package className="h-5 w-5" /> },
     { name: "Products", link: "/admin/products", icon: <PackageOpen className="h-5 w-5" /> },
     { name: "Add Special Offers", link: "/admin/special-offers", icon: <TicketPercent className="h-5 w-5" /> },
-    { name: "Shipping Cost", link: "/admin/shipping", icon: <Truck className="h-5 w-5" />  },
+    { name: "Shipping Cost", link: "/admin/shipping", icon: <Truck className="h-5 w-5" /> },
     { name: "Orders", link: "/admin/orders", icon: <ShoppingCart className="h-5 w-5" /> },
     { name: "Customers", link: "/admin/customers", icon: <User className="h-5 w-5" /> },
+    { name: "Add Live Sale", link: "/admin/live-sale", icon: <Radio className="h-5 w-5" /> },
+    { name: "Add Big Deals", link: "/admin/big-deals", icon: <BadgeDollarSign className="h-5 w-5" /> },
+    { name: "Add Top Pick", link: "/admin/top-pick", icon: <ThumbsUp className="h-5 w-5" /> },
     { name: "Reviews", link: "/admin/reviews", icon: <Star className="h-5 w-5" /> },
     { name: "Collections", link: "/admin/collections", icon: <LibraryBig className="h-5 w-5" /> },
     { name: "Admins", link: "/admin/admins", icon: <ShieldCheck className="h-5 w-5" /> },

@@ -34,7 +34,7 @@ function ProductSection({ title, products = [], seeAllLink = "/product" }) {
         dots: false,
         infinite: products.length > 1,
         speed: 500,
-        slidesToShow: 1,
+        slidesToShow: 2,
         slidesToScroll: 1,
         autoplay: true,
         autoplaySpeed: 3000,
@@ -77,7 +77,7 @@ function ProductSection({ title, products = [], seeAllLink = "/product" }) {
             ) : (
                 <div className="w-full">
                     {/* Desktop Grid View */}
-                    <div className="hidden md:grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="hidden md:grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                         {products.map((product) => (
                             <ProductCard key={product.id} product={product} />
                         ))}

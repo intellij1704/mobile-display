@@ -179,13 +179,21 @@ header {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .animate-fadeIn {
@@ -196,4 +204,154 @@ header {
   animation: slideIn 0.3s ease-in-out forwards;
 }
 
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-Thin.woff?v=160165370098837172201748518349")
+    format("woff");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-ThinItalic.woff?v=13104683106829815571748518350")
+    format("woff");
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-ExtraLight.woff?v=129899916713524791971748518349")
+    format("woff");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-ExtraLightItalic.woff?v=94073098737064755101748518350")
+    format("woff");
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-Light.woff?v=59258578946915361201748518347")
+    format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-LightItalic.woff?v=65768520084296197291748518348")
+    format("woff");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-Regular.woff?v=149387778861865817841748518350")
+      format("woff"),
+    url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-Regular.woff2?v=180104907505302808671748518347")
+      format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-RegularItalic.woff?v=67548850863250264651748518347")
+    format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-Medium.woff?v=46200792291647091211748518349")
+    format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-MediumItalic.woff?v=6674391994988486361748518349")
+    format("woff");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-SemiBold.woff?v=146713148714939632341748518348")
+    format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-SemiBoldItalic.woff?v=175119764213380940871748518349")
+    format("woff");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-Bold.woff?v=90035020776352744831748518350")
+    format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-BoldItalic.woff?v=127271925393406229661748518347")
+    format("woff");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-ExtraBold.woff?v=156835087065481645901748518348")
+    format("woff");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-ExtraBoldItalic.woff?v=90153951049794732721748518348")
+    format("woff");
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-Black.woff?v=135982192064750420791748518349")
+    format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Metropolis";
+  src: url("//www.boat-lifestyle.com/cdn/shop/t/1004/assets/Metropolis-BlackItalic.woff?v=10887808228386970211748518350")
+    format("woff");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
 
+body {
+  font-family: "Metropolis", sans-serif;
+
+}

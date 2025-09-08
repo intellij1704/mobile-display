@@ -51,7 +51,7 @@ export default {
         },
       },
       fontFamily: {
-        jost: ["var(--font-jost)", "sans-serif"],
+        metropolis: ["Metropolis"],
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -261,7 +261,7 @@ export default function Header() {
       `}</style>
       <header
         ref={headerRef}
-        className={`bg-white border-b border-gray-200 z-[99] ${isMobile
+        className={`bg-white border-b border-gray-200 z-[99]  ${isMobile
           ? "sticky top-0"
           : isSticky
             ? "fixed top-0 left-0 w-full shadow-[0_4px_6px_rgba(0,0,0,0.1)] animate-slideDown"
@@ -298,7 +298,7 @@ export default function Header() {
             <div className="hidden lg:flex flex-1 max-w-2xl xl:max-w-3xl mx-6 relative" ref={desktopSearchRef}>
               <form
                 onSubmit={handleSearch}
-                className="flex w-full items-center rounded-full border-2 border-gray-200 bg-white shadow-md hover:shadow-lg hover:border-red-300 transition-all duration-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-100"
+                className="flex w-full items-center rounded-full border-2 border-gray-200 bg-white hover:border-red-300 transition-all duration-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-100"
               >
                 <CategoryDropdown
                   selectedCategory={selectedCategory}

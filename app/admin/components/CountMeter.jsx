@@ -11,6 +11,8 @@ function CountMeter() {
     const { data: totalUser } = useUsersCount()
     const { data: ordersCounts } = useOrdersCounts()
 
+    console.log(ordersCounts)
+
     return (
         <div>
 

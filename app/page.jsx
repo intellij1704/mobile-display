@@ -2,7 +2,9 @@ import Image from "next/image";
 import HeroSection from "./components/HeroSection";
 import Header from "./components/header/Header";
 import FeaturedProductSlider from "./components/Sliders";
-import { getProducts, getTopPickProducts } from "@/lib/firestore/products/read_server";
+import {
+  getProducts
+} from "@/lib/firestore/products/read_server";
 import Collections from "./components/Collections";
 import { getCollections } from "@/lib/firestore/collections/read_server";
 import Categories from "./components/Categories";
@@ -22,12 +24,11 @@ import { serializeFirestoreData } from "@/utils/serializeFirestoreData";
 import BestsellerCategories from "./components/BestsellerCategories";
 
 export default async function Home() {
-  const [collections, categories, products, brands,isTopPick] = await Promise.all([
+  const [collections, categories, products, brands] = await Promise.all([
     getCollections(),
     getCategories(),
     getProducts(),
-    getBrands(),
-    getTopPickProducts()
+    getBrands()
   ]);
 
   const serializedCollections = collections.map(serializeFirestoreData);
@@ -35,33 +36,22 @@ export default async function Home() {
   const serializedProducts = products.map(serializeFirestoreData);
   const serializedBrands = brands.map(serializeFirestoreData);
 
+  // ---- Live Sale: products with liveSale flag ----
+  const liveSaleProducts = serializedProducts.filter((p) => p.liveSale === true);
 
+  // ---- Big Deals: products with bigDeal flag ----
+  const bigDeals = serializedProducts.filter((p) => p.bigDeal === true);
 
-  // ---- Best Selling: products with discount, sorted by discount %, top 16 ----
-  const bestSellingProducts = serializedProducts
-    .filter((p) => p.price && p.salePrice && p.salePrice < p.price)
-    .map((p) => ({
-      ...p,
-      discountPercentage: Math.round(((p.price - p.salePrice) / p.price) * 100),
-    }))
-    .sort((a, b) => b.discountPercentage - a.discountPercentage)
-    .slice(0, 16);
-
-  // ---- Big Deals: highest priced 12 products ----
-  const bigDeals = [...serializedProducts]
-    .filter((p) => p.price) // ensure valid price
-    .sort((a, b) => b.price - a.price)
-    .slice(0, 12);
+  // ---- Top Picks: products with topPick flag ----
+  const topPickProducts = serializedProducts.filter((p) => p.topPick === true);
 
   // ---- Latest Arrivals: latest 12 based on createdAt ----
   const latestArrivals = [...serializedProducts]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 12);
 
-  const topPickProducts = isTopPick.map(serializeFirestoreData);
-
   return (
-    <main className="">
+    <main>
       <Header />
       <CategoriesNav />
       <FeaturedProductSlider />
@@ -69,11 +59,18 @@ export default async function Home() {
       <WhyUsSection />
       <Accessories />
 
-      <ProductSection title="Sale is Live" products={bestSellingProducts} />
+      {/* Live Sale Products */}
+      <ProductSection title="Sale is Live" products={liveSaleProducts} />
+
+      {/* Big Deals */}
       <ProductSection title="Big Deals" products={bigDeals} />
-      <ProductSection title="Top pick For You" products={topPickProducts} />
+
+      {/* Top Picks */}
+      <ProductSection title="Top Pick For You" products={topPickProducts} />
+
       <ShopOwnerSection />
 
+      {/* Latest */}
       <ProductSection title="Latest Arrivals" products={latestArrivals} />
 
       {/* <ComboOffer products={bestSellingProducts} /> */}

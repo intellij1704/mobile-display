@@ -192,7 +192,7 @@ const ProductsPageContent = () => {
                 </div>
             </div>
 
-            <div className="container mx-auto px-1 sm:px-2 lg:px-8 py-6 lg:py-10 flex flex-col md:flex-row">
+            <div className="w-full max-w-7xl mx-auto py-6 lg:py-10 flex flex-col md:flex-row">
                 <div className="w-full md:w-1/5 mb-6 md:mb-0 md:mr-6">
                     <ProductFilters
                         categories={processedCategories}
