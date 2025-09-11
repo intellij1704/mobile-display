@@ -76,7 +76,7 @@ export default function BestsellerCategories() {
     <section className="w-full bg-[#FFFFF] py-12 px-4 sm:px-6 lg:px-20">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
-        <div className="flex items-center justify-between mb-8 px-2">
+        <div className="flex md:items-center md:flex-row flex-col gap-4 justify-between mb-8 px-2">
           <h2 className="text-2xl sm:text-3xl font-normal text-[#2F2F2F] capitalize tracking-tight">
             Explore your{" "}
             <span className="relative inline-block font-semibold text-[#2F2F2F]">
@@ -86,7 +86,7 @@ export default function BestsellerCategories() {
           </h2>
           <Link
             href={"/categories"}
-            className="md:text-2xl text-lg text-[#005EB7] hover:text-blue-800 font-medium transition-all duration-200 hover:underline flex justify-center items-center gap-3"
+            className="md:text-2xl text-;g text-[#005EB7] hover:text-blue-800 font-medium transition-all duration-200 hover:underline flex md:justify-center justify-end md:items-center gap-3"
           >
             See All
             <img

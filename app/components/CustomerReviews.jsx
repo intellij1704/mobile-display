@@ -56,9 +56,9 @@ const settings = {
 
 export default function CustomerReviews() {
     return (
-        <div className="py-10 max-w-7xl mx-auto bg-[#FFFFF] max-w-8xl">
+        <div className="py-10 max-w-7xl mx-auto bg-[#FFFFF] ">
             <div className=" mb-6">
-                <h2 className="text-2xl sm:text-3xl font-normal text-[#2F2F2F] capitalize tracking-tight">
+                <h2 className="text-2xl sm:text-3xl md:px-1 px-6 font-normal text-[#2F2F2F] capitalize tracking-tight">
                     What Our {" "}
                     <span className="relative inline-block font-semibold text-[#2F2F2F]">
                         Coustomer Says

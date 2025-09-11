@@ -5,9 +5,11 @@ import { AuthContextProvider } from "@/context/AuthContext"
 import { getProductReviewCounts } from "@/lib/firestore/products/count/read"
 import FavoriteButton from "@/app/components/FavoriteButton"
 import MyRating from "@/app/components/MyRating"
-import { Tag, Clock, ShoppingBag } from "lucide-react"
+import { Tag, Clock, Star, ShoppingBag } from "lucide-react"
+import AddToCartButton from "@/app/components/AddToCartButton"
 
 const ProductCard = ({ product }) => {
+  console.log(product)
   const {
     id,
     title,
@@ -15,14 +17,16 @@ const ProductCard = ({ product }) => {
     salePrice,
     featureImageURL,
     shortDescription,
-    bestSelling,
-    isNewArrival,
+    bigDeal,
+    liveSale,
+    topPick,
     stock,
     seoSlug,
     orders = 0,
   } = product
 
   const isOutOfStock = stock <= orders
+  const showLowStock = !isOutOfStock && stock && (stock - orders) < 10
 
   const formatPrice = (amount) => `₹${amount?.toLocaleString("en-IN")}`
   const discountPercentage = salePrice && price > salePrice ? Math.round(((price - salePrice) / price) * 100) : 0
@@ -38,16 +42,22 @@ const ProductCard = ({ product }) => {
     >
       {/* Badges - Position differently for mobile */}
       <div className="absolute top-2 left-2 z-10 md:flex flex-col gap-2 hidden">
-        {bestSelling && (
-          <div className="flex items-center gap-1 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+        {bigDeal && (
+          <div className="flex items-center gap-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
             <Tag size={12} />
-            <span>Bestseller</span>
+            <span>Big Deal</span>
           </div>
         )}
-        {isNewArrival && !bestSelling && (
-          <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+        {liveSale && !bigDeal && (
+          <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
             <Clock size={12} />
-            <span>New</span>
+            <span>Live Sale</span>
+          </div>
+        )}
+        {topPick && !bigDeal && !liveSale && (
+          <div className="flex items-center gap-1 bg-purple-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+            <Star size={12} />
+            <span>Top Pick</span>
           </div>
         )}
       </div>
@@ -67,8 +77,8 @@ const ProductCard = ({ product }) => {
               <Image
                 src={featureImageURL || "/placeholder.svg"}
                 alt={title}
-                width={200}  // Added explicit width for desktop
-                height={200} // Added explicit height for desktop
+                width={200}
+                height={200}
                 className="object-contain p-2 transition-transform duration-500 group-hover:scale-105 w-full h-full"
                 style={{
                   objectFit: 'contain',
@@ -96,16 +106,22 @@ const ProductCard = ({ product }) => {
           {/* Mobile-only badges and wishlist */}
           <div className="flex items-center justify-between mt-1 md:hidden">
             <div className="flex gap-1">
-              {bestSelling && (
-                <div className="flex items-center gap-1 bg-yellow-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+              {bigDeal && (
+                <div className="flex items-center gap-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                   <Tag size={10} />
-                  <span>Bestseller</span>
+                  <span>Big Deal</span>
                 </div>
               )}
-              {isNewArrival && !bestSelling && (
-                <div className="flex items-center gap-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+              {liveSale && !bigDeal && (
+                <div className="flex items-center gap-1 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                   <Clock size={10} />
-                  <span>New</span>
+                  <span>Live Sale</span>
+                </div>
+              )}
+              {topPick && !bigDeal && !liveSale && (
+                <div className="flex items-center gap-1 bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                  <Star size={10} />
+                  <span>Top Pick</span>
                 </div>
               )}
             </div>
@@ -144,10 +160,11 @@ const ProductCard = ({ product }) => {
               You save: ₹{(price - salePrice).toLocaleString("en-IN")}
             </span>
           )}
+   
         </div>
 
-        {/* Stock information */}
-        {!isOutOfStock && stock && (
+        {/* Stock information - Show only if stock is less than 10 */}
+        {showLowStock && (
           <div className="mt-1 md:mt-2">
             <div className="w-full bg-gray-200 rounded-full h-1 md:h-1.5">
               <div
@@ -168,16 +185,6 @@ const ProductCard = ({ product }) => {
           </div>
         )}
 
-        {/* Quick shop button - mobile version */}
-        {!isOutOfStock && (
-          <Link
-            href={`/products/${seoSlug || id}`}
-            className="mt-2 md:hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-full flex items-center justify-center gap-1 shadow-sm"
-          >
-            <ShoppingBag size={12} />
-            <span>View</span>
-          </Link>
-        )}
       </div>
 
       {/* Desktop-only quick shop button */}
