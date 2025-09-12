@@ -1,3 +1,4 @@
+import { AuthContextProvider } from "@/context/AuthContext"
 import ProductCard from "./ProductCard"
 
 const ProductGrid = ({ products = [] }) => {
@@ -14,9 +15,11 @@ const ProductGrid = ({ products = [] }) => {
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
-            {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {products.map((product, index) => (
+                <AuthContextProvider key={index}>
+                    <ProductCard product={product} />
+                </AuthContextProvider>
             ))}
         </div>
     )

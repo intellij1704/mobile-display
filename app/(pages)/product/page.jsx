@@ -179,7 +179,7 @@ const ProductsPageContent = () => {
                         </button>
                         <div className="relative">
                             <select
-                                className="appearance-none bg-white border rounded-md py-2 px-4 pr-8 cursor-pointer"
+                                className="appearance-none bg-gray-100 border rounded-md py-2 px-4 pr-8 cursor-pointer"
                                 value={sortOption}
                                 onChange={(e) => handleSortChange(e.target.value)}
                             >
@@ -270,7 +270,7 @@ const ProductsPageContent = () => {
                         {isLoading ? "" : `Showing ${sortedProducts.length} Results from total ${products?.length || 0}`}
                     </h2>
                 </div>
-                <div className="px-4">
+                <div className="md:px-0 px-3">
                     {isLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                             {[...Array(10)].map((_, index) => (
