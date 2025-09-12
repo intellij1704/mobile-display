@@ -2,7 +2,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Check, X } from "lucide-react"
+import { Check, X, Info } from "lucide-react"
 
 export default function ReturnTypeSelector({
   open,
@@ -20,10 +20,14 @@ export default function ReturnTypeSelector({
       setSelected(null)
       setIsTermsOpen(false)
       setSelectedTerms("")
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = "hidden"
       const t = setTimeout(() => setAnimate(true), 10)
       return () => clearTimeout(t)
     } else {
       setAnimate(false)
+      // Restore body scroll when modal is closed
+      document.body.style.overflow = "unset"
     }
   }, [open])
 
@@ -41,8 +45,10 @@ export default function ReturnTypeSelector({
         id: "easy-return",
         title: "Easy Return",
         description: "Hassle-free pickup and refund processing.",
-        price: `${fees.easyReturn} `,
+        price: `${fees.easyReturn}`,
         fee: fees.easyReturn,
+        icon: "🚚",
+        recommended: false,
         terms: `
           <h3>Easy Return - Terms</h3>
           <ul>
@@ -58,6 +64,8 @@ export default function ReturnTypeSelector({
         description: "Quick replacement if the item is defective or not as described.",
         price: "39",
         fee: fees.easyReplacement,
+        icon: "🔄",
+        recommended: true,
         terms: `
           <h3>Easy Replacement - Terms</h3>
           <ul>
@@ -73,6 +81,8 @@ export default function ReturnTypeSelector({
         description: "Ship the item yourself with your preferred courier.",
         price: "0",
         fee: fees.selfShipping,
+        icon: "📦",
+        recommended: false,
         terms: `
           <h3>Self Shipping - Terms</h3>
           <ul>
@@ -113,95 +123,135 @@ export default function ReturnTypeSelector({
 
   return (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black/50 z-50" aria-hidden="true" onClick={onClose} />
-      {/* Centered Modal */}
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" aria-hidden="true" onClick={onClose} />
+
       <div
         role="dialog"
         aria-modal="true"
-        className={`fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-sm border border-gray-100 transition-all duration-200 ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"
+        className={`fixed left-1/2 top-1/2 z-[101] w-[95vw] max-w-4xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl border border-gray-200 transition-all duration-300 ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"
           }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          aria-label="Close"
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-        >
-          <X size={20} />
-        </button>
-
-        <h2 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-100">Select your Return type</h2>
-
-        <div className=" grid md:grid-cols-3 grid-cols-1 gap-4">
-          {returnOptions.map((option) => (
-            <div
-              key={option.id}
-              onClick={() => setSelected(option.id)}
-              className={`relative border rounded-xl p-4 cursor-pointer transition ${selected === option.id ? "border-red-500 bg-red-50" : "border-gray-200 bg-white hover:border-red-300"
-                }`}
-            >
-              {selected === option.id && (
-                <div className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1">
-                  <Check size={16} />
-                </div>
-              )}
-              <h3 className="text-lg font-semibold">{option.title}</h3>
-              <p className="text-sm text-gray-600 mt-1">{option.description}</p>
-              <p className="text-sm font-medium text-gray-900 mt-2">₹{option.price}</p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  openTerms(option.terms)
-                }}
-                className="mt-1 text-red-500 text-sm font-medium"
-              >
-                Know more
-              </button>
-            </div>
-          ))}
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Select Return Type</h2>
+            <p className="text-sm text-gray-600 mt-1">Choose how you'd like to handle returns for this product</p>
+          </div>
+          <button
+            aria-label="Close"
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X size={24} />
+          </button>
         </div>
 
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!selected}
-            className="px-4 py-2 rounded-lg border border-red-500 text-white bg-red-500 hover:bg-red-600 disabled:opacity-50"
-          >
-            Continue
-          </button>
+        {/* Content */}
+        <div className="p-6">
+          <div className="grid md:grid-cols-3 grid-cols-1 gap-4">
+            {returnOptions.map((option) => (
+              <div
+                key={option.id}
+                onClick={() => setSelected(option.id)}
+                className={`relative border-2 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-lg ${selected === option.id
+                  ? "border-red-500 bg-red-50 shadow-md"
+                  : "border-gray-200 bg-white hover:border-red-300"
+                  }`}
+              >
+                {/* Recommended Badge */}
+                {option.recommended && (
+                  <div className="absolute -top-2 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                    Recommended
+                  </div>
+                )}
+
+                {/* Selection Indicator */}
+                {selected === option.id && (
+                  <div className="absolute top-3 right-3 bg-red-500 text-white rounded-full p-1">
+                    <Check size={16} />
+                  </div>
+                )}
+
+                {/* Content */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{option.icon}</span>
+                    <h3 className="text-lg font-semibold text-gray-900">{option.title}</h3>
+                  </div>
+
+                  <p className="text-sm text-gray-600 leading-relaxed">{option.description}</p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-bold text-gray-900">
+                      ₹{option.price}
+                      {option.price === "0" && <span className="text-sm font-normal text-green-600 ml-1">FREE</span>}
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openTerms(option.terms)
+                      }}
+                      className="flex items-center gap-1 text-red-500 text-sm font-medium hover:text-red-600 transition-colors"
+                    >
+                      <Info size={14} />
+                      Know more
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-8 flex items-center justify-end gap-4">
+            <button
+              onClick={onClose}
+              className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={!selected}
+              className="px-8 py-3 rounded-xl bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
+            >
+              Continue
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Bottom Sheet for Terms */}
       {isTermsOpen && (
         <>
-          <div className="fixed inset-0 bg-black/50 z-[60]" onClick={closeTerms} />
+          <div className="fixed inset-0 bg-black/70 z-[110]" onClick={closeTerms} />
           <div
-            className={`fixed left-0 right-0 bottom-0 bg-white p-6 rounded-t-lg max-h-[80vh] overflow-y-auto z-[60] transition-all duration-300 ease-in-out w-full
-            md:left-1/2 md:right-auto md:bottom-auto md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:max-w-2xl
-            ${animate ? "translate-y-0 md:opacity-100 md:scale-100" : "translate-y-full md:opacity-0 md:scale-95"}`}
+            className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl max-w-2xl w-[90vw] max-h-[80vh] overflow-hidden z-[111] transition-all duration-300 ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"
+              }`}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <button
-              onClick={closeTerms}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-              aria-label="Close terms"
-            >
-              <X size={24} />
-            </button>
-            <div
-              className="text-gray-700 prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: selectedTerms }}
-            />
+            {/* Terms Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Terms & Conditions</h3>
+              <button
+                onClick={closeTerms}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label="Close terms"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Terms Content */}
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div
+                className="text-gray-700 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: selectedTerms }}
+              />
+            </div>
           </div>
         </>
       )}

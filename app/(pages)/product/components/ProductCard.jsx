@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import FavoriteButton from "@/app/components/FavoriteButton"
-import { Tag, Clock, Star, ShoppingBag, Zap, Trash2, ShoppingCart } from "lucide-react"
+import { Tag, Clock, Star, ShoppingBag, Zap, Trash2, ShoppingCart } from 'lucide-react'
 import ProductVariantModal from "./ProductVariantModal"
 import { useAuth } from "@/context/AuthContext"
 import { useUser } from "@/lib/firestore/user/read"
@@ -44,14 +44,23 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
   const isOutOfStock = stock <= orders
   const showLowStock = !isOutOfStock && stock && stock - orders < 10
 
-  // Check if product is already in cart
+  // <CHANGE> Fixed cart item detection for variable products
   const isAdded = useMemo(() => {
-    return userData?.carts?.find(
-      (item) =>
-        item?.id === id &&
-        (!isVariable || item?.selectedColor === selectedColor) &&
-        (!hasQualityOptions || item?.selectedQuality === selectedQuality)
-    )
+    if (!userData?.carts) return false
+
+    return userData.carts.find((item) => {
+      // For non-variable products, just match the ID
+      if (!isVariable && !hasQualityOptions) {
+        return item?.id === id
+      }
+
+      // For variable products, match ID and selected options
+      const matchesId = item?.id === id
+      const matchesColor = !isVariable || !selectedColor || item?.selectedColor === selectedColor
+      const matchesQuality = !hasQualityOptions || !selectedQuality || item?.selectedQuality === selectedQuality
+
+      return matchesId && matchesColor && matchesQuality
+    })
   }, [userData?.carts, id, isVariable, hasQualityOptions, selectedColor, selectedQuality])
 
   const formatPrice = (amount) => `₹${amount?.toLocaleString("en-IN")}`
@@ -75,7 +84,6 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     setShowReturnSelector(true)
   }
 
-
   const handleBuyNow = () => {
     if (!user?.uid) {
       router.push("/login")
@@ -93,27 +101,51 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     setShowReturnSelector(true)
   }
 
-
+  // <CHANGE> Completely rewritten cart removal logic for variable products
   const handleRemove = useCallback(async () => {
     if (!confirm("Remove this item from cart?")) return
+
     setIsRemoving(true)
     try {
-      const newList = userData?.carts?.filter(
-        (d) =>
-          !(
-            d?.id === id &&
-            d?.selectedColor === selectedColor &&
-            d?.selectedQuality === selectedQuality
-          ),
-      )
+      if (!userData?.carts) {
+        toast.error("Cart is empty")
+        return
+      }
+
+      // Filter out the matching item(s)
+      const newList = userData.carts.filter((cartItem) => {
+        // For non-variable products, remove all items with matching ID
+        if (!isVariable && !hasQualityOptions) {
+          return cartItem?.id !== id
+        }
+
+        // For variable products, remove items that match ID and selected options
+        const matchesId = cartItem?.id === id
+        if (!matchesId) return true // Keep items with different IDs
+
+        // If IDs match, check if this is the specific variant to remove
+        const matchesColor = !isVariable || !selectedColor || cartItem?.selectedColor === selectedColor
+        const matchesQuality = !hasQualityOptions || !selectedQuality || cartItem?.selectedQuality === selectedQuality
+
+        // Return false to remove this item (if all conditions match)
+        return !(matchesColor && matchesQuality)
+      })
+
+      // Check if anything was actually removed
+      if (newList.length === userData.carts.length) {
+        toast.error("Item not found in cart")
+        return
+      }
+
       await updateCarts({ list: newList, uid: user?.uid })
       toast.success("Item removed from cart")
     } catch (error) {
+      console.error("Error removing item from cart:", error)
       toast.error(error?.message || "Failed to remove item")
     } finally {
       setIsRemoving(false)
     }
-  }, [userData?.carts, id, selectedColor, selectedQuality, user?.uid])
+  }, [userData?.carts, id, selectedColor, selectedQuality, user?.uid, isVariable, hasQualityOptions])
 
   const handleReturnConfirm = async (choice) => {
     try {
@@ -155,6 +187,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         router.push(`/checkout?type=buynow&productId=${product?.id}&checkoutId=${checkoutId}`)
       }
     } catch (err) {
+      console.error("Error in handleReturnConfirm:", err)
       toast.error(err?.message || "Something went wrong")
     } finally {
       setIsLoading(false)
@@ -192,11 +225,6 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
             </div>
           )}
         </div>
-
-        {/* Wishlist - Position differently for mobile */}
-        {/* <div className="absolute top-2 right-2 z-10 md:block hidden">
-          <FavoriteButton productId={id} />
-        </div> */}
 
         {/* Image section - takes left side on mobile */}
         <Link href={`/products/${id}`} className="block relative md:w-full w-1/3">
@@ -297,15 +325,12 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
                 </div>
               )}
 
-
               <div className="flex">
                 <RatingReview product={product} />
               </div>
             </div>
 
             <div className="flex justify-between items-center">
-
-
               <div className="flex">
                 <ReturnTypeSelector product={product} />
               </div>
@@ -339,13 +364,13 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
           )}
 
           {!isOutOfStock && (
-            <div className="mt-1 pt-2 border-t-2 border-none md:border-dashed border-black/20 md:mt-3 md:pt-3" >
+            <div className="mt-1 pt-2 border-t-2 border-none md:border-dashed border-black/20 md:mt-3 md:pt-3">
               <div className="flex gap-2 w-full">
                 <Button
                   onClick={isAdded ? handleRemove : handleAddToCart}
                   disabled={isLoading || isRemoving}
                   size="sm"
-                  className={` text-xs py-4 flex items-center justify-center ${isAdded
+                  className={`text-xs py-4 flex items-center justify-center ${isAdded
                     ? "bg-black hover:bg-gray-800 text-white"
                     : "bg-black border text-white border-black"
                     }`}
@@ -353,12 +378,10 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
                   {isAdded ? (
                     <>
                       <Trash2 className="w-4 h-4 mr-1" />
-
                     </>
                   ) : (
                     <>
                       <ShoppingCart className="w-4 h-4 mr-1" />
-
                     </>
                   )}
                 </Button>
