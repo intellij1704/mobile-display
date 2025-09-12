@@ -7,6 +7,7 @@ import FavoriteButton from "@/app/components/FavoriteButton"
 import MyRating from "@/app/components/MyRating"
 import { Tag, Clock, Star, ShoppingBag } from "lucide-react"
 import AddToCartButton from "@/app/components/AddToCartButton"
+import RatingReview from "@/app/components/RatingReview"
 
 const ProductCard = ({ product }) => {
   console.log(product)
@@ -130,7 +131,6 @@ const ProductCard = ({ product }) => {
             </AuthContextProvider>
           </div>
 
-          <p className="text-xs text-gray-500 line-clamp-2 md:h-8 mt-1">{shortDescription}</p>
         </div>
 
         {/* Price Section - Stacked for mobile */}
@@ -155,12 +155,41 @@ const ProductCard = ({ product }) => {
             )}
           </div>
 
+
+
+          <div className="flex justify-between items-center">
+            {product.colors && <div className="flex items-center">
+              {Object.values(product?.colors || {})
+                .slice(0, 2)
+                .map((color, index) => (
+                  <span
+                    key={index}
+                    className={`h-4 w-4 rounded-full border border-gray-300 ${index > 0 ? "-ml-2" : ""
+                      }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+
+              {Object.values(product?.colors || {}).length > 2 && (
+                <span className="text-sm text-black">
+                  +{Object.values(product.colors).length - 2}
+                </span>
+              )}
+
+            </div>}
+
+            <div className="flex">
+              <RatingReview product={product} />
+            </div>
+          </div>
+
           {hasDiscount && (
             <span className="text-[10px] md:text-xs text-gray-600">
               You save: ₹{(price - salePrice).toLocaleString("en-IN")}
             </span>
           )}
-   
+
         </div>
 
         {/* Stock information - Show only if stock is less than 10 */}
@@ -187,18 +216,7 @@ const ProductCard = ({ product }) => {
 
       </div>
 
-      {/* Desktop-only quick shop button */}
-      {!isOutOfStock && (
-        <div className="absolute bottom-[6.5rem] left-0 right-0 md:flex justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0 hidden">
-          <Link
-            href={`/products/${seoSlug || id}`}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-full flex items-center gap-2 shadow-md"
-          >
-            <ShoppingBag size={16} />
-            <span>Quick View</span>
-          </Link>
-        </div>
-      )}
+
     </div>
   )
 }

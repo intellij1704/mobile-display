@@ -28,11 +28,11 @@ const InTheBoxSection = ({ product }) => {
                                     .map((item, index, array) => {
                                         if (index % 2 === 0 && array[index + 1]) {
                                             return `
-                          <tr class="border-b border-gray-300">
-                            <td class="p-3 font-medium text-gray-700 border-r border-gray-300 w-1/3">
+                          <tr className="border-b border-gray-300">
+                            <td className="p-3 font-medium text-gray-700 border-r border-gray-300 w-1/3">
                               ${item.replace(/<[^>]+>/g, '')}
                             </td>
-                            <td class="p-3 text-gray-600 text-sm">
+                            <td className="p-3 text-gray-600 text-sm">
                               ${array[index + 1].replace(/<[^>]+>/g, '')}
                             </td>
                           </tr>
@@ -43,11 +43,11 @@ const InTheBoxSection = ({ product }) => {
                                     .join('')}
                 `
                                 : `
-                  <tr class="border-b border-gray-300">
-                    <td class="p-3 font-medium text-gray-700 border-r border-gray-300 w-1/3">
+                  <tr className="border-b border-gray-300">
+                    <td className="p-3 font-medium text-gray-700 border-r border-gray-300 w-1/3">
                       No content available
                     </td>
-                    <td class="p-3 text-gray-600 text-sm">
+                    <td className="p-3 text-gray-600 text-sm">
                       -
                     </td>
                   </tr>
