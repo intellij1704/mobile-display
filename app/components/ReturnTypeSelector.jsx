@@ -48,7 +48,7 @@ export default function ReturnTypeSelector({
         price: `${fees.easyReturn}`,
         fee: fees.easyReturn,
         icon: "🚚",
-        recommended: false,
+        recommended: true,
         terms: `
           <h3>Easy Return - Terms</h3>
           <ul>
@@ -65,7 +65,7 @@ export default function ReturnTypeSelector({
         price: "39",
         fee: fees.easyReplacement,
         icon: "🔄",
-        recommended: true,
+        recommended: false,
         terms: `
           <h3>Easy Replacement - Terms</h3>
           <ul>

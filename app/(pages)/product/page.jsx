@@ -4,36 +4,69 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useProducts } from "@/lib/firestore/products/read"
 import { useCategories } from "@/lib/firestore/categories/read"
 import { useBrands } from "@/lib/firestore/brands/read"
+import { useSeries } from "@/lib/firestore/series/read"
+import { useModels } from "@/lib/firestore/models/read"
 import ProductFilters from "./components/ProductFilters"
 import ProductGrid from "./components/ProductGrid"
 import SortMenu from "./components/SortMenu"
-import { Filter, ArrowUpDown, X } from 'lucide-react'
+import { Filter, ArrowUpDown, X } from "lucide-react"
 import ProductSkeleton from "./components/ProductSkeleton"
 
 // Filter logic extracted into a reusable hook
-const useProductFilters = (products, categoriesList, brands, initialCategoryIds, initialBrandIds) => {
+const useProductFilters = (
+    products,
+    categoriesList,
+    brands,
+    seriesList,
+    modelsList,
+    initialCategoryIds,
+    initialBrandIds,
+    initialSeriesIds,
+    initialModelIds,
+) => {
     const [filters, setFilters] = useState({
         category: [],
         brand: [],
+        series: [],
+        model: [],
         price: 2000,
     })
     const [isInitialized, setIsInitialized] = useState(false)
 
     useEffect(() => {
-        if (!categoriesList || !brands || isInitialized) return
+        if (!categoriesList || !brands || !seriesList || !modelsList || isInitialized) return
 
         const selectedCategories = categoriesList
             .filter((cat) => initialCategoryIds.includes(cat.id))
             .map((cat) => cat.name)
         const selectedBrands = brands.filter((brand) => initialBrandIds.includes(brand.id)).map((brand) => brand.name)
+        const selectedSeries = seriesList
+            .filter((series) => initialSeriesIds.includes(series.id))
+            .map((series) => series.seriesName)
+        const selectedModels = modelsList
+            .filter((model) => initialModelIds.includes(model.id))
+            .map((model) => model.name || model.name)
+
 
         setFilters({
             category: selectedCategories,
             brand: selectedBrands,
+            series: selectedSeries,
+            model: selectedModels,
             price: 2000,
         })
         setIsInitialized(true)
-    }, [categoriesList, brands, initialCategoryIds, initialBrandIds, isInitialized])
+    }, [
+        categoriesList,
+        brands,
+        seriesList,
+        modelsList,
+        initialCategoryIds,
+        initialBrandIds,
+        initialSeriesIds,
+        initialModelIds,
+        isInitialized,
+    ])
 
     const processedCategories = useMemo(() => {
         return (
@@ -52,6 +85,24 @@ const useProductFilters = (products, categoriesList, brands, initialCategoryIds,
             })) || []
         )
     }, [brands, products])
+
+    const processedSeries = useMemo(() => {
+        return (
+            seriesList?.map((series) => ({
+                name: series.seriesName,
+                count: products?.filter((product) => product.seriesId === series.id).length || 0,
+            })) || []
+        )
+    }, [seriesList, products])
+
+    const processedModels = useMemo(() => {
+        return (
+            modelsList?.map((model) => ({
+                name: model.modelName || model.name,
+                count: products?.filter((product) => product.modelId === model.id).length || 0,
+            })) || []
+        )
+    }, [modelsList, products])
 
     const filteredProducts = useMemo(() => {
         if (!products) return []
@@ -72,6 +123,24 @@ const useProductFilters = (products, categoriesList, brands, initialCategoryIds,
             }
         }
 
+        if (filters.series.length > 0) {
+            const seriesIds = seriesList
+                .filter((series) => filters.series.includes(series.seriesName))
+                .map((series) => series.id)
+            if (seriesIds.length > 0) {
+                updatedProducts = updatedProducts.filter((product) => seriesIds.includes(product.seriesId))
+            }
+        }
+
+        if (filters.model.length > 0) {
+            const modelIds = modelsList
+                .filter((model) => filters.model.includes(model.modelName || model.name))
+                .map((model) => model.id)
+            if (modelIds.length > 0) {
+                updatedProducts = updatedProducts.filter((product) => modelIds.includes(product.modelId))
+            }
+        }
+
         if (filters.price < 2000) {
             updatedProducts = updatedProducts.filter(
                 (product) => (product.salePrice || product.price) <= Number(filters.price),
@@ -79,9 +148,17 @@ const useProductFilters = (products, categoriesList, brands, initialCategoryIds,
         }
 
         return updatedProducts
-    }, [filters, products, categoriesList, brands])
+    }, [filters, products, categoriesList, brands, seriesList, modelsList])
 
-    return { filters, setFilters, processedCategories, processedBrands, filteredProducts }
+    return {
+        filters,
+        setFilters,
+        processedCategories,
+        processedBrands,
+        processedSeries,
+        processedModels,
+        filteredProducts,
+    }
 }
 
 // Sorting logic extracted into a reusable hook
@@ -116,6 +193,11 @@ const ProductsPageContent = () => {
     const { data: products, isLoading, error } = useProducts({ pageLimit: 20 })
     const { categoriesList } = useCategories()
     const { data: brands } = useBrands()
+    const { data: seriesList } = useSeries()
+    const { data: modelsList } = useModels()
+
+    console.log("[v0] Series data:", seriesList)
+    console.log("[v0] Models data:", modelsList)
 
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -123,14 +205,30 @@ const ProductsPageContent = () => {
 
     const initialBrandIds = searchParams.get("brandId")?.split(",").filter(Boolean) || []
     const initialCategoryIds = searchParams.get("categoryId")?.split(",").filter(Boolean) || []
+    const initialSeriesIds = searchParams.get("seriesId")?.split(",").filter(Boolean) || []
+    const initialModelIds = searchParams.get("modelId")?.split(",").filter(Boolean) || []
 
-    const { filters, setFilters, processedCategories, processedBrands, filteredProducts } = useProductFilters(
+    const {
+        filters,
+        setFilters,
+        processedCategories,
+        processedBrands,
+        processedSeries,
+        processedModels,
+        filteredProducts,
+    } = useProductFilters(
         products,
         categoriesList,
         brands,
+        seriesList,
+        modelsList,
         initialCategoryIds,
         initialBrandIds,
+        initialSeriesIds,
+        initialModelIds,
     )
+
+
     const { sortOption, setSortOption, sortedProducts } = useProductSorting(filteredProducts)
 
     const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -147,9 +245,11 @@ const ProductsPageContent = () => {
         setFilters({
             category: [],
             brand: [],
+            series: [],
+            model: [],
             price: 2000,
         })
-        router.push(pathname)
+        router.push(pathname, { scroll: false })
     }
 
     const handleSortChange = (option) => {
@@ -163,11 +263,16 @@ const ProductsPageContent = () => {
         handleFilterChange(filterType, updatedValues)
     }
 
-    const hasActiveFilters = filters.category.length > 0 || filters.brand.length > 0 || filters.price < 2000
+    const hasActiveFilters =
+        filters.category.length > 0 ||
+        filters.brand.length > 0 ||
+        filters.series.length > 0 ||
+        filters.model.length > 0 ||
+        filters.price < 2000
 
     return (
         <div className="bg-gray-50 min-h-screen">
-            <div className="  md:block hidden">
+            <div className="md:block hidden">
                 <div className="w-full max-w-7xl mx-auto pt-10">
                     <div className="flex items-center justify-between">
                         <button
@@ -201,10 +306,13 @@ const ProductsPageContent = () => {
                     <div className="w-full max-w-7xl mx-auto px-4 py-3">
                         <div className="flex items-center gap-2 flex-wrap">
                             {filters.category.map((category) => (
-                                <div key={category} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                                <div
+                                    key={category}
+                                    className="flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                                >
                                     <span>Category: {category}</span>
                                     <button
-                                        onClick={() => removeFilter('category', category)}
+                                        onClick={() => removeFilter("category", category)}
                                         className="hover:bg-blue-200 rounded-full p-0.5"
                                     >
                                         <X size={14} />
@@ -212,11 +320,42 @@ const ProductsPageContent = () => {
                                 </div>
                             ))}
                             {filters.brand.map((brand) => (
-                                <div key={brand} className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                                <div
+                                    key={brand}
+                                    className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
+                                >
                                     <span>Brand: {brand}</span>
                                     <button
-                                        onClick={() => removeFilter('brand', brand)}
+                                        onClick={() => removeFilter("brand", brand)}
                                         className="hover:bg-green-200 rounded-full p-0.5"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            {filters.series.map((series) => (
+                                <div
+                                    key={series}
+                                    className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm"
+                                >
+                                    <span>Series: {series}</span>
+                                    <button
+                                        onClick={() => removeFilter("series", series)}
+                                        className="hover:bg-yellow-200 rounded-full p-0.5"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            {filters.model.map((model) => (
+                                <div
+                                    key={model}
+                                    className="flex items-center gap-1 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm"
+                                >
+                                    <span>Model: {model}</span>
+                                    <button
+                                        onClick={() => removeFilter("model", model)}
+                                        className="hover:bg-orange-200 rounded-full p-0.5"
                                     >
                                         <X size={14} />
                                     </button>
@@ -226,17 +365,14 @@ const ProductsPageContent = () => {
                                 <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
                                     <span>Price: ₹{filters.price}</span>
                                     <button
-                                        onClick={() => handleFilterChange('price', 2000)}
+                                        onClick={() => handleFilterChange("price", 2000)}
                                         className="hover:bg-purple-200 rounded-full p-0.5"
                                     >
                                         <X size={14} />
                                     </button>
                                 </div>
                             )}
-                            <button
-                                onClick={handleClearFilters}
-                                className="text-red-600 hover:text-red-800 text-sm font-medium ml-2"
-                            >
+                            <button onClick={handleClearFilters} className="text-red-600 hover:text-red-800 text-sm font-medium ml-2">
                                 Clear All
                             </button>
                         </div>
@@ -296,6 +432,8 @@ const ProductsPageContent = () => {
             <ProductFilters
                 categories={processedCategories}
                 brands={processedBrands}
+                series={processedSeries}
+                models={processedModels}
                 onFilterChange={handleFilterChange}
                 onClearFilters={handleClearFilters}
                 isOpen={isFilterOpen}

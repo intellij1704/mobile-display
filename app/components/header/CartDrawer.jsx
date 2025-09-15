@@ -90,10 +90,7 @@ export default function CartDrawer({ isOpen, onClose }) {
             />
 
             {/* Drawer with slower slide-in transition from right */}
-            <div
-                className={`fixed right-0 top-0 h-screen w-96 bg-white shadow-xl z-50 flex flex-col transform transition-transform duration-1000 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
-                    }`}
-            >
+            <div className={`fixed top-0 right-0 w-3/4 sm:w-1/2 md:w-[28rem] h-screen bg-white shadow-lg transform transition-transform duration-300 flex flex-col z-50 ${isOpen ? "translate-x-0" : "translate-x-full"}`}>
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b">
                     <h2 className="text-lg font-semibold">Shopping Cart</h2>

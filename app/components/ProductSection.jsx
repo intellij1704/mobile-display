@@ -55,7 +55,7 @@ function ProductSection({ title, products = [], seeAllLink = "/product" }) {
                     {title.split(" ")[0]}{" "}
                     <span className="relative inline-block font-semibold text-[#2F2F2F]">
                         {title.split(" ").slice(1).join(" ")}
-                        <span className="absolute bottom-0 right-0 w-1/2 h-[2px] mt-10 bg-[#BB0300]"></span>
+                        <span className="absolute bottom-0 right-0 w-1/2 h-[4px] mt-10 bg-[#BB0300]"></span>
                     </span>
                 </h2>
 

@@ -6,6 +6,11 @@ import Image from "next/image";
 import SearchProduct from "./SearchProduct";
 import { useBrands } from "@/lib/firestore/brands/read";
 
+const SkeletonCard = () => (
+  <div className="animate-pulse bg-gray-200 rounded-2xl h-36" />
+
+);
+
 export default function BrandListing() {
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -35,7 +40,7 @@ export default function BrandListing() {
             Choose{" "}
             <span className="relative inline-block font-semibold text-[#2F2F2F]">
               Your Brand
-              <span className="absolute bottom-0 right-0 w-1/2 h-[4px] bg-[#BB0300]"></span>
+              <span className="absolute bottom-0 right-0 w-1/2 h-[4px] mt-10 bg-[#BB0300]"></span>
             </span>
           </h2>
 
@@ -49,7 +54,7 @@ export default function BrandListing() {
               <img
                 src="/icon/btn-right.svg"
                 alt="Right Arrow"
-                className="md:h7 md:w-7 h-6 w-6"
+                className="md:h-7 md:w-7 h-6 w-6"
               />
             </button>
           )}
@@ -57,11 +62,8 @@ export default function BrandListing() {
 
         {isLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4 mt-8">
-            {[...Array(14)].map((_, index) => (
-              <div
-                key={index}
-                className="bg-white p-3 rounded-xl shadow-sm relative overflow-hidden"
-              ></div>
+            {Array.from({ length: 18 }).map((_, idx) => (
+              <SkeletonCard key={idx} />
             ))}
           </div>
         )}

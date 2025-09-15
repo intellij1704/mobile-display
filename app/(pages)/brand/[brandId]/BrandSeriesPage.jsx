@@ -12,6 +12,7 @@ import { useParams } from "next/navigation"
 import { useBrands } from "@/lib/firestore/brands/read"
 import { useSeriesByBrand } from "@/lib/firestore/series/read"
 import { useModelsByBrand } from "@/lib/firestore/models/read"
+import { CircularProgress } from "@mui/material"
 
 function SeriesNotFound({ brandName }) {
     return (
@@ -46,6 +47,11 @@ export default function BrandSeriesPage() {
     const { data: brands } = useBrands()
     const { data: allModels, isLoading: loadingModels } = useModelsByBrand(brandId)
 
+    const { seriesName } = useMemo(() => {
+        const s = series?.find((x) => x.id === selectedSeriesId)
+        return { seriesName: s?.seriesName || "All Models" }
+    }, [series, selectedSeriesId])
+
     const brandName = useMemo(() => {
         const b = brands?.find((x) => x.id === brandId)
         return b?.name || brandId || "Brand"
@@ -66,7 +72,12 @@ export default function BrandSeriesPage() {
     }, [allModels, selectedSeriesId, searchQuery])
 
     if (loadingSeries)
-        return <p className="text-center py-20 text-gray-500">Loading series...</p>
+        return (
+            <div className="flex flex-col items-center justify-center py-10 h-screen">
+                <CircularProgress />
+                <h3 className="mt-3 text-sm font-medium text-gray-600">Loading Series...</h3>
+            </div>
+        )
 
     if (error)
         return <p className="text-center text-red-500 py-20">Failed to load series</p>
@@ -102,14 +113,42 @@ export default function BrandSeriesPage() {
                 </div>
             </div>
 
+            <div className=" grid grid-cols-12 gap-4">
+                <div className="col-span-4 md:col-span-2 flex items-center justify-start">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        Series
+                    </span>
+                </div>
+
+                <div className="col-span-8 md:col-span-10 flex md:flex-row flex-col md:items-center gap-4  md:mt-4 md:mr-2 justify-between">
+
+                    <h2 className="text-base font-semibold mb-3">
+                        {seriesName}
+                    </h2>
+
+                    {/* Desktop search */}
+                    <div className="w-full max-w-xs hidden md:block">
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search your phone model..."
+                            className="w-full px-3 py-2 rounded-full border bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            aria-label="Search models"
+                        />
+                    </div>
+                </div>
+
+
+
+            </div>
+
             {/* Two-column layout */}
             <div className="grid grid-cols-12 gap-4">
                 {/* Left: Series (scrollable list) */}
                 <aside className="col-span-4 md:col-span-2">
                     <div className="h-[70vh] overflow-y-auto pr-1 rounded-md custom-scroll">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                            Series
-                        </span>
+
 
                         <ul className="space-y-2 bg-white md:shadow-lg md:p-0 p-1 rounded">
                             {series.map((s) => {
@@ -162,26 +201,12 @@ export default function BrandSeriesPage() {
                     </div>
                 </aside>
 
+
+
+
                 {/* Right: Models */}
                 <section className="col-span-8 md:col-span-10">
                     <div className="h-[70vh] overflow-y-auto custom-scroll">
-                        <div className="flex md:flex-row flex-col md:items-center gap-4 md:mb-5 md:mt-4 md:mr-2 justify-between">
-                            <h2 className="text-base font-semibold mb-3">
-                                {selectedSeriesId ? "Filtered Models" : "All Models"}
-                            </h2>
-
-                            {/* Desktop search */}
-                            <div className="w-full max-w-xs hidden md:block">
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search your phone model..."
-                                    className="w-full px-3 py-2 rounded-full border bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                    aria-label="Search models"
-                                />
-                            </div>
-                        </div>
 
                         {loadingModels ? (
                             <p className="text-gray-500">Loading models...</p>

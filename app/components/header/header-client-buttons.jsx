@@ -34,7 +34,7 @@ export default function HeaderClientButtons() {
 
   return (
     <>
-      <div className={`flex items-center gap-4 transition-all duration-300 ease-in-out `}>
+      <div className={`flex items-center gap-4 transition-all duration-300 ease-in-out  `}>
         {/* Wishlist Button */}
         <Link href="/wishlist" className="relative group flex items-center" aria-label="My Favorites">
           <div className="relative">

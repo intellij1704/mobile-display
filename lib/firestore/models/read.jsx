@@ -2,47 +2,119 @@ import { collection, query, where, getDocs, doc, getDoc } from "firebase/firesto
 import { db } from "@/lib/firebase";
 import { useEffect, useState, useCallback } from "react";
 
+/* ------------------------- 🔹 Utility Functions ------------------------- */
+
+// Get all models
+export async function getAllModels() {
+  try {
+    const snapshot = await getDocs(collection(db, "models"));
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    throw new Error("Failed to fetch all models: " + error.message);
+  }
+}
+
+// Get all models under a specific brand & series
 export async function getModelsBySeries(brandId, seriesId) {
   try {
-    if (!brandId || !seriesId) {
-      return [];
-    }
-    const modelsCollection = collection(db, "models");
+    if (!brandId || !seriesId) return [];
+
     const q = query(
-      modelsCollection,
+      collection(db, "models"),
       where("brandId", "==", brandId),
       where("seriesId", "==", seriesId)
     );
-    const modelsSnapshot = await getDocs(q);
-    const models = modelsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    return models;
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     throw new Error("Failed to fetch models: " + error.message);
   }
 }
 
+// Get single model by ID
 export async function getModelById(modelId) {
   try {
-    if (!modelId) {
-      throw new Error("Model ID is required");
-    }
+    if (!modelId) throw new Error("Model ID is required");
+
     const modelRef = doc(db, "models", modelId);
     const modelDoc = await getDoc(modelRef);
-    if (!modelDoc.exists()) {
-      throw new Error("Model not found");
-    }
+
+    if (!modelDoc.exists()) throw new Error("Model not found");
+
     return { id: modelDoc.id, ...modelDoc.data() };
   } catch (error) {
     throw new Error("Failed to fetch model: " + error.message);
   }
 }
 
+/* ------------------------- 🔹 React Hooks ------------------------- */
+
+// Hook: Get ALL models
+export function useModels() {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchModels = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const models = await getAllModels();
+      setData(models);
+      setError(null);
+    } catch (err) {
+      setError(err.message || "Failed to fetch all models");
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
+
+  return { data, isLoading, error, refetch: fetchModels };
+}
+
+// Hook: Get all models under a brand
+export function useModelsByBrand(brandId) {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchModels() {
+      if (!brandId) {
+        setData([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, "models"), where("brandId", "==", brandId));
+        const snapshot = await getDocs(q);
+        setData(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        setData([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchModels();
+  }, [brandId]);
+
+  return { data, isLoading, error };
+}
+
+// Hook: Get all models under a brand + series
 export function useModelsBySeries(brandId, seriesId) {
   const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchModels = useCallback(async () => {
@@ -72,9 +144,10 @@ export function useModelsBySeries(brandId, seriesId) {
   return { data, isLoading, error, refetch: fetchModels };
 }
 
+// Hook: Get single model by ID
 export function useModelById(modelId) {
   const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchModel = useCallback(async () => {
@@ -102,32 +175,4 @@ export function useModelById(modelId) {
   }, [fetchModel]);
 
   return { data, isLoading, error, refetch: fetchModel };
-}
-
-// 🔹 Get all models under a brand
-export function useModelsByBrand(brandId) {
-  const [models, setModels] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    async function fetchModels() {
-      setLoading(true);
-      try {
-        const q = query(collection(db, "models"), where("brandId", "==", brandId));
-        const snapshot = await getDocs(q);
-        const modelsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setModels(modelsData);
-      } catch (err) {
-        console.error("Failed to fetch models by brand:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (brandId) fetchModels();
-  }, [brandId]);
-
-  return { data: models, isLoading: loading, error };
 }

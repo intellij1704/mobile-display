@@ -227,7 +227,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         </div>
 
         {/* Image section - takes left side on mobile */}
-        <Link href={`/products/${id}`} className="block relative md:w-full w-1/3">
+        <Link href={`/products/${id}`} className="block relative md:w-full w-1/2 ">
           <div className="relative h-full bg-gray-50 overflow-hidden">
             {featureImageURL ? (
               <>
@@ -267,19 +267,19 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
             <div className="flex items-center justify-between mt-1 md:hidden">
               <div className="flex gap-1">
                 {bigDeal && (
-                  <div className="flex items-center gap-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                  <div className="flex items-center gap-1 bg-black text-white text-[10px] px-1.5 py-0.5 rounded-full">
                     <Tag size={10} />
                     <span>Big Deal</span>
                   </div>
                 )}
                 {liveSale && !bigDeal && (
-                  <div className="flex items-center gap-1 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                  <div className="flex items-center gap-1 bg-black text-white text-[10px] px-1.5 py-0.5 rounded-full">
                     <Clock size={10} />
                     <span>Live Sale</span>
                   </div>
                 )}
                 {topPick && !bigDeal && !liveSale && (
-                  <div className="flex items-center gap-1 bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                  <div className="flex items-center gap-1 bg-black text-white text-[10px] px-1.5 py-0.5 rounded-full">
                     <Star size={10} />
                     <span>Top Pick</span>
                   </div>
@@ -291,21 +291,36 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
 
           {/* Price Section - Stacked for mobile */}
           <div className="mt-1 md:mt-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              {hasDiscount ? (
-                <>
-                  <span className="text-base md:text-lg font-bold text-gray-900">{formatPrice(salePrice)}</span>
-                  <span className="text-xs md:text-sm text-gray-500 line-through">{formatPrice(price)}</span>
-                  <span className="text-[10px] md:text-xs font-medium bg-green-100 text-green-600 px-1 py-0.5 rounded">
-                    {discountPercentage}% OFF
-                  </span>
-                </>
-              ) : (
-                <span className="text-base md:text-lg font-bold text-gray-900">{formatPrice(price)}</span>
-              )}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1 flex-wrap">
+                {hasDiscount ? (
+                  <>
+                    <span className="text-base md:text-lg font-bold text-gray-900">{formatPrice(salePrice)}</span>
+                    <span className="text-xs md:text-sm text-gray-500 line-through">{formatPrice(price)}</span>
+                    <span className="text-[10px] md:text-xs font-medium bg-green-100 text-green-600 px-1 py-0.5 rounded">
+                      {discountPercentage}% OFF
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-base md:text-lg font-bold text-gray-900">{formatPrice(price)}</span>
+                )}
+              </div>
+
+              <div className="flex">
+                <RatingReview product={product} />
+              </div>
+
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between mt-1 md:mt-2">
+
+              {hasDiscount && (
+                <span className="text-[10px] md:text-[14px] text-green-500 font-semibold">
+                  You save: ₹{(price - salePrice).toLocaleString("en-IN")}
+                </span>
+              )}
+
+
               {product?.colors && (
                 <div className="flex items-center">
                   {Object.values(product?.colors || {})
@@ -325,10 +340,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
                 </div>
               )}
 
-              <div className="flex">
-                <RatingReview product={product} />
-              </div>
             </div>
+
 
             <div className="flex justify-between items-center">
               <div className="flex">
@@ -336,11 +349,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
               </div>
             </div>
 
-            {hasDiscount && (
-              <span className="text-[10px] md:text-[14px] text-green-500 font-semibold">
-                You save: ₹{(price - salePrice).toLocaleString("en-IN")}
-              </span>
-            )}
+
           </div>
 
           {/* Stock information - Show only if stock is less than 10 */}

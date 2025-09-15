@@ -4,6 +4,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import useSWRSubscription from "swr/subscription";
+
 export function useBrands() {
   const { data, error } = useSWRSubscription(["brands"], ([path], { next }) => {
     const ref = collection(db, path)
