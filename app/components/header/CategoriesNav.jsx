@@ -248,7 +248,7 @@ export default function CategoriesNav() {
                           .map((model) => (
                             <Link
                               key={model.id}
-                              href={`/product?brandId=${activeBrand.id}&categoryId=${activeCategory.id}&seriesId=${activeSeries.id}&modelId=${model.id}`}
+                              href={`/product-list?brandId=${activeBrand.id}&categoryId=${activeCategory.id}&seriesId=${activeSeries.id}&modelId=${model.id}`}
                               className="block px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors border border-gray-100"
                               onClick={closeMegaMenu}
                             >

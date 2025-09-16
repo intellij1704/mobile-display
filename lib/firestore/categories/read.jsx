@@ -2,7 +2,7 @@
 "use client";
 
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 import useSWRSubscription from "swr/subscription";
 
 
@@ -30,3 +30,30 @@ export function useCategories() {
   }
 }
 
+
+
+export function useCategoryById(categoryId) {
+  const { data, error } = useSWRSubscription(
+    ["categories", categoryId],
+    ([path, categoryId], { next }) => {
+      const ref = doc(db, `${path}/${categoryId}`);
+
+      const unsub = onSnapshot(
+        ref,
+        (snapshot) =>
+          next(null, {
+            id: snapshot.id,
+            ...snapshot.data(),
+          }),
+        (err) => next(err, null)
+      );
+      return () => unsub();
+    }
+  );
+
+  return {
+    data: data,
+    error: error?.message,
+    isLoading: data === undefined,
+  };
+}

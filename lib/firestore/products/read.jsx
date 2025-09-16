@@ -221,3 +221,60 @@ export function useProductsByModelId(modelId) {
     isLoading: data === undefined,
   };
 }
+
+// ------------------- GET PRODUCTS BY BRAND, CATEGORY, SERIES, MODEL -------------------
+export function useProductsByFilters({ brandId, categoryId, seriesId, modelId, pageLimit, lastSnapDoc }) {
+  const { data, error } = useSWRSubscription(
+    ["products-by-filters", brandId, categoryId, seriesId, modelId, pageLimit, lastSnapDoc],
+    ([path, brandId, categoryId, seriesId, modelId, pageLimit, lastSnapDoc], { next }) => {
+      const ref = collection(db, "products");
+      let q = query(
+        ref,
+        where("brandId", "==", brandId),
+        where("categoryId", "==", categoryId),
+        where("seriesId", "==", seriesId),
+        where("modelId", "==", modelId),
+        limit(pageLimit ?? 10)
+      );
+
+      if (lastSnapDoc) {
+        q = query(q, startAfter(lastSnapDoc));
+      }
+
+      const unsub = onSnapshot(
+        q,
+        (snapshot) =>
+          next(null, {
+            list:
+              snapshot.docs.length === 0
+                ? null
+                : snapshot.docs.map((snap) => ({
+                  id: snap.id,
+                  ...snap.data(),
+                  variantImages: snap.data().variantImages || {},
+                  qualities: snap.data().qualities || [],
+                  // ✅ SEO Fields
+                  seoSlug: snap.data().seoSlug || "",
+                  seoDescription: snap.data().seoDescription || "",
+                  seoKeywords: snap.data().seoKeywords || [],
+                  schemaData: snap.data().schemaData || {},
+                  sku: snap.data().sku || "",
+                })),
+            lastSnapDoc:
+              snapshot.docs.length === 0
+                ? null
+                : snapshot.docs[snapshot.docs.length - 1],
+          }),
+        (err) => next(err, null)
+      );
+      return () => unsub();
+    }
+  );
+
+  return {
+    data: data?.list || [],
+    lastSnapDoc: data?.lastSnapDoc,
+    error: error?.message,
+    isLoading: data === undefined,
+  };
+}
