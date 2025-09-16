@@ -11,6 +11,7 @@ export const createUser = async ({ uid, displayName, mobileNo, email, gender, co
       gender: gender ?? "",
       country: country ?? "",
       photoURL: photoURL ?? "",
+      addresses: [],
       timestampCreate: Timestamp.now(),
     },
     { merge: true }
@@ -46,6 +47,17 @@ export const updateUser = async (uid, updates) => {
     doc(db, `users/${uid}`),
     {
       ...updates,
+      timestampUpdated: Timestamp.now(),
+    },
+    { merge: true }
+  );
+};
+
+export const updateAddresses = async ({ uid, addresses }) => {
+  await setDoc(
+    doc(db, `users/${uid}`),
+    {
+      addresses,
       timestampUpdated: Timestamp.now(),
     },
     { merge: true }

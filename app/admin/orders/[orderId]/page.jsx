@@ -72,6 +72,9 @@ function Page() {
     const deliveryType = checkout?.metadata?.deliveryType || "standard";
     const isExpressDelivery = deliveryType === "express";
 
+
+    console.log("Address:", address);
+
     const returnOptionsMap = {
         "easy-return": "Easy Return",
         "easy-replacement": "Easy Replacement",
@@ -234,8 +237,10 @@ function Page() {
                                             {address?.city && `${address.city}, `}
                                             {address?.state && `${address.state} - `}
                                             {address?.pincode || ""}
+                                           
                                         </p>
                                         <p className="text-gray-900">{address?.country || "N/A"}</p>
+                                        <p className="text-sm font-medium text-gray-500">Landmark:{address?.landmark || "N/A"}</p>
                                     </div>
 
                                     {address?.note && (

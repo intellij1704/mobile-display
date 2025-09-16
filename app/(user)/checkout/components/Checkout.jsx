@@ -3,17 +3,24 @@
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
-import { ChevronLeft, CreditCard, Truck, X } from "lucide-react"
+import { ChevronLeft, CreditCard, Truck } from "lucide-react"
 
-// External app hooks and actions (same as original)
+// External app hooks and actions
 import { useAuth } from "@/context/AuthContext"
 import { createCheckoutCODAndGetId } from "@/lib/firestore/checkout/write"
 import { useSpecialOffers } from "@/lib/firestore/specialOffers/read"
 import { useCategories } from "@/lib/firestore/categories/read"
 import { useShippingSettings } from "@/lib/firestore/shipping/read"
+import { useUser } from "@/lib/firestore/user/read"
+import { updateAddresses } from "@/lib/firestore/user/write"
+import CouponsDrawer from "./CouponsDrawer"
+import AddressSection from "./AddressSection"
+import FeesLines from "./FeesLines"
+import ProductRow from "./ProductRow"
+import PaymentMode from "./PaymentMode"
 
 // ---------- UI Helpers ----------
-function Spinner() {
+export function Spinner() {
     return (
         <div
             className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700"
@@ -30,7 +37,7 @@ function Divider() {
     return <hr className="my-4 border-gray-200" />
 }
 
-function SectionCard({ title, children, footer, className = "" }) {
+export function SectionCard({ title, children, footer, className = "" }) {
     return (
         <section className={`bg-white rounded-xl border border-gray-100 shadow-sm p-5 ${className}`}>
             {title ? <h2 className="text-lg font-semibold text-gray-900 mb-4">{title}</h2> : null}
@@ -41,403 +48,8 @@ function SectionCard({ title, children, footer, className = "" }) {
 }
 
 // ---------- Contact + Address ----------
-function ContactForm({ address, errors, onChange, onSave, saving }) {
-    return (
-        <SectionCard title="Contact Information">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field
-                    label="First Name *"
-                    name="firstName"
-                    value={address.firstName}
-                    onChange={onChange}
-                    error={errors.firstName}
-                    placeholder="John"
-                />
-                <Field label="Last Name" name="lastName" value={address.lastName} onChange={onChange} placeholder="Doe" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <Field
-                    label="Email *"
-                    name="email"
-                    type="email"
-                    value={address.email}
-                    onChange={onChange}
-                    error={errors.email}
-                    placeholder="you@email.com"
-                />
-                <Field
-                    label="Phone *"
-                    name="phone"
-                    type="tel"
-                    value={address.phone}
-                    onChange={onChange}
-                    error={errors.phone}
-                    placeholder="+91 9876543210"
-                />
-            </div>
-
-            <Divider />
-
-            <h3 className="text-base font-semibold text-gray-900 mb-3">Shipping Address</h3>
-            <div className="grid grid-cols-1 gap-4">
-                <SelectField
-                    label="Country/Region *"
-                    name="country"
-                    value={address.country}
-                    onChange={onChange}
-                    options={[
-                        { label: "India", value: "India" },
-                        { label: "United States", value: "USA" },
-                        { label: "United Kingdom", value: "UK" },
-                    ]}
-                />
-                <Field
-                    label="Street Address *"
-                    name="streetAddress"
-                    value={address.streetAddress}
-                    onChange={onChange}
-                    error={errors.streetAddress}
-                    placeholder="123 Main St"
-                />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <Field
-                    label="City *"
-                    name="city"
-                    value={address.city}
-                    onChange={onChange}
-                    error={errors.city}
-                    placeholder="Mumbai"
-                />
-                <Field
-                    label="State *"
-                    name="state"
-                    value={address.state}
-                    onChange={onChange}
-                    error={errors.state}
-                    placeholder="Maharashtra"
-                />
-                <Field
-                    label="PIN Code *"
-                    name="pinCode"
-                    value={address.pinCode}
-                    onChange={onChange}
-                    error={errors.pinCode}
-                    placeholder="400001"
-                />
-            </div>
-
-            <div className="mt-6 flex items-center justify-between">
-                <p className="text-sm text-gray-500">We’ll use your contact to send order updates.</p>
-                <button
-                    onClick={onSave}
-                    className="inline-flex items-center justify-center rounded-lg bg-gray-900 text-white px-4 py-2.5 text-sm font-medium hover:bg-black transition-colors"
-                    disabled={saving}
-                >
-                    {saving ? (
-                        <>
-                            <Spinner />
-                            <span className="ml-2">Saving...</span>
-                        </>
-                    ) : (
-                        "Save & Next"
-                    )}
-                </button>
-            </div>
-        </SectionCard>
-    )
-}
-
-function Field({ label, name, value, onChange, error, placeholder, type = "text" }) {
-    return (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-            <input
-                type={type}
-                name={name}
-                value={value}
-                onChange={onChange}
-                placeholder={placeholder}
-                className={`w-full rounded-lg border px-3 py-2 outline-none transition focus:ring-2 focus:ring-gray-900/30 ${error ? "border-red-500" : "border-gray-300"}`}
-            />
-            {error ? <p className="mt-1 text-xs text-red-500">{error}</p> : null}
-        </div>
-    )
-}
-
-function SelectField({ label, name, value, onChange, options }) {
-    return (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-            <select
-                name={name}
-                value={value}
-                onChange={onChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none transition focus:ring-2 focus:ring-gray-900/30"
-            >
-                {options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                        {o.label}
-                    </option>
-                ))}
-            </select>
-        </div>
-    )
-}
-
-// ---------- Order Summary ----------
-function ProductRow({ item, estimatedDelivery, getCategoryName }) {
-    const qty = item?.quantity || 0
-    const price = item?.product?.salePrice || 0
-    const total = qty * price
-
-    console.log(item)
-    return (
-        <div className="flex items-start justify-between">
-            <div className="flex items-start">
-                <div className="mr-3 rounded-lg bg-gray-100 overflow-hidden md:w-40 w-32 h-auto flex items-center justify-center">
-                    <img
-                        src={item?.product?.featureImageURL || "/product-img.png"}
-                        alt={item?.product?.title || "Product"}
-                        className="max-w-full max-h-full object-contain"
-                    />
-                </div>
-                <div>
-                    <p className="text-sm font-medium text-gray-900">
-                        {item?.product?.title}
-                        {item?.selectedQuality ? ` - ${item.selectedQuality}` : ""}
-                        {item?.selectedColor ? ` - ${item.selectedColor}` : ""}
-                    </p>
-                    <p className="text-xs text-gray-500">Qty: {qty}</p>
-                    <p className="text-xs text-gray-500">Category: {getCategoryName(item?.product?.categoryId)}</p>
-                    <p className="text-xs text-gray-500">Return Type:{item?.returnType}</p>
-                    {/* <p className="text-xs text-gray-500">ETA: {estimatedDelivery}</p> */}
-                </div>
-            </div>
-            <p className="text-sm font-medium text-gray-900">
-                ₹{total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-        </div>
-    )
-}
-
-function FeesLines({
-    totalPrice,
-    discountLines,
-    shippingCharge,
-    minFreeDelivery,
-    deliveryType,
-    airExpressFee,
-    returnFees,
-    replacementFees,
-    onToggleExpress,
-}) {
-    return (
-        <div className="mt-3">
-            <Line label="Subtotal" value={totalPrice} />
-            {discountLines.map((l, idx) => (
-                <Line key={idx} label={l.label} value={-Math.abs(l.amount)} muted />
-            ))}
-
-            <div className="mt-2">
-                <div className="flex items-center justify-between text-sm text-gray-700">
-                    <span>Standard Shipping</span>
-                    <span>
-                        {shippingCharge > 0
-                            ? `₹${shippingCharge.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                            : "Free"}
-                    </span>
-                </div>
-                {shippingCharge ? (
-                    <p className="mt-1 text-xs text-gray-500">
-                        (Charged as order value is below ₹
-                        {minFreeDelivery.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
-                    </p>
-                ) : null}
-            </div>
-
-            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <label className="flex items-center justify-between cursor-pointer select-none">
-                    <span className="text-sm font-medium text-gray-800">Air Express Delivery</span>
-                    <input
-                        type="checkbox"
-                        checked={deliveryType === "express"}
-                        onChange={(e) => onToggleExpress(e.target.checked)}
-                        className="h-4 w-4 accent-gray-900"
-                    />
-                </label>
-                <p className="mt-1 text-xs text-gray-500">Faster delivery in 1-2 business days. Standard: 4-7 days.</p>
-            </div>
-
-            {deliveryType === "express" ? <Line label="Air Express Shipping" value={airExpressFee} muted /> : null}
-
-            <Line label="Return Fees" value={returnFees} muted />
-            <Line label="Replacement Fees" value={replacementFees} muted />
-        </div>
-    )
-}
-
-function Line({ label, value, muted }) {
-    const negative = value < 0
-    return (
-        <div className={`mt-2 flex items-center justify-between text-sm ${muted ? "text-gray-700" : "text-gray-900"}`}>
-            <span>{label}</span>
-            <span className={`${negative ? "text-green-600" : ""}`}>
-                {negative ? "-" : ""}₹
-                {Math.abs(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-        </div>
-    )
-}
-
-// ---------- Coupons ----------
-function CouponsBox({ appliedCoupons, appliedOffers, couponError, onRemove, onOpen }) {
-    return (
-        <div className="mt-4 rounded-lg border bg-white p-4">
-            {appliedCoupons.length ? (
-                <>
-                    {couponError ? <p className="text-xs text-red-500">{couponError}</p> : null}
-                    <div className="mt-2 space-y-1">
-                        {appliedOffers.map((offer, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs">
-                                <p className="text-green-600">
-                                    Coupon applied: <strong>{appliedCoupons[idx]}</strong> ({offer.discountPercentage}% off)
-                                </p>
-                                <button className="text-red-500 hover:underline" onClick={() => onRemove(appliedCoupons[idx])}>
-                                    Remove
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </>
-            ) : (
-                <span className="text-sm text-gray-700">Apply coupon and get a Big Discount!</span>
-            )}
-            <Divider />
-            <button className="mx-auto block text-sm font-medium text-gray-800 hover:text-black" onClick={onOpen}>
-                View all coupons →
-            </button>
-        </div>
-    )
-}
-
-function CouponsDrawer({ open, onClose, offers, canApplyCoupon, appliedCoupons, applying, onApply, couponError }) {
-    if (!open) return null
-    return (
-        <div className="fixed inset-0 z-[999] flex justify-end" onClick={onClose} aria-modal="true" role="dialog">
-            <div className="absolute inset-0 bg-black/50" />
-            <div
-                className="relative h-full w-96 bg-white p-6 shadow-2xl rounded-l-2xl overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="mb-4 flex items-center justify-between border-b pb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">Available Coupons</h3>
-                    <button onClick={onClose} className="rounded-md p-1 hover:bg-gray-100">
-                        <X className="h-5 w-5 text-gray-600" />
-                    </button>
-                </div>
-
-                {applying ? (
-                    <div className="mb-4 flex items-center justify-center text-gray-700">
-                        <Spinner />
-                        <span className="ml-2">Applying coupon...</span>
-                    </div>
-                ) : null}
-
-                {(offers || [])
-                    .filter((o) => o.couponCode && o.offerType !== "Prepaid Offer")
-                    .map((offer, idx) => {
-                        const eligible = canApplyCoupon(offer)
-                        const already = appliedCoupons.includes((offer.couponCode || "").toUpperCase())
-                        return (
-                            <div
-                                key={idx}
-                                className={`mb-4 rounded-lg border p-4 ${already ? "border-green-400 bg-green-50" : eligible ? "border-gray-200 bg-gray-50" : "border-gray-100 bg-gray-100 opacity-60"}`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-base font-semibold text-gray-900">{offer.discountPercentage}% OFF on purchase</p>
-                                        <p className="text-xs text-gray-600">
-                                            <span className="font-medium text-gray-800">{offer.couponCode}</span> – valid on selected
-                                            categories
-                                        </p>
-                                        {!eligible ? <p className="mt-1 text-xs text-red-400">Not applicable for your cart</p> : null}
-                                    </div>
-                                    <button
-                                        disabled={!eligible || already || applying}
-                                        onClick={() => onApply(offer.couponCode)}
-                                        className={`rounded-md border px-3 py-1.5 text-sm font-medium ${already ? "bg-gray-400 text-white border-gray-400" : eligible ? "bg-black text-white border-black" : "bg-gray-100 text-gray-400 border-gray-200"}`}
-                                    >
-                                        {already ? "Applied" : "Apply"}
-                                    </button>
-                                </div>
-                            </div>
-                        )
-                    })}
-
-                {couponError ? <p className="text-sm text-red-500">{couponError}</p> : null}
-            </div>
-        </div>
-    )
-}
-
-// ---------- Payment ----------
-function PaymentMode({ paymentMode, setPaymentMode, disableCOD }) {
-    return (
-        <div className="space-y-3">
-            <button
-                onClick={() => !disableCOD && setPaymentMode("cod")}
-                disabled={disableCOD}
-                className={`w-full text-left rounded-xl border p-4 transition ${paymentMode === "cod" ? "border-gray-900 bg-gray-50" : "border-gray-200 hover:border-gray-300"} ${disableCOD ? "cursor-not-allowed opacity-60" : ""}`}
-            >
-                <div className="flex items-start">
-                    <RadioDot selected={paymentMode === "cod"} />
-                    <div className="ml-2">
-                        <div className="flex items-center">
-                            <Truck className="mr-2 h-5 w-5 text-gray-700" />
-                            <span className="font-medium text-gray-900">Cash on Delivery</span>
-                        </div>
-                        <p className="ml-7 mt-1 text-sm text-gray-500">Pay when you receive the order</p>
-                        {disableCOD ? (
-                            <p className="ml-7 mt-1 text-sm text-red-500">Coupons applied — Cash on Delivery is not available.</p>
-                        ) : null}
-                    </div>
-                </div>
-            </button>
-
-            <button
-                onClick={() => setPaymentMode("online")}
-                className={`w-full text-left rounded-xl border p-4 transition ${paymentMode === "online" ? "border-gray-900 bg-gray-50" : "border-gray-200 hover:border-gray-300"}`}
-            >
-                <div className="flex items-start">
-                    <RadioDot selected={paymentMode === "online"} />
-                    <div className="ml-2">
-                        <div className="flex items-center">
-                            <CreditCard className="mr-2 h-5 w-5 text-gray-700" />
-                            <span className="font-medium text-gray-900">Pay Online</span>
-                        </div>
-                        <p className="ml-7 mt-1 text-sm text-gray-500">Secure payment online</p>
-                    </div>
-                </div>
-            </button>
-        </div>
-    )
-}
-
-function RadioDot({ selected }) {
-    return (
-        <div
-            className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full ${selected ? "bg-gray-900" : "border border-gray-400"}`}
-        >
-            {selected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
-        </div>
-    )
-}
-
-// ---------- Main Component ----------
-export default function Checkout({ productList }) {
+function ContactAndAddress({ userData, user, productList }) {
     const router = useRouter()
-    const { user } = useAuth()
     const { categoriesMap } = useCategories()
     const { data: specialOffers, isLoading: offersLoading } = useSpecialOffers()
     const { data: shippingData } = useShippingSettings()
@@ -453,20 +65,167 @@ export default function Checkout({ productList }) {
     const [appliedCoupons, setAppliedCoupons] = useState([])
     const [appliedOffers, setAppliedOffers] = useState([])
     const [errors, setErrors] = useState({})
-
-    const [address, setAddress] = useState({
-        firstName: "",
-        lastName: "",
+    const [addressForm, setAddressForm] = useState({
+        fullName: "",
+        mobile: "",
+        email: "",
         country: "India",
         streetAddress: "",
         city: "",
         state: "",
         pinCode: "",
-        phone: "",
-        email: "",
+        landmark: "",
     })
+    const [selectedAddressId, setSelectedAddressId] = useState(null)
+    const [editingAddressId, setEditingAddressId] = useState(null)
+    const [isAddingNew, setIsAddingNew] = useState(false)
 
-    // Helpers from original logic
+    const addresses = userData?.addresses || []
+
+    useEffect(() => {
+        if (addresses.length > 0 && !selectedAddressId) {
+            const defaultAddr = addresses.find(a => a.isDefault)
+            setSelectedAddressId(defaultAddr ? defaultAddr.id : addresses[0].id)
+        }
+        if (addresses.length === 0) {
+            setIsAddingNew(true)
+        }
+    }, [addresses, selectedAddressId])
+
+    function handleAddressChange(e) {
+        const { name, value } = e.target
+        setAddressForm((prev) => ({ ...prev, [name]: value }))
+        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }))
+    }
+
+    function validateAddressForm() {
+        const newErrors = {}
+        if (!addressForm.fullName) newErrors.fullName = "Full name is required"
+        if (!addressForm.mobile) newErrors.mobile = "Mobile number is required"
+        if (!addressForm.email) newErrors.email = "Email is required"
+        else if (!/^\S+@\S+\.\S+$/.test(addressForm.email)) newErrors.email = "Email is invalid"
+        if (!addressForm.streetAddress) newErrors.streetAddress = "Street address is required"
+        if (!addressForm.city) newErrors.city = "City is required"
+        if (!addressForm.state) newErrors.state = "State is required"
+        if (!addressForm.pinCode) newErrors.pinCode = "PIN code is required"
+        return newErrors
+    }
+
+    async function handleSaveAddress() {
+        const newErrors = validateAddressForm()
+        setErrors(newErrors)
+        if (Object.keys(newErrors).length > 0) {
+            toast.error("Please fill all required fields")
+            return
+        }
+
+        try {
+            let newAddresses = [...addresses]
+            let selId
+            const isFirstAddress = addresses.length === 0
+
+            if (editingAddressId) {
+                newAddresses = newAddresses.map(a =>
+                    a.id === editingAddressId ? { ...a, ...addressForm } : a
+                )
+                selId = editingAddressId
+                setEditingAddressId(null)
+            } else {
+                const newId = crypto.randomUUID()
+                const newAddr = {
+                    id: newId,
+                    ...addressForm,
+                    isDefault: isFirstAddress ? true : false
+                }
+                newAddresses.push(newAddr)
+                selId = newId
+                setIsAddingNew(false)
+            }
+
+            await updateAddresses({ uid: user.uid, addresses: newAddresses })
+            setSelectedAddressId(selId)
+            setAddressForm({
+                fullName: "",
+                mobile: "",
+                email: "",
+                country: "India",
+                streetAddress: "",
+                city: "",
+                state: "",
+                pinCode: "",
+                landmark: "",
+            })
+            toast.success("Address saved successfully")
+        } catch (err) {
+            toast.error(err?.message || "Failed to save address")
+        }
+    }
+
+    async function handleDeleteAddress(id) {
+        if (!confirm("Are you sure you want to delete this address?")) return
+
+        try {
+            const newAddresses = addresses.filter(a => a.id !== id)
+            await updateAddresses({ uid: user.uid, addresses: newAddresses })
+            if (selectedAddressId === id) {
+                setSelectedAddressId(newAddresses[0]?.id || null)
+            }
+            toast.success("Address deleted successfully")
+        } catch (err) {
+            toast.error(err?.message || "Failed to delete address")
+        }
+    }
+
+    function startEditing(id) {
+        const addr = addresses.find(a => a.id === id)
+        if (addr) {
+            setAddressForm({
+                fullName: addr.fullName,
+                mobile: addr.mobile,
+                email: addr.email,
+                country: addr.country,
+                streetAddress: addr.streetAddress,
+                city: addr.city,
+                state: addr.state,
+                pinCode: addr.pinCode,
+                landmark: addr.landmark || "",
+            })
+            setEditingAddressId(id)
+            setIsAddingNew(false)
+        }
+    }
+
+    function cancelAddress() {
+        setAddressForm({
+            fullName: "",
+            mobile: "",
+            email: "",
+            country: "India",
+            streetAddress: "",
+            city: "",
+            state: "",
+            pinCode: "",
+            landmark: "",
+        })
+        setErrors({})
+        setEditingAddressId(null)
+        setIsAddingNew(false)
+    }
+
+    async function onSaveContactNext() {
+        if (!selectedAddressId) {
+            toast.error("Please select or add a delivery address")
+            return
+        }
+        setSavingContact(true)
+        setTimeout(() => {
+            setSavingContact(false)
+            setStep("summary")
+            window.scrollTo({ top: 0, behavior: "smooth" })
+        }, 500)
+    }
+
+    // Pricing logic (unchanged)
     const cartCategorySet = useMemo(() => new Set(productList?.map((item) => item.product?.categoryId)), [productList])
     const allCategories = useMemo(() => [...cartCategorySet], [cartCategorySet])
     const getCategoryName = (categoryId) => {
@@ -479,48 +238,13 @@ export default function Checkout({ productList }) {
         return couponCategories.some((cat) => cartCategorySet.has(cat))
     }
 
-    function handleAddressChange(e) {
-        const { name, value } = e.target
-        setAddress((prev) => ({ ...prev, [name]: value }))
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }))
-    }
-
-    function validateForm() {
-        const newErrors = {}
-        if (!address.firstName) newErrors.firstName = "First name is required"
-        if (!address.streetAddress) newErrors.streetAddress = "Address is required"
-        if (!address.city) newErrors.city = "City is required"
-        if (!address.state) newErrors.state = "State is required"
-        if (!address.pinCode) newErrors.pinCode = "PIN code is required"
-        if (!address.phone) newErrors.phone = "Phone is required"
-        if (!address.email) newErrors.email = "Email is required"
-        else if (!/^\S+@\S+\.\S+$/.test(address.email)) newErrors.email = "Email is invalid"
-        setErrors(newErrors)
-        return Object.keys(newErrors).length === 0
-    }
-
-    async function onSaveContactNext() {
-        if (!validateForm()) {
-            toast.error("Please fill all required fields correctly")
-            return
-        }
-        setSavingContact(true)
-        setTimeout(() => {
-            setSavingContact(false)
-            setStep("summary")
-            window.scrollTo({ top: 0, behavior: "smooth" })
-        }, 500)
-    }
-
-    // Pricing logic (unchanged)
     const totalPrice = useMemo(() => {
         return productList?.reduce((prev, curr) => prev + (curr?.quantity || 0) * (curr?.product?.salePrice || 0), 0) || 0
     }, [productList])
 
-    const { data: offersRaw } = { data: useSpecialOffers().data } // ensure same source if above is destructured
     const prepaidOffers = useMemo(
-        () => (specialOffers || offersRaw || []).filter((o) => o.offerType === "Prepaid Offer") || [],
-        [specialOffers, offersRaw],
+        () => (specialOffers || []).filter((o) => o.offerType === "Prepaid Offer") || [],
+        [specialOffers]
     )
 
     const categoryMaxPrepaid = useMemo(() => {
@@ -670,125 +394,12 @@ export default function Checkout({ productList }) {
     }
     const estimatedDelivery = getEstimatedDelivery()
 
-
-// function loadRazorpayScript(src) {
-//   return new Promise((resolve) => {
-//     const script = document.createElement("script")
-//     script.src = src
-//     script.onload = () => {
-//       resolve(true)
-//     }
-//     script.onerror = () => {
-//       resolve(false)
-//     }
-//     document.body.appendChild(script)
-//   })
-// }
-// async function handlePlaceOrder() {
-//   if (!validateForm()) {
-//     toast.error("Please fill all required fields correctly")
-//     return
-//   }
-
-//   try {
-//     if (totalPrice <= 0) throw new Error("Price should be greater than 0")
-//     if (!productList || productList.length === 0) throw new Error("Product List Is Empty")
-
-//     setPlacing(true)
-
-//     const serializedAppliedOffers = appliedOffers.map((offer) => ({
-//       couponCode: offer.couponCode,
-//       discountPercentage: offer.discountPercentage,
-//       categories: offer.categories,
-//     }))
-
-//     // COD flow
-//     if (paymentMode === "cod") {
-//       const checkoutId = await createCheckoutCODAndGetId({
-//         uid: user?.uid,
-//         products: productList,
-//         address: {
-//           fullName: `${address.firstName} ${address.lastName}`.trim(),
-//           mobile: address.phone,
-//           email: address.email,
-//           addressLine1: address.streetAddress,
-//           city: address.city,
-//           state: address.state,
-//           pincode: address.pinCode,
-//           country: address.country,
-//         },
-//         deliveryType,
-//         appliedCoupons,
-//         appliedOffers: serializedAppliedOffers,
-//       })
-
-//       router.push(`/checkout-cod?checkout_id=${checkoutId}`)
-//       return
-//     }
-
-//     // ONLINE payment flow
-//     if (paymentMode === "online") {
-//       const res = await loadRazorpayScript("https://checkout.razorpay.com/v1/checkout.js")
-//       if (!res) {
-//         toast.error("Razorpay SDK failed to load. Check your connection.")
-//         return
-//       }
-
-//       const options = {
-//         key: "rzp_test_RDFIUPgeHWbQNG", // replace with your Razorpay Test Key
-//         amount: total * 100,
-//         currency: "INR",
-//         name: "Mobile Display",
-//         description: "Test Transaction",
-//         handler: async function (response) {
-//           // After successful payment → create order
-//           const checkoutId = await createCheckoutCODAndGetId({
-//             uid: user?.uid,
-//             products: productList,
-//             address: {
-//               fullName: `${address.firstName} ${address.lastName}`.trim(),
-//               mobile: address.phone,
-//               email: address.email,
-//               addressLine1: address.streetAddress,
-//               city: address.city,
-//               state: address.state,
-//               pincode: address.pinCode,
-//               country: address.country,
-//             },
-//             deliveryType,
-//             appliedCoupons,
-//             appliedOffers: serializedAppliedOffers,
-//             paymentInfo: {
-//               paymentId: response.razorpay_payment_id,
-//               status: "paid",
-//             },
-//           })
-
-//           router.push(`/checkout-online?checkout_id=${checkoutId}`)
-//         },
-//         prefill: {
-//           name: `${address.firstName} ${address.lastName}`.trim(),
-//           email: address.email,
-//           contact: address.phone,
-//         },
-//         theme: {
-//           color: "#F37254",
-//         },
-//       }
-
-//       const rzp = new window.Razorpay(options)
-//       rzp.open()
-//     }
-//   } catch (err) {
-//     toast.error(err?.message || "Failed to place order")
-//   } finally {
-//     setPlacing(false)
-//   }
-// }
+    const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null
 
     async function handlePlaceOrder() {
-        if (!validateForm()) {
-            toast.error("Please fill all required fields correctly")
+        if (!selectedAddress) {
+            toast.error("Please select a delivery address")
+            setStep("contact")
             return
         }
         try {
@@ -808,14 +419,15 @@ export default function Checkout({ productList }) {
                 uid: user?.uid,
                 products: productList,
                 address: {
-                    fullName: `${address.firstName} ${address.lastName}`.trim(),
-                    mobile: address.phone,
-                    email: address.email,
-                    addressLine1: address.streetAddress,
-                    city: address.city,
-                    state: address.state,
-                    pincode: address.pinCode,
-                    country: address.country,
+                    fullName: selectedAddress.fullName,
+                    mobile: selectedAddress.mobile,
+                    email: selectedAddress.email,
+                    addressLine1: selectedAddress.streetAddress,
+                    city: selectedAddress.city,
+                    state: selectedAddress.state,
+                    pincode: selectedAddress.pinCode,
+                    landmark: selectedAddress.landmark,
+                    country: selectedAddress.country,
                 },
                 deliveryType,
                 appliedCoupons,
@@ -871,15 +483,6 @@ export default function Checkout({ productList }) {
 
     const disableCOD = appliedCoupons.length > 0
 
-    // useEffect(() => {
-    //     // Force change payment method if coupon is applied
-    //     if (appliedCoupons.length > 0 && paymentMode === "cod") {
-    //         setPaymentMode("online");
-    //     }
-    // }, [appliedCoupons, paymentMode]);
-
-
-    // Best offer (preserved)
     const bestOffer = (specialOffers || [])
         .filter(
             (o) => o.couponCode && o.offerType !== "Prepaid Offer" && o.categories?.some((c) => allCategories.includes(c)),
@@ -910,14 +513,24 @@ export default function Checkout({ productList }) {
             <main className="mx-auto w-full max-w-xl px-4 py-6 space-y-6">
                 {/* Step 1: Contact */}
                 {step === "contact" ? (
-                    <ContactForm
-                        address={address}
+                    <AddressSection
+                        step={step}
+                        addresses={addresses}
+                        selectedAddressId={selectedAddressId}
+                        setSelectedAddressId={setSelectedAddressId}
+                        editingAddressId={editingAddressId}
+                        isAddingNew={isAddingNew}
+                        setIsAddingNew={setIsAddingNew}
+                        addressForm={addressForm}
                         errors={errors}
-                        onChange={handleAddressChange}
-                        onSave={onSaveContactNext}
-                        saving={savingContact}
-                    />
-                ) : null}
+                        handleAddressChange={handleAddressChange}
+                        handleSaveAddress={handleSaveAddress}
+                        cancelAddress={cancelAddress}
+                        startEditing={startEditing}
+                        handleDeleteAddress={handleDeleteAddress}
+                        savingContact={savingContact}
+                        onSaveContactNext={onSaveContactNext}
+                    />) : null}
 
                 {/* Step 2: Summary (Order Summary + Subtotal & Fees) */}
                 {step === "summary" ? (
@@ -945,7 +558,7 @@ export default function Checkout({ productList }) {
                                     className="text-gray-700 hover:text-black text-left underline underline-offset-4"
                                     onClick={() => setStep("contact")}
                                 >
-                                    Edit contact & address
+                                    Edit address
                                 </button>
                                 {bestOffer ? (
                                     <span className="text-xs text-gray-600">
@@ -1091,13 +704,91 @@ export default function Checkout({ productList }) {
     )
 }
 
+export function Field({ label, name, value, onChange, error, placeholder, type = "text" }) {
+    return (
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+            <input
+                type={type}
+                name={name}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                className={`w-full rounded-lg border px-3 py-2 outline-none transition focus:ring-2 focus:ring-gray-900/30 ${error ? "border-red-500" : "border-gray-300"}`}
+            />
+            {error ? <p className="mt-1 text-xs text-red-500">{error}</p> : null}
+        </div>
+    )
+}
+
+export function SelectField({ label, name, value, onChange, options }) {
+    return (
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+            <select
+                name={name}
+                value={value}
+                onChange={onChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none transition focus:ring-2 focus:ring-gray-900/30"
+            >
+                {options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                        {o.label}
+                    </option>
+                ))}
+            </select>
+        </div>
+    )
+}
+
+
+// ---------- Coupons ----------
+function CouponsBox({ appliedCoupons, appliedOffers, couponError, onRemove, onOpen }) {
+    return (
+        <div className="mt-4 rounded-lg border bg-white p-4">
+            {appliedCoupons.length ? (
+                <>
+                    {couponError ? <p className="text-xs text-red-500">{couponError}</p> : null}
+                    <div className="mt-2 space-y-1">
+                        {appliedOffers.map((offer, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs">
+                                <p className="text-green-600">
+                                    Coupon applied: <strong>{appliedCoupons[idx]}</strong> ({offer.discountPercentage}% off)
+                                </p>
+                                <button className="text-red-500 hover:underline" onClick={() => onRemove(appliedCoupons[idx])}>
+                                    Remove
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <span className="text-sm text-gray-700">Apply coupon and get a Big Discount!</span>
+            )}
+            <Divider />
+            <button className="mx-auto block text-sm font-medium text-gray-800 hover:text-black" onClick={onOpen}>
+                View all coupons →
+            </button>
+        </div>
+    )
+}
+
+
+// ---------- Main Component ----------
+export default function Checkout({ productList }) {
+    const { user } = useAuth()
+    const { data: userData } = useUser({ uid: user?.uid })
+
+    return <ContactAndAddress userData={userData} user={user} productList={productList} />
+}
+
 function StepIndicator({ step }) {
     const isContact = step === "contact"
     const isSummary = step === "summary"
     const isPayment = step === "payment"
     return (
         <div className="mt-3 flex items-center gap-3 text-sm">
-            <StepPill active={isContact}>1. Contact</StepPill>
+            <StepPill active={isContact}>1. Address</StepPill>
             <div className="h-px flex-1 bg-gray-200" />
             <StepPill active={isSummary}>2. Summary</StepPill>
             <div className="h-px flex-1 bg-gray-200" />

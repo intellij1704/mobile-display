@@ -291,6 +291,9 @@ const OrderDetailPage = () => {
                                         <p className="text-gray-600">
                                             {addressData.city}, {addressData.state} - {addressData.pincode}
                                         </p>
+                                        <p className="text-gray-600">
+                                         Landmark:   {addressData.landmark}
+                                        </p>
                                     </div>
                                 </div>
 
