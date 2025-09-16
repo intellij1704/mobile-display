@@ -24,7 +24,7 @@ function CountMeter() {
                             <DollarSign className="h-8 w-8 text-green-500 mr-3" />
                             <div>
                                 <p className="text-gray-500">Total Sales</p>
-                                <p className="text-2xl font-bold">₹{ordersCounts?.totalRevenue ?? 0}</p>
+                                <p className="text-2xl font-bold">₹{ordersCounts?.deliveredRevenue ?? 0}</p>
                             </div>
                         </div>
                     </div>
@@ -35,7 +35,7 @@ function CountMeter() {
                         <div className="flex items-center">
                             <ShoppingCart className="h-8 w-8 text-blue-500 mr-3" />
                             <div>
-                                <p className="text-gray-500">Total Orders</p>
+                                <p className="text-gray-500">Total Deliverd Orders</p>
                                 <p className="text-2xl font-bold">{ordersCounts?.totalOrders ?? 0}</p>
                             </div>
                         </div>

@@ -24,6 +24,9 @@ export default function ListView() {
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
     });
 
+        console.log("User New ORDER",orders)
+
+
     useEffect(() => {
         setLastSnapDocList([]);
     }, [pageLimit]);

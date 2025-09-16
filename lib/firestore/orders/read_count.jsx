@@ -2,11 +2,9 @@
 
 import { db } from "@/lib/firebase";
 import {
-  average,
   collection,
   count,
   getAggregateFromServer,
-  getCountFromServer,
   query,
   sum,
   where,
@@ -15,61 +13,59 @@ import useSWR from "swr";
 
 export const getOrdersCounts = async ({ date }) => {
   const ref = collection(db, `orders`);
-  let q = query(ref);
+  let q = query(ref, where("status", "==", "delivered")); // ✅ only delivered orders
 
   if (date) {
     const fromDate = new Date(date);
     fromDate.setHours(0, 0, 0, 0);
+
     const toDate = new Date(date);
-    toDate.setHours(24, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
     q = query(
-      q,
+      ref,
+      where("status", "==", "delivered"),
       where("timestampCreate", ">=", fromDate),
       where("timestampCreate", "<=", toDate)
     );
   }
 
   const data = await getAggregateFromServer(q, {
-    totalRevenue: sum("payment.amount"),
-    totalOrders: count(),
+    deliveredRevenue: sum("payment.amount"), // ✅ revenue of delivered
+    totalOrders: count(), // ✅ count of delivered
   });
+
   if (date) {
+    const d = new Date(date); // ensure always Date object
     return {
-      date: `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`,
-      data: data.data(),
+      date: `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`, // ✅ formatted
+      ...data.data(),
     };
   }
   return data.data();
 };
 
 const getTotalOrdersCounts = async (dates) => {
-  let promisesList = [];
-  for (let i = 0; i < dates?.length; i++) {
-    const date = dates[i];
-    promisesList.push(getOrdersCounts({ date: date }));
-  }
-  const list = await Promise.all(promisesList);
-  return list;
+  const promisesList = dates?.map((d) => getOrdersCounts({ date: d })) || [];
+  return Promise.all(promisesList);
 };
 
 export function useOrdersCounts() {
-  const { data, error, isLoading } = useSWR("ordrs_counts", (key) =>
+  const { data, error, isLoading } = useSWR("ordrs_counts", () =>
     getOrdersCounts({ date: null })
   );
-  if (error) {
-    console.log(error?.message);
-  }
+  if (error) console.log(error?.message);
   return { data, error, isLoading };
 }
 
 export function useOrdersCountsByTotalDays({ dates }) {
   const { data, error, isLoading } = useSWR(
     ["orders_count", dates],
-    ([key, dates]) =>
-      getTotalOrdersCounts(dates?.sort((a, b) => a?.getTime() - b?.getTime()))
+    ([, dates]) =>
+      getTotalOrdersCounts(
+        dates?.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+      )
   );
-  if (error) {
-    console.log(error?.message);
-  }
+  if (error) console.log(error?.message);
   return { data, error, isLoading };
 }

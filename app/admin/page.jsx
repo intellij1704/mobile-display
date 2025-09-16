@@ -8,12 +8,7 @@ import { useEffect, useState } from 'react';
 import RecentOrder from './components/RecentOrder';
 import { AuthContextProvider } from '@/context/AuthContext';
 
-const recentOrders = [
-    { id: '#1234', customer: 'John Doe', amount: '$235', status: 'Delivered' },
-    { id: '#1235', customer: 'Jane Smith', amount: '$150', status: 'Processing' },
-    { id: '#1236', customer: 'Mike Johnson', amount: '$399', status: 'Shipped' },
-    { id: '#1237', customer: 'Mike Johnson', amount: '$399', status: 'Cancelled' },
-];
+
 
 
 export default function Dashboard() {

@@ -29,6 +29,8 @@ export default function RecentOrder() {
         pageLimit,
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
     });
+    
+
 
     const handleNextPage = () => setLastSnapDocList([...lastSnapDocList, lastSnapDoc]);
     const handlePrePage = () => setLastSnapDocList(lastSnapDocList.slice(0, -1));
