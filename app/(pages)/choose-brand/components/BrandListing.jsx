@@ -45,7 +45,7 @@ export default function BrandListing() {
                         {brands.map((brand) => (
                             <Link
                                 key={brand.id}
-                                href={`/choose-series?brandId=${brand.id}&categoryId=${categoryId}`}
+                                href={`/choose-model?brandId=${brand.id}&categoryId=${categoryId}`}
                                 className="group"
                             >
                                 <div className="bg-white md:p-3 p-2 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 md:hover:-translate-y-3 transition-all duration-300 border border-gray-200 border-solid">

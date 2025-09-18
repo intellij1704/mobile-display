@@ -222,17 +222,16 @@ export function useProductsByModelId(modelId) {
   };
 }
 
-// ------------------- GET PRODUCTS BY BRAND, CATEGORY, SERIES, MODEL -------------------
-export function useProductsByFilters({ brandId, categoryId, seriesId, modelId, pageLimit, lastSnapDoc }) {
+// ------------------- GET PRODUCTS BY BRAND, CATEGORY, MODEL -------------------
+export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, lastSnapDoc }) {
   const { data, error } = useSWRSubscription(
-    ["products-by-filters", brandId, categoryId, seriesId, modelId, pageLimit, lastSnapDoc],
-    ([path, brandId, categoryId, seriesId, modelId, pageLimit, lastSnapDoc], { next }) => {
+    ["products-by-filters", brandId, categoryId, modelId, pageLimit, lastSnapDoc],
+    ([path, brandId, categoryId, modelId, pageLimit, lastSnapDoc], { next }) => {
       const ref = collection(db, "products");
       let q = query(
         ref,
         where("brandId", "==", brandId),
         where("categoryId", "==", categoryId),
-        where("seriesId", "==", seriesId),
         where("modelId", "==", modelId),
         limit(pageLimit ?? 10)
       );

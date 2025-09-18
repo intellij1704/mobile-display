@@ -14,7 +14,6 @@ export default function ProductListPage() {
     const searchParams = useSearchParams();
     const brandId = searchParams.get("brandId");
     const categoryId = searchParams.get("categoryId");
-    const seriesId = searchParams.get("seriesId");
     const modelId = searchParams.get("modelId");
 
 
@@ -24,7 +23,7 @@ export default function ProductListPage() {
         error: modelError,
     } = useModelById(modelId);
 
-    const { data: categories } = useCategoryById(categoryId);
+    const { data: category } = useCategoryById(categoryId);
 
 
     const {
@@ -34,7 +33,6 @@ export default function ProductListPage() {
     } = useProductsByFilters({
         brandId,
         categoryId,
-        seriesId,
         modelId,
         pageLimit: 50,
         lastSnapDoc: null,
@@ -45,7 +43,7 @@ export default function ProductListPage() {
 
     const loading = loadingModel || loadingProducts || loadingCategories;
 
-    if (!brandId || !categoryId || !seriesId || !modelId) {
+    if (!brandId || !categoryId || !modelId) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
                 <div className="text-center">
@@ -102,7 +100,7 @@ export default function ProductListPage() {
                     className="w-20 h-20 object-contain rounded border"
                 />
                 <h1 className="text-2xl font-bold">
-                    {model?.name || "Model"} {categories?.name}
+                    {model?.name || "Model"} {category?.name}
                 </h1>
             </div>
 
