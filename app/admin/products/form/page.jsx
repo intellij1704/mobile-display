@@ -7,7 +7,8 @@ import Description from "./components/Description";
 import KeyFeature from "./components/KeyFeature";
 import InTheBox from "./components/InTheBox";
 import Compatibility from "./components/Compatibility";
-import SeoAndSku from "./components/SeoAndSku"; // 🔥 NEW COMPONENT
+import WarrantyPolicy from "./components/WarrantyPolicy"; // 🔥 NEW COMPONENT
+import SeoAndSku from "./components/SeoAndSku";
 import { Button } from "@nextui-org/react";
 import toast from "react-hot-toast";
 import { createNewProduct, updateProduct } from "@/lib/firestore/products/write";
@@ -87,7 +88,7 @@ export default function Page() {
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1">
           <BasicDetails data={data} handleData={handleData} />
-          <SeoAndSku data={data} handleData={handleData} /> {/* ✅ SEO + SKU */}
+          <SeoAndSku data={data} handleData={handleData} />
         </div>
 
         <div className="flex-1 flex flex-col gap-6">
@@ -104,6 +105,7 @@ export default function Page() {
           <KeyFeature data={data} handleData={handleData} />
           <InTheBox data={data} handleData={handleData} />
           <Compatibility data={data} handleData={handleData} />
+          <WarrantyPolicy data={data} handleData={handleData} />
         </div>
       </div>
 

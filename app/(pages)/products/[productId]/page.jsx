@@ -8,7 +8,9 @@ import AddReview from "./components/AddReview";
 import { AuthContextProvider } from "@/context/AuthContext";
 import InTheBoxSection from "./components/InTheBoxSection";
 import CompatibilitySection from "./components/CompatibilitySection";
+import WarrantyPolicySection from "./components/WarrantyPolicySection";
 import { notFound } from "next/navigation";
+import WhyUsSection from "@/app/components/WhyUsSection";
 
 // ✅ Dynamic Metadata for SEO
 export async function generateMetadata({ params }) {
@@ -137,7 +139,7 @@ export default async function Page({ params, searchParams }) {
     };
 
     return (
-        <main className="p-4 md:px-10 w-full max-w-8xl mx-auto bg-gray-100">
+        <main className="p-4 w-full max-w-7xl mx-auto md:pt-10 ">
             {/* ✅ Inject Schema.org JSON-LD */}
             <script
                 type="application/ld+json"
@@ -151,6 +153,8 @@ export default async function Page({ params, searchParams }) {
                     <Photos product={product} selectedColor={color} />
                 </div>
 
+
+
                 {/* Product Details */}
                 <div>
                     <Details
@@ -161,8 +165,12 @@ export default async function Page({ params, searchParams }) {
                 </div>
             </section>
 
+            <div  >
+                <WhyUsSection />
+            </div>
+
             {/* Description Section */}
-            <section className="mb-10">
+            <section className="mb-10 mt-10">
                 <Description product={product} />
             </section>
 
@@ -176,9 +184,14 @@ export default async function Page({ params, searchParams }) {
                 <CompatibilitySection product={product} />
             </section>
 
+            {/* Warranty Policy */}
+            <section className="mb-10">
+                <WarrantyPolicySection product={product} />
+            </section>
+
             {/* Review Section */}
             <section className="py-12 bg-white border-t rounded-md">
-                <div className="container mx-auto px-4 max-w-8xl flex flex-col md:flex-row">
+                <div className=" mx-auto gap-2 max-w-7xl flex flex-col md:flex-row">
                     <AuthContextProvider>
                         <AddReview productId={product.id} />
                         <Reviews productId={product.id} />

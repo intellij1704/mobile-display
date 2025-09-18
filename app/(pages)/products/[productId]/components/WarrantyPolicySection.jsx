@@ -1,9 +1,9 @@
 import React from 'react';
 
-const CompatibilitySection = ({ product }) => {
+const WarrantyPolicySection = ({ product }) => {
   return (
     <div className="max-w-7xl w-full mx-auto">
-      {/* Compatibility Section */}
+      {/* Warranty Policy Section */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-gray-300 bg-white shadow-md">
           {/* Header */}
@@ -13,16 +13,16 @@ const CompatibilitySection = ({ product }) => {
                 colSpan="2"
                 className="p-2 text-center text-md md:text-lg font-semibold text-gray-800 border-b border-gray-300"
               >
-                COMPATIBILITY
+                WARRANTY POLICY
               </th>
             </tr>
           </thead>
           {/* Body */}
           <tbody
             dangerouslySetInnerHTML={{
-              __html: product?.compatibility
+              __html: product?.warrantyPolicy
                 ? `
-                  ${product.compatibility
+                  ${product.warrantyPolicy
                     .split('<br>')
                     .filter(item => item.trim())
                     .map((item, index, array) => {
@@ -60,4 +60,4 @@ const CompatibilitySection = ({ product }) => {
   );
 };
 
-export default CompatibilitySection;
+export default WarrantyPolicySection;

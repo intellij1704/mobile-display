@@ -8,7 +8,7 @@ import { Button } from '@nextui-org/react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
-function AddReview({ productId }) {
+function AddReview({ productId, onSuccess }) {
     const [isLoading, setIsLoading] = useState(false);
     const [rating, setRating] = useState(4);
     const [message, setMessage] = useState("");
@@ -37,6 +37,7 @@ function AddReview({ productId }) {
             setMessage("");
             setRating(4);
             toast.success("Thank you for your review!");
+            if (onSuccess) onSuccess();
         } catch (error) {
             toast.error(error?.message || "Failed to submit review");
         }
@@ -58,7 +59,7 @@ function AddReview({ productId }) {
     return (
         <div className="p-6 rounded-xl border border-gray-200 bg-white shadow-sm w-full max-w-md">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">Share Your Experience</h2>
-            
+
             <div className="mb-4">
                 <label htmlFor="product-rating" className="block text-sm font-medium text-gray-700 mb-1">
                     Your Rating
@@ -70,6 +71,14 @@ function AddReview({ productId }) {
                     onChange={(event, newValue) => setRating(newValue)}
                     precision={0.5}
                     className="[&>span]:text-2xl"
+                    sx={{
+                        '& .MuiRating-iconFilled': {
+                            color: 'green', // filled stars
+                        },
+                        '& .MuiRating-iconEmpty': {
+                            color: 'lightgreen',
+                        },
+                    }}
                 />
             </div>
 
@@ -87,7 +96,7 @@ function AddReview({ productId }) {
                 />
                 <div className="flex justify-between mt-1">
                     {error && <p className="text-red-500 text-sm">{error}</p>}
-                    <p 
+                    <p
                         id="char-count"
                         className={`text-xs ml-auto ${message.length > maxChars ? 'text-red-500' : 'text-gray-500'}`}
                     >
@@ -97,11 +106,10 @@ function AddReview({ productId }) {
             </div>
 
             <Button
-                className={`w-full mt-2 text-white font-medium py-3 rounded-lg transition-colors ${
-                    isSubmitDisabled 
-                        ? "bg-gray-300 cursor-not-allowed" 
+                className={`w-full mt-2 text-white font-medium py-3 rounded-lg transition-colors ${isSubmitDisabled
+                        ? "bg-gray-300 cursor-not-allowed"
                         : "bg-red-600 hover:bg-red-700 active:bg-red-800"
-                }`}
+                    }`}
                 isDisabled={isSubmitDisabled}
                 onClick={handleSubmit}
                 aria-label="Submit review"

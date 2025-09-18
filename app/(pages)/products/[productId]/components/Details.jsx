@@ -11,6 +11,8 @@ import ColorSelector from "./ColorSelector";
 import QualitySelector from "./QualitySelector";
 import ActionButtons from "./ActionButtons";
 import OffersSection from "./OffersSection"; // New component for offers
+import DeliveryChecker from "./DeliveryChecker";
+import { addDays, format } from "date-fns";
 
 async function Details({ product, selectedColor, selectedQuality }) {
   const discount = product?.price && product?.salePrice
@@ -38,8 +40,19 @@ async function Details({ product, selectedColor, selectedQuality }) {
     },
   ];
 
+
+  function getEstimatedDelivery(days) {
+    const today = new Date();
+    const startDate = format(today, "dd MMMM, yyyy"); // Today
+    const endDate = format(addDays(today, days), "dd MMMM, yyyy"); // +3 days
+    return ` ${endDate}`;
+  }
+
+
+  const estimatedDate = getEstimatedDelivery(3);
+
   return (
-    <div className="w-full p-6 bg-gray-50 rounded-xl">
+    <div className="w-full ">
       {/* Product Title */}
       <h1 className="text-xl font-bold mb-2 text-gray-900">
         {product?.title || "Product Title"}
@@ -113,6 +126,11 @@ async function Details({ product, selectedColor, selectedQuality }) {
         </div>
       )}
 
+
+      <div className="mt-6">
+        <DeliveryChecker />
+      </div>
+
       {/* Action Buttons */}
       <AuthContextProvider>
         <ActionButtons
@@ -133,7 +151,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
 
       {/* Estimated Delivery */}
       <div className="mt-5 text-sm text-gray-700">
-        <p>Estimated delivery: <strong>10 - 13 April, 2025</strong></p>
+        Estimated delivery: <strong>{estimatedDate}</strong>
       </div>
 
       {/* Why Buy Us */}

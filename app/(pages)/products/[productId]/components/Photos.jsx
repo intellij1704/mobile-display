@@ -158,7 +158,7 @@ function Photos({ product, selectedColor }) {
 
     return (
         <div
-            className="w-full max-w-8xl mx-auto px-4 sm:px-6 lg:px-10 py-6 bg-white"
+            className="w-full max-w-7xl max-h-max mx-auto px-4 sm:px-6 lg:px-10 py-6 bg-white rounded-xl shadow-md border-[0.54px] border-[#00000033]"
             onWheel={handleWheel}
         >
             {/* Fullscreen View */}
@@ -290,9 +290,9 @@ function Photos({ product, selectedColor }) {
                 )}
 
                 {/* Image counter */}
-                <div className="text-center text-sm text-gray-600">
+                {/* <div className="text-center text-sm text-gray-600">
                     {currentSlide + 1} / {displayImages.length}
-                </div>
+                </div> */}
             </div>
         </div>
     );

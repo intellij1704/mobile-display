@@ -26,7 +26,7 @@ const whyUsItems = [
 
 const WhyUsSection = () => {
   return (
-    <section className="bg-[#F3F3F3] py-5">
+    <section className="bg-[#F3F3F3] py-5 rounded">
       <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
         {whyUsItems.map((item, index) => (
           <div key={index} className="flex flex-col items-center">
