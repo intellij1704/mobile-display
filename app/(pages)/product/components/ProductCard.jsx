@@ -40,6 +40,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
   const [actionType, setActionType] = useState("") // "cart" or "buy"
   const [isLoading, setIsLoading] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [tempColor, setTempColor] = useState(selectedColor)
+  const [tempQuality, setTempQuality] = useState(selectedQuality)
 
   const isOutOfStock = stock <= orders
   const showLowStock = !isOutOfStock && stock && stock - orders < 10
@@ -73,6 +75,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
       return
     }
 
+    setActionType("cart")
+
     // If variable product, show modal
     if (product?.isVariable || product?.hasQualityOptions) {
       setShowVariantModal(true)
@@ -80,7 +84,6 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     }
 
     // For non-variable products, show return selector directly
-    setActionType("cart")
     setShowReturnSelector(true)
   }
 
@@ -90,6 +93,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
       return
     }
 
+    setActionType("buy")
+
     // If variable product, show modal
     if (product?.isVariable || product?.hasQualityOptions) {
       setShowVariantModal(true)
@@ -97,7 +102,6 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     }
 
     // For non-variable products, show return selector directly
-    setActionType("buy")
     setShowReturnSelector(true)
   }
 
@@ -147,9 +151,18 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     }
   }, [userData?.carts, id, selectedColor, selectedQuality, user?.uid, isVariable, hasQualityOptions])
 
+  const handleVariantConfirm = (color, quality) => {
+    setTempColor(color)
+    setTempQuality(quality)
+    setShowVariantModal(false)
+    setShowReturnSelector(true)
+  }
+
   const handleReturnConfirm = async (choice) => {
     try {
       setIsLoading(true)
+      const effectiveColor = tempColor || selectedColor
+      const effectiveQuality = tempQuality || selectedQuality
 
       if (actionType === "cart") {
         await updateCarts({
@@ -160,8 +173,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
               quantity: 1,
               returnType: choice.id,
               returnFee: choice.fee,
-              selectedColor,
-              selectedQuality,
+              selectedColor: effectiveColor,
+              selectedQuality: effectiveQuality,
             },
           ],
           uid: user?.uid,
@@ -174,8 +187,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
             {
               product,
               quantity: 1,
-              selectedColor,
-              selectedQuality,
+              selectedColor: effectiveColor,
+              selectedQuality: effectiveQuality,
               returnType: choice.id,
             },
           ],
@@ -184,7 +197,17 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
           appliedCoupons: [],
           appliedOffers: [],
         })
-        router.push(`/checkout?type=buynow&productId=${product?.id}&checkoutId=${checkoutId}`)
+        router.push(
+          `/checkout?${new URLSearchParams({
+            type: "buynow",
+            productId: product?.id,
+            checkoutId,
+            ...(effectiveColor ? { color: effectiveColor } : {}),
+            ...(effectiveQuality ? { quality: effectiveQuality } : {}),
+            ...(choice?.id ? { returnType: choice.id } : {})
+          }).toString()}`
+        );
+
       }
     } catch (err) {
       console.error("Error in handleReturnConfirm:", err)
@@ -192,6 +215,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     } finally {
       setIsLoading(false)
       setShowReturnSelector(false)
+      setTempColor(null)
+      setTempQuality(null)
     }
   }
 
@@ -410,7 +435,11 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
       </div>
 
       {/* Product Variant Modal */}
-      <ProductVariantModal product={product} isOpen={showVariantModal} onClose={() => setShowVariantModal(false)} />
+      <ProductVariantModal
+        product={product}
+        isOpen={showVariantModal}
+        onClose={() => setShowVariantModal(false)}
+      />
 
       {/* Return Type Selector for non-variable products */}
       <ReturnTypeSelector

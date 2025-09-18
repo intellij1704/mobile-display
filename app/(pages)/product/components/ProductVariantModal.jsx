@@ -116,7 +116,15 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
           appliedCoupons: [],
           appliedOffers: [],
         })
-        router.push(`/checkout?type=buynow&productId=${product?.id}&checkoutId=${checkoutId}`)
+        router.push(`/checkout?${new URLSearchParams({
+          type: "buynow",
+          productId: product?.id,
+          checkoutId,
+          ...(selectedColor ? { color: selectedColor } : {}),
+          ...(selectedQuality ? { quality: selectedQuality } : {}),
+          ...(choice?.id ? { returnType: choice.id } : {})
+        }).toString()}`);
+
       }
     } catch (err) {
       toast.error(err?.message || "Something went wrong")
@@ -198,7 +206,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                         >
                           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                         </Button>
-                        <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium backdrop-blur-sm">
+                        <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-full text-xs backdrop-blur-sm">
                           {currentImageIndex + 1} / {displayImages.length}
                         </div>
                       </>

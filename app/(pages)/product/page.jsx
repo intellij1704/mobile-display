@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useMemo, Suspense } from "react"
+import { useState, useEffect, useMemo, useRef, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useProducts } from "@/lib/firestore/products/read"
 import { useCategories } from "@/lib/firestore/categories/read"
@@ -45,8 +45,7 @@ const useProductFilters = (
             .map((series) => series.seriesName)
         const selectedModels = modelsList
             .filter((model) => initialModelIds.includes(model.id))
-            .map((model) => model.name || model.name)
-
+            .map((model) => model.modelName || model.name)
 
         setFilters({
             category: selectedCategories,
@@ -190,11 +189,46 @@ const useProductSorting = (filteredProducts) => {
 
 // Main component with Suspense boundary
 const ProductsPageContent = () => {
-    const { data: products, isLoading, error } = useProducts({ pageLimit: 20 })
+    const pageSize = 10
+    const [limit, setLimit] = useState(pageSize)
+    const [hasMore, setHasMore] = useState(true)
+    const loaderRef = useRef(null)
+    const isLoadingRef = useRef(false)
+
+    const { data: fetchedProducts = [], isLoading, error } = useProducts({ pageLimit: limit })
     const { categoriesList } = useCategories()
     const { data: brands } = useBrands()
     const { data: seriesList } = useSeries()
     const { data: modelsList } = useModels()
+
+    useEffect(() => {
+        isLoadingRef.current = isLoading
+    }, [isLoading])
+
+    useEffect(() => {
+        setHasMore(!!fetchedProducts && fetchedProducts.length === limit)
+    }, [fetchedProducts, limit])
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingRef.current) {
+                    setLimit((prev) => prev + pageSize)
+                }
+            },
+            { threshold: 1.0 }
+        )
+
+        if (loaderRef.current) {
+            observer.observe(loaderRef.current)
+        }
+
+        return () => {
+            if (loaderRef.current) {
+                observer.unobserve(loaderRef.current)
+            }
+        }
+    }, [hasMore, pageSize]) // Removed isLoading from deps, use ref instead
 
     console.log("[v0] Series data:", seriesList)
     console.log("[v0] Models data:", modelsList)
@@ -217,7 +251,7 @@ const ProductsPageContent = () => {
         processedModels,
         filteredProducts,
     } = useProductFilters(
-        products,
+        fetchedProducts,
         categoriesList,
         brands,
         seriesList,
@@ -227,7 +261,6 @@ const ProductsPageContent = () => {
         initialSeriesIds,
         initialModelIds,
     )
-
 
     const { sortOption, setSortOption, sortedProducts } = useProductSorting(filteredProducts)
 
@@ -269,6 +302,9 @@ const ProductsPageContent = () => {
         filters.series.length > 0 ||
         filters.model.length > 0 ||
         filters.price < 2000
+
+    const showInitialLoading = isLoading && fetchedProducts.length === 0
+    const showLoadingMore = isLoading && fetchedProducts.length > 0
 
     return (
         <div className="bg-gray-50 min-h-screen">
@@ -403,13 +439,13 @@ const ProductsPageContent = () => {
             <div className="w-full max-w-7xl mx-auto pb-6 lg:py-10">
                 <div className="px-4 mb-4 pt-10 md:pt-0">
                     <h2 className="text-lg sm:text-xl font-semibold">
-                        {isLoading ? "" : `Showing ${sortedProducts.length} Results from total ${products?.length || 0}`}
+                        {showInitialLoading ? "" : `Showing ${sortedProducts.length} Results from total ${fetchedProducts.length || 0}`}
                     </h2>
                 </div>
                 <div className="md:px-0 px-3">
-                    {isLoading ? (
+                    {showInitialLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                            {[...Array(10)].map((_, index) => (
+                            {[...Array(20)].map((_, index) => (
                                 <ProductSkeleton key={index} />
                             ))}
                         </div>
@@ -424,7 +460,17 @@ const ProductsPageContent = () => {
                             </button>
                         </div>
                     ) : (
-                        <ProductGrid products={sortedProducts} />
+                        <>
+                            <ProductGrid products={sortedProducts} />
+                            {hasMore && <div ref={loaderRef} className="h-1" />}
+                        </>
+                    )}
+                    {showLoadingMore && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-4">
+                            {[...Array(20)].map((_, index) => (
+                                <ProductSkeleton key={`more-${index}`} />
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>
@@ -455,7 +501,7 @@ const ProductsPageContent = () => {
 // Wrap the component in Suspense
 const ProductsPage = () => {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
             <ProductsPageContent />
         </Suspense>
     )

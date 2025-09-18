@@ -14,6 +14,9 @@ function page() {
     const searchParams = useSearchParams()
     const type = searchParams.get("type")
     const productId = searchParams.get("productId")
+    const color = searchParams.get("color")
+    const quality = searchParams.get("quality")
+    const returnType = searchParams.get("returnType")
 
     const productIdsList = (type === "buynow") ? [productId] : data?.carts?.map((item) => item?.id)
 
@@ -53,6 +56,9 @@ function page() {
         {
             id: productId,
             quantity: 1,
+            selectedColor: color || null,
+            selectedQuality: quality || null,
+            returnType: returnType || null,
             product: products[0]
         }
     ] : data?.carts?.map((item) => ({

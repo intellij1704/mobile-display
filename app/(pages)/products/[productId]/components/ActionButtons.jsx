@@ -86,7 +86,17 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
         appliedOffers: activeOffers,
       })
 
-      router.push(`/checkout?type=buynow&productId=${product?.id}&checkoutId=${checkoutId}`)
+      router.push(
+        `/checkout?${new URLSearchParams({
+          type: "buynow",
+          productId: product?.id,
+          checkoutId,
+          ...(selectedColor ? { color: selectedColor } : {}),
+          ...(selectedQuality ? { quality: selectedQuality } : {}),
+          ...(choice?.id ? { returnType: choice.id } : {})
+        })}`
+      );
+
     } catch (err) {
       toast.error(err?.message || "Something went wrong")
     } finally {
