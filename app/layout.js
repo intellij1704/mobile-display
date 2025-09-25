@@ -4,6 +4,7 @@ import "./globals.css";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import ClientProviders from "./ClientProviders";
+import UserAgentFix from "./UserAgentFix";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,7 +60,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={jost.variable}>
       <body className="font-jost antialiased">
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders>
+          {" "}
+          <UserAgentFix />
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

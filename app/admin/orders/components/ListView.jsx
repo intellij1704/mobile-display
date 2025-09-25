@@ -2,34 +2,22 @@
 
 import { useAllOrders, useOrders } from "@/lib/firestore/orders/read";
 import { useUsers } from "@/lib/firestore/user/read";
-import { CircularProgress } from "@mui/material";
+import { CircularProgress, Avatar } from "@mui/material";
 import { Button } from "@nextui-org/react";
-import { Avatar } from "@mui/material";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { toast } from "react-hot-toast";
 
 export default function ListView() {
     const [pageLimit, setPageLimit] = useState(10);
     const [lastSnapDocList, setLastSnapDocList] = useState([]);
 
     const { data: users = [], error: usersError, isLoading: usersLoading } = useUsers();
-    const {
-        data: orders,
-        isLoading,
-        lastSnapDoc,
-        error
-    } = useAllOrders({
+    const { data: orders, isLoading, lastSnapDoc, error } = useAllOrders({
         pageLimit,
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
     });
 
-        console.log("User New ORDER",orders)
-
-
-    useEffect(() => {
-        setLastSnapDocList([]);
-    }, [pageLimit]);
+    useEffect(() => setLastSnapDocList([]), [pageLimit]);
 
     if (isLoading || usersLoading) {
         return (
@@ -60,12 +48,11 @@ export default function ListView() {
                             "User Last Order Status",
                             "User Type",
                             "User Flag",
+                            "Address Match %",
                             "Remarks",
                             "Actions"
                         ].map((header) => (
-                            <th key={header} className="px-4 py-3 text-left font-semibold text-gray-700">
-                                {header}
-                            </th>
+                            <th key={header} className="px-4 py-3 text-left font-semibold text-gray-700">{header}</th>
                         ))}
                     </tr>
                 </thead>
@@ -81,8 +68,8 @@ export default function ListView() {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={12} className="text-center py-5">
-                                <div className="text-gray-500 text-sm">No orders found</div>
+                            <td colSpan={13} className="text-center py-5 text-gray-500 text-sm">
+                                No orders found
                             </td>
                         </tr>
                     )}
@@ -120,6 +107,28 @@ export default function ListView() {
     );
 }
 
+// Calculate address match percentage between two addresses
+function calculateAddressMatch(currentAddressStr, previousAddressStr) {
+    if (!currentAddressStr || !previousAddressStr) return 0;
+
+    let current, prev;
+    try {
+        current = JSON.parse(currentAddressStr);
+        prev = JSON.parse(previousAddressStr);
+    } catch (e) {
+        return 0;
+    }
+
+    let matchCount = 0;
+    const totalFields = 3; // pincode, city, addressLine1
+
+    if (current.pincode === prev.pincode) matchCount++;
+    if ((current.city || "").toLowerCase() === (prev.city || "").toLowerCase()) matchCount++;
+    if ((current.addressLine1 || "").toLowerCase() === (prev.addressLine1 || "").toLowerCase()) matchCount++;
+
+    return Math.round((matchCount / totalFields) * 100);
+}
+
 function Row({ item, index, users }) {
     const lineItems = item?.checkout?.line_items || [];
     const productItems = lineItems.filter(curr => {
@@ -133,14 +142,24 @@ function Row({ item, index, users }) {
     const deliveryFee = item?.checkout?.deliveryFee || (deliveryFeeItem ? (deliveryFeeItem?.price_data?.unit_amount / 100) * (deliveryFeeItem?.quantity || 1) : 0);
     const totalAmount = item?.checkout?.total || (subtotal + codFee + deliveryFee);
 
-    const user = users.find((u) => u.id === item.uid);
+    const user = users.find(u => u.id === item.uid);
     const { data: userOrders } = useOrders({ uid: item.uid });
 
     const isNewCustomer = userOrders?.length <= 1;
-    const previousOrder = userOrders
-        ?.filter((order) => order.timestampCreate.toMillis() < item.timestampCreate.toMillis())
-        ?.sort((a, b) => b.timestampCreate.toMillis() - a.timestampCreate.toMillis())[0];
-    const previousOrderStatus = previousOrder?.status || "pending";
+
+    // Compute highest address match with all previous orders of the user
+    let addressMatchPercentage = null;
+    if (user?.flagged && userOrders?.length > 1) {
+        const previousOrders = userOrders.filter(o => o.id !== item.id); // exclude current order
+        const matches = previousOrders.map(prevOrder =>
+            calculateAddressMatch(item?.address?.address, prevOrder?.address?.address)
+        );
+        addressMatchPercentage = matches.length > 0 ? Math.max(...matches) : 0;
+    }
+
+    const previousOrderStatus = userOrders
+        ?.filter(o => o.id !== item.id)
+        ?.sort((a, b) => b.timestampCreate.toMillis() - a.timestampCreate.toMillis())[0]?.status || "pending";
 
     const statusColors = {
         pending: "bg-yellow-100 text-yellow-700",
@@ -171,47 +190,32 @@ function Row({ item, index, users }) {
                     </div>
                 </div>
             </td>
-            <td className="border-y px-3 py-2 whitespace-nowrap text-gray-600">
-                ₹ {totalAmount.toFixed(2)}
-            </td>
+            <td className="border-y px-3 py-2 whitespace-nowrap text-gray-600">₹ {totalAmount.toFixed(2)}</td>
             <td className="border-y px-3 py-2 text-gray-600">{productItems.length}</td>
-            <td className="border-y px-3 py-2 text-xs md:text-sm text-gray-600">
-                {item?.timestampCreate?.toDate()?.toLocaleString() || "N/A"}
+            <td className="border-y px-3 py-2 text-xs md:text-sm text-gray-600">{item?.timestampCreate?.toDate()?.toLocaleString() || "N/A"}</td>
+            <td className="border-y px-3 py-2">
+                <span className="bg-red-100 text-blue-600 text-xs px-3 py-1 rounded-full">
+                    {item?.paymentMode === "cod" ? "Cash On Delivery" : item?.paymentMode || "N/A"}
+                </span>
             </td>
             <td className="border-y px-3 py-2">
-                <div className="flex">
-                    <span className="bg-red-100 text-blue-600 text-xs px-3 py-1 rounded-full">
-                        {item?.paymentMode === "cod" ? "Cash On Delivery" : item?.paymentMode || "N/A"}
-                    </span>
-                </div>
+                <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[item?.status || "pending"]}`}>
+                    {item?.status || "Pending"}
+                </span>
             </td>
             <td className="border-y px-3 py-2">
-                <div className="flex">
-                    <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[item?.status || "pending"]}`}>
-                        {item?.status || "Pending"}
-                    </span>
-                </div>
+                <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[previousOrderStatus]}`}>
+                    {previousOrderStatus}
+                </span>
             </td>
             <td className="border-y px-3 py-2">
-                <div className="flex">
-                    <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[previousOrderStatus]}`}>
-                        {previousOrderStatus}
-                    </span>
-                </div>
+                <span className={`text-xs px-3 py-1 rounded-full uppercase ${userTypeColors[isNewCustomer ? "New" : "Existing"]}`}>
+                    {isNewCustomer ? "New" : "Existing"}
+                </span>
             </td>
-            <td className="border-y px-3 py-2">
-                <div className="flex">
-                    <span className={`text-xs px-3 py-1 rounded-full uppercase ${userTypeColors[isNewCustomer ? "New" : "Existing"]}`}>
-                        {isNewCustomer ? "New" : "Existing"}
-                    </span>
-                </div>
-            </td>
-            <td className="border-y px-3 py-2 text-gray-600">
-                {user?.flagged ? "Yes" : "No"}
-            </td>
-            <td className="border-y px-3 py-2 text-gray-600">
-                {user?.remarks || "N/A"}
-            </td>
+            <td className="border-y px-3 py-2 text-gray-600">{user?.flagged ? "Yes" : "No"}</td>
+            <td className="border-y px-3 py-2 text-gray-600">{addressMatchPercentage !== null ? `${addressMatchPercentage}%` : "-"}</td>
+            <td className="border-y px-3 py-2 text-gray-600">{user?.remarks || "N/A"}</td>
             <td className="border-y px-3 py-2 rounded-r-lg border-r">
                 <div className="flex">
                     <Link href={`/admin/orders/${item?.id}`}>

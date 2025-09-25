@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 ::selection {
-  background-color: rgb(93, 214, 93);
+  background-color: #8B5CF6; /* Tailwind violet-500 */
+  color: #fff;
 }
 
 .custom-scrollbar {
@@ -354,4 +355,20 @@ header {
 body {
   font-family: "Metropolis", sans-serif;
 
+}
+
+
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out;
 }

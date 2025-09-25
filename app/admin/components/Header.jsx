@@ -20,6 +20,8 @@ export default function AdminHeader() {
     const { user } = useAuth();
     const { data: admin } = useAdmin({ email: user?.email });
 
+    console.log(admin)
+
     const handleLogout = async () => {
         try {
             await toast.promise(signOut(auth), {
@@ -61,15 +63,27 @@ export default function AdminHeader() {
 
                 {/* Admin Info & Avatar */}
                 <Dropdown>
-                    <DropdownTrigger>
-                        <button className="flex items-center space-x-3 focus:outline-none">
-                            <div className="text-right hidden md:block">
-                                <h2 className="text-sm font-semibold text-gray-800 capitalize">{admin?.name || "Admin"}</h2>
-                                <h3 className="text-xs text-gray-500">{admin?.email}</h3>
-                            </div>
-                            <Avatar size="md" src={admin?.imageURL} className="border border-gray-300 shadow-md" />
-                        </button>
-                    </DropdownTrigger>
+    <DropdownTrigger>
+  <button className="flex items-center space-x-3 focus:outline-none">
+    {/* Admin name and email */}
+    <div className="text-right hidden md:block">
+      <h2 className="text-sm font-semibold text-gray-800 capitalize">
+        {admin?.name || "Admin"}
+      </h2>
+      <h3 className="text-xs text-gray-500">
+        {admin?.email || "admin@example.com"}
+      </h3>
+    </div>
+
+    {/* Plain HTML img with fallback */}
+    <img
+      src={admin?.imageURL || "/default-avatar.png"}
+      alt={admin?.name || "Admin"}
+      className="w-10 h-10 rounded-full border border-gray-300 shadow-md object-cover"
+    />
+  </button>
+</DropdownTrigger>
+
                     <DropdownMenu className="bg-white w-44 rounded-lg shadow-lg overflow-hidden">
                         <DropdownItem key="profile" className="py-2 hover:bg-gray-100">Profile</DropdownItem>
                         <DropdownItem key="settings" className="py-2 hover:bg-gray-100">Settings</DropdownItem>

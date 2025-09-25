@@ -67,6 +67,8 @@ const OrderDetailPage = () => {
         return sum + (item.price_data.unit_amount / 100) * item.quantity
     }, 0)
 
+    console.log("lineItems", lineItems)
+
     const orderStatuses = [
         { key: "pending", label: "Order Confirmed", date: orderDate },
         { key: "shipped", label: "Shipped", date: null },
@@ -119,7 +121,11 @@ const OrderDetailPage = () => {
                                                     />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <h2 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h2>
+                                                    <Link href={`/products/${product.metadata?.seoSlug || product.metadata?.productId}`} >
+                                                        <h2 className="text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-all duration-300 ease-in-out">{product.name}</h2>
+
+                                                    </Link>
+
                                                     <p className="text-gray-600 text-sm mb-2">{product.description}</p>
 
                                                     {/* Product Options */}
@@ -292,7 +298,7 @@ const OrderDetailPage = () => {
                                             {addressData.city}, {addressData.state} - {addressData.pincode}
                                         </p>
                                         <p className="text-gray-600">
-                                         Landmark:   {addressData.landmark}
+                                            Landmark:   {addressData.landmark}
                                         </p>
                                     </div>
                                 </div>
@@ -361,7 +367,7 @@ const OrderDetailPage = () => {
                                     </div>
                                 )}
 
-                                
+
 
                                 <div className="border-t border-gray-100 pt-3 mt-4">
                                     <div className="flex justify-between items-center font-semibold">

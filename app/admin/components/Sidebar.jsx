@@ -20,7 +20,8 @@ import {
     Truck,
     Radio,
     BadgeDollarSign,
-    ThumbsUp
+    ThumbsUp,
+    UserCheck
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { signOut } from "firebase/auth";
@@ -41,6 +42,7 @@ const menuList = [
     { name: "Add Live Sale", link: "/admin/live-sale", icon: <Radio className="h-5 w-5" /> },
     { name: "Add Big Deals", link: "/admin/big-deals", icon: <BadgeDollarSign className="h-5 w-5" /> },
     { name: "Add Top Pick", link: "/admin/top-pick", icon: <ThumbsUp className="h-5 w-5" /> },
+    { name: "Shop Owner Requests", link: "/admin/shop-owners", icon: <UserCheck className="h-5 w-5" />  },
     { name: "Reviews", link: "/admin/reviews", icon: <Star className="h-5 w-5" /> },
     { name: "Collections", link: "/admin/collections", icon: <LibraryBig className="h-5 w-5" /> },
     { name: "Admins", link: "/admin/admins", icon: <ShieldCheck className="h-5 w-5" /> },

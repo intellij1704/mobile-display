@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Upload, Phone, User, Camera, CheckCircle } from "lucide-react"
 import { LocationCity } from "@mui/icons-material"
+import { addShopOwner } from "@/lib/firestore/shopOwner/write"
 
 export default function ShopOwnerBanner() {
   const [isOpen, setIsOpen] = useState(false)
@@ -18,13 +19,12 @@ export default function ShopOwnerBanner() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const modalRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   // Handle ESC key and click outside to close modal
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === "Escape") {
-        setIsOpen(false)
-      }
+      if (e.key === "Escape") setIsOpen(false)
     }
 
     const handleClickOutside = (e) => {
@@ -44,19 +44,31 @@ export default function ShopOwnerBanner() {
     }
   }, [isOpen])
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({ name: "", city: "", mobile: "", images: [] })
+      setErrors({})
+      setIsSubmitted(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }, [isOpen])
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setErrors({})
 
     const newErrors = {}
     if (!formData.name.trim()) newErrors.name = "Shop name is required"
-    if (!formData.city.trim()) newErrors.city = "Shop City is required"
+    if (!formData.city.trim()) newErrors.city = "City is required"
     if (!formData.mobile.trim()) newErrors.mobile = "Mobile number is required"
-    else if (!/^\d{10}$/.test(formData.mobile.replace(/\D/g, ""))) {
-      newErrors.mobile = "Please enter a valid 10-digit mobile number"
+    else if (!/^\+?\d{10,12}$/.test(formData.mobile.replace(/\D/g, ""))) {
+      newErrors.mobile = "Please enter a valid mobile number (10-12 digits)"
     }
     if (formData.images.length === 0) newErrors.images = "At least one shop image is required"
+    else if (formData.images.length > 5) newErrors.images = "Maximum 5 images allowed"
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -64,24 +76,35 @@ export default function ShopOwnerBanner() {
       return
     }
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    const result = await addShopOwner(formData)
 
-    setErrors({})
+    if (result.success) {
+      setIsSubmitted(true)
+      setTimeout(() => {
+        setIsOpen(false)
+      }, 2000)
+    } else {
+      setErrors({ submit: result.error || "Failed to save shop. Please try again." })
+    }
+
     setIsSubmitting(false)
-    setIsSubmitted(true)
-
-    // Reset form after success message
-    setTimeout(() => {
-      setFormData({ name: "", mobile: "", images: [] })
-      setIsSubmitted(false)
-      setIsOpen(false)
-    }, 2000)
   }
 
   // Handle file upload
   const handleFileUpload = (files) => {
-    const newImages = Array.from(files).slice(0, 5 - formData.images.length)
+    const allowedFormats = ["image/png", "image/jpeg", "image/webp", "image/gif"]
+    const maxFileSize = 10 * 1024 * 1024 // 10MB
+    const newImages = Array.from(files)
+      .filter((file) => allowedFormats.includes(file.type) && file.size <= maxFileSize)
+      .slice(0, 5 - formData.images.length)
+
+    if (newImages.length < files.length) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Some files were rejected. Only PNG, JPEG, WEBP, GIF up to 10MB are allowed."
+      }))
+    }
+
     const imagePromises = newImages.map((file) => {
       return new Promise((resolve) => {
         const reader = new FileReader()
@@ -119,7 +142,7 @@ export default function ShopOwnerBanner() {
     e.stopPropagation()
     setDragActive(false)
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
       handleFileUpload(e.dataTransfer.files)
     }
   }
@@ -134,23 +157,19 @@ export default function ShopOwnerBanner() {
 
   return (
     <section className="relative w-full max-w-7xl mx-auto h-[250px] md:h-[350px] lg:h-[600px] flex items-center justify-center">
-      {/* Background Image */}
       <img
         src="/shop-repair-banner.avif"
         alt="Mobile repair shop banner"
         className="absolute inset-0 w-full h-full object-contain rounded-lg"
       />
 
-      {/* Overlay for better text contrast */}
-      <div className="absolute inset-0 rounded-lg" />
-
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="absolute bottom-10 z-20 bg-white text-red-900 md:px-10 px-5 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-bold md:text-xl text-sm flex items-center gap-2 transform hover:scale-105 border border-white/20 backdrop-blur-sm ab"
+        className="absolute bottom-8 z-20 bg-white text-red-900 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-bold text-sm md:text-lg flex items-center gap-2 transform hover:scale-105 border border-white/20 backdrop-blur-sm"
         whileHover={{ scale: 1.05, y: -2 }}
         whileTap={{ scale: 0.95 }}
       >
-        Contact Us
+        Register Your Shop
       </motion.button>
 
       <AnimatePresence>
@@ -169,23 +188,20 @@ export default function ShopOwnerBanner() {
               exit={{ scale: 0.7, opacity: 0, y: 50 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
-              <div className="bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white p-5 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+              <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-5 relative">
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="absolute z-50 top-3 right-3 text-white/90 hover:text-white transition-colors  bg-white/20 rounded-full p-1.5 hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  className="absolute top-3 right-3 text-white/90 hover:text-white bg-white/20 rounded-full p-1.5 hover:bg-white/30 focus:outline-none"
                 >
                   <X size={16} />
                 </button>
-                <div className="relative z-10">
-                  <h2 className="text-xl font-bold mb-1">Register Your Shop</h2>
-                  <p className="text-red-100 text-xs">
-                    Upload your shop details and images to get started
-                  </p>
-                </div>
+                <h2 className="text-xl font-bold mb-1">Register Your Shop</h2>
+                <p className="text-red-100 text-xs">
+                  Add your shop details and up to 5 images
+                </p>
               </div>
 
-              <div className="p-5">
+              <div className="p-5 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-red-200 scrollbar-track-gray-100">
                 {isSubmitted ? (
                   <motion.div
                     className="text-center py-6"
@@ -194,11 +210,11 @@ export default function ShopOwnerBanner() {
                     transition={{ type: "spring", stiffness: 300 }}
                   >
                     <CheckCircle className="mx-auto text-green-500 mb-3" size={50} />
-                    <h3 className="text-xl font-bold text-gray-800 mb-1">Success!</h3>
-                    <p className="text-gray-600 text-sm">We'll contact you soon.</p>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">Success!</h3>
+                    <p className="text-gray-600 text-sm">Shop registered successfully!</p>
                   </motion.div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-800 mb-1">
                         <User className="inline mr-1 text-red-600" size={14} />
@@ -208,8 +224,8 @@ export default function ShopOwnerBanner() {
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-gray-50 focus:bg-white"
-                        placeholder="Shop name"
+                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-gray-50"
+                        placeholder="Enter shop name"
                       />
                       {errors.name && (
                         <p className="text-red-500 text-xs mt-1 flex items-center bg-red-50 p-1.5 rounded-md">
@@ -218,8 +234,6 @@ export default function ShopOwnerBanner() {
                         </p>
                       )}
                     </div>
-
-
 
                     <div>
                       <label className="block text-sm font-bold text-gray-800 mb-1">
@@ -230,8 +244,8 @@ export default function ShopOwnerBanner() {
                         type="text"
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-gray-50 focus:bg-white"
-                        placeholder="City name"
+                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-gray-50"
+                        placeholder="Enter city name"
                       />
                       {errors.city && (
                         <p className="text-red-500 text-xs mt-1 flex items-center bg-red-50 p-1.5 rounded-md">
@@ -250,8 +264,8 @@ export default function ShopOwnerBanner() {
                         type="tel"
                         value={formData.mobile}
                         onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-gray-50 focus:bg-white"
-                        placeholder="Mobile number"
+                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-gray-50"
+                        placeholder="Enter mobile number"
                       />
                       {errors.mobile && (
                         <p className="text-red-500 text-xs mt-1 flex items-center bg-red-50 p-1.5 rounded-md">
@@ -267,23 +281,23 @@ export default function ShopOwnerBanner() {
                         Shop Images (Max 5)
                       </label>
                       <div
-                        className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer ${dragActive
-                          ? "border-red-500 bg-red-50 scale-105"
-                          : "border-gray-300 hover:border-red-400 hover:bg-gray-50"
-                          }`}
+                        className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer ${
+                          dragActive ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-red-400"
+                        }`}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
                         onDragOver={handleDrag}
                         onDrop={handleDrop}
-                        onClick={() => document.getElementById("file-input").click()}
+                        onClick={() => fileInputRef.current.click()}
                       >
-                        <Upload className="mx-auto text-gray-400 mb-1" size={24} />
-                        <p className="text-gray-700 font-bold text-xs mb-1">Click or drag to upload</p>
-                        <p className="text-gray-500 text-[10px]">PNG, JPG up to 10MB</p>
+                        <Upload className="mx-auto text-gray-400 mb-2" size={24} />
+                        <p className="text-gray-700 font-bold text-sm mb-1">Click or drag to upload images</p>
+                        <p className="text-gray-500 text-xs">PNG, JPEG, WEBP, GIF (Max 10MB each)</p>
                         <input
+                          ref={fileInputRef}
                           id="file-input"
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
                           multiple
                           onChange={(e) => handleFileUpload(e.target.files)}
                           className="hidden"
@@ -297,23 +311,23 @@ export default function ShopOwnerBanner() {
                       )}
                       {formData.images.length > 0 && (
                         <div className="mt-3">
-                          <p className="text-xs font-bold text-gray-800 mb-1">
-                            Uploaded ({formData.images.length}/5)
+                          <p className="text-xs font-bold text-gray-800 mb-2">
+                            Uploaded Images ({formData.images.length}/5)
                           </p>
                           <div className="grid grid-cols-3 gap-2">
                             {formData.images.map((image) => (
                               <div key={image.id} className="relative group">
                                 <img
-                                  src={image.preview || "/placeholder.svg"}
+                                  src={image.preview}
                                   alt="Shop preview"
-                                  className="w-full h-16 object-cover rounded-md border border-gray-200 shadow-sm group-hover:shadow-md transition-all"
+                                  className="w-full h-20 object-cover rounded-md border border-gray-200 shadow-sm"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => removeImage(image.id)}
-                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all shadow-md hover:bg-red-600 transform hover:scale-105"
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all"
                                 >
-                                  <X size={10} />
+                                  <X size={12} />
                                 </button>
                               </div>
                             ))}
@@ -322,10 +336,17 @@ export default function ShopOwnerBanner() {
                       )}
                     </div>
 
+                    {errors.submit && (
+                      <p className="text-red-500 text-xs flex items-center bg-red-50 p-2 rounded-md">
+                        <X size={12} className="mr-1" />
+                        {errors.submit}
+                      </p>
+                    )}
+
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white py-2.5 rounded-lg hover:from-red-700 hover:via-red-800 hover:to-red-900 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-[1.01]"
+                      className="w-full bg-gradient-to-r from-red-600 to-red-800 text-white py-2.5 rounded-lg hover:from-red-700 hover:to-red-900 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
                     >
                       {isSubmitting ? (
                         <>

@@ -2,18 +2,18 @@
 
 import { getAdmin } from "@/lib/firestore/admins/read_server";
 import { createNewAdmin, updateAdmin } from "@/lib/firestore/admins/write";
-import { Button } from "@nextui-org/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import toast from "react-hot-toast";
 
 export default function Form() {
   const [data, setData] = useState(null);
   const [image, setImage] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const router = useRouter();
-
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
@@ -24,6 +24,9 @@ export default function Form() {
         toast.error("Admin Not Found!");
       } else {
         setData(res);
+        if (res.imageURL) {
+          setPreviewImage(res.imageURL);
+        }
       }
     } catch (error) {
       toast.error(error?.message);
@@ -37,12 +40,27 @@ export default function Form() {
   }, [id]);
 
   const handleData = (key, value) => {
-    setData((preData) => {
-      return {
-        ...(preData ?? {}),
-        [key]: value,
-      };
-    });
+    setData((prevData) => ({
+      ...(prevData ?? {}),
+      [key]: value,
+    }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      setPreviewImage(URL.createObjectURL(file));
+    }
+  };
+
+  const resetForm = () => {
+    setData(null);
+    setImage(null);
+    setPreviewImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleCreate = async () => {
@@ -50,8 +68,7 @@ export default function Form() {
     try {
       await createNewAdmin({ data: data, image: image });
       toast.success("Successfully Created");
-      setData(null);
-      setImage(null);
+      resetForm();
     } catch (error) {
       toast.error(error?.message);
     }
@@ -63,8 +80,7 @@ export default function Form() {
     try {
       await updateAdmin({ data: data, image: image });
       toast.success("Successfully Updated");
-      setData(null);
-      setImage(null);
+      resetForm();
       router.push(`/admin/admins`);
     } catch (error) {
       toast.error(error?.message);
@@ -75,41 +91,33 @@ export default function Form() {
   return (
     <div className="flex flex-col gap-3 bg-white rounded-xl p-5 w-full md:w-[400px]">
       <h1 className="font-semibold">{id ? "Update" : "Create"} Admin</h1>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (id) {
-            handleUpdate();
-          } else {
-            handleCreate();
-          }
-        }}
-        className="flex flex-col gap-3"
-      >
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <label htmlFor="brand-name" className="text-gray-500 text-sm">
-            Image <span className="text-red-500">*</span>{" "}
+          <label htmlFor="admin-image" className="text-gray-500 text-sm">
+            Image <span className="text-red-500">*</span>
           </label>
-          {image && (
+          {previewImage && (
             <div className="flex justify-center items-center p-3">
-              <img className="h-20" src={URL.createObjectURL(image)} alt="" />
+              <img
+                className="h-20 w-20 object-cover rounded"
+                src={previewImage}
+                alt="Admin preview"
+              />
             </div>
           )}
           <input
-            onChange={(e) => {
-              if (e.target.files.length > 0) {
-                setImage(e.target.files[0]);
-              }
-            }}
+            ref={fileInputRef}
+            onChange={handleImageChange}
             id="admin-image"
             name="admin-image"
             type="file"
+            accept="image/*"
             className="border px-4 py-2 rounded-lg w-full"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="admin-name" className="text-gray-500 text-sm">
-            Name <span className="text-red-500">*</span>{" "}
+            Name <span className="text-red-500">*</span>
           </label>
           <input
             id="admin-name"
@@ -117,16 +125,14 @@ export default function Form() {
             type="text"
             placeholder="Enter Name"
             value={data?.name ?? ""}
-            onChange={(e) => {
-              handleData("name", e.target.value);
-            }}
+            onChange={(e) => handleData("name", e.target.value)}
             className="border px-4 py-2 rounded-lg w-full focus:outline-none"
             required
           />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="admin-email" className="text-gray-500 text-sm">
-            Email <span className="text-red-500">*</span>{" "}
+            Email <span className="text-red-500">*</span>
           </label>
           <input
             id="admin-email"
@@ -134,17 +140,25 @@ export default function Form() {
             type="email"
             placeholder="Enter Email"
             value={data?.email ?? ""}
-            onChange={(e) => {
-              handleData("email", e.target.value);
-            }}
+            onChange={(e) => handleData("email", e.target.value)}
             className="border px-4 py-2 rounded-lg w-full focus:outline-none"
             required
           />
         </div>
-        <Button isLoading={isLoading} isDisabled={isLoading} type="submit">
-          {id ? "Update" : "Create"}
-        </Button>
-      </form>
+        <button
+          type="button"
+          onClick={id ? handleUpdate : handleCreate}
+          disabled={isLoading}
+          className={`
+            px-4 py-2 rounded-lg text-white font-medium
+            bg-red-600 hover:bg-red-700
+            disabled:opacity-50 disabled:cursor-not-allowed
+            flex items-center justify-center
+          `}
+        >
+          {isLoading ? "Loading..." : id ? "Update" : "Create"}
+        </button>
+      </div>
     </div>
   );
 }

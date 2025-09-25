@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react"
-import { Menu, Search, X } from "lucide-react"
+import { Menu, Search, ShoppingCart, X } from "lucide-react"
 import Link from "next/link"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { toast } from "react-hot-toast"
-import { AuthContextProvider } from "@/context/AuthContext"
+import { AuthContextProvider, useAuth } from "@/context/AuthContext"
 import HeaderClientButtons from "./header-client-buttons"
 import UserDropdown from "./user-dropdown"
 import MobileMenu from "./mobile-menu"
@@ -14,6 +14,8 @@ import SearchResults from "./search-results"
 import { searchProducts } from "@/lib/firestore/products/read"
 import { useCategories } from "@/lib/firestore/categories/read"
 import CategoryDropdown from "./category-dropdown"
+import CartDrawer from "./CartDrawer"
+import { useUser } from "@/lib/firestore/user/read"
 
 export default function Header() {
   // Auth + UI state
@@ -143,8 +145,12 @@ export default function Header() {
     closeMobileMenu()
   }
 
-  const cartCount = user?.carts?.length || 0
-  const wishlistCount = user?.favorites?.length || 0
+  const { data } = useUser({ uid: user?.uid })
+
+
+  const cartCount = data?.carts?.length || 0
+  const wishlistCount = data?.favorites?.length || 0
+
 
   if (error) {
     toast.error("Failed to load categories")
@@ -182,6 +188,17 @@ export default function Header() {
     window.addEventListener("resize", measure)
     return () => window.removeEventListener("resize", measure)
   }, [isMobile])
+
+
+
+  const handleCartClick = (e) => {
+    e.preventDefault()
+    setIsCartDrawerOpen(true)
+  }
+
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false)
+
+
 
   // Mobile top bar hide/show on scroll
   useEffect(() => {
@@ -347,6 +364,20 @@ export default function Header() {
             <AuthContextProvider>
               <HeaderClientButtons />
             </AuthContextProvider>
+            {/* Cart Button - Opens Drawer */}
+            <button onClick={handleCartClick} className="relative group flex items-center" aria-label="My Cart">
+              <div className="relative">
+                <div className="h-10 w-10 flex justify-center items-center rounded-full group-hover:bg-gray-50 transition-colors">
+                  <ShoppingCart size={20} className="group-hover:text-blue-600 transition-colors" />
+                </div>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </div>
+              <span className="hidden md:block text-sm text-gray-700 group-hover:text-blue-600">Cart</span>
+            </button>
 
             <UserDropdown
               user={user}
@@ -410,6 +441,13 @@ export default function Header() {
           </div>
         )}
       </header>
+
+
+
+      <AuthContextProvider>
+        {/* Cart Drawer */}
+        <CartDrawer isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} />
+      </AuthContextProvider>
 
       <MobileMenu
         isOpen={isMobileMenuOpen}
