@@ -17,6 +17,8 @@ export default function ListView() {
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
     });
 
+    console.log("orders", orders);
+
     useEffect(() => setLastSnapDocList([]), [pageLimit]);
 
     if (isLoading || usersLoading) {
@@ -52,7 +54,13 @@ export default function ListView() {
                             "Remarks",
                             "Actions"
                         ].map((header) => (
-                            <th key={header} className="px-4 py-3 text-left font-semibold text-gray-700">{header}</th>
+                            <th
+                                key={header}
+                                className="px-4 py-3 text-left font-semibold text-gray-700"
+                                colSpan={header === "Address Match %" ? 2 : 1}
+                            >
+                                {header}
+                            </th>
                         ))}
                     </tr>
                 </thead>
@@ -68,7 +76,7 @@ export default function ListView() {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={13} className="text-center py-5 text-gray-500 text-sm">
+                            <td colSpan={14} className="text-center py-5 text-gray-500 text-sm">
                                 No orders found
                             </td>
                         </tr>
@@ -119,14 +127,23 @@ function calculateAddressMatch(currentAddressStr, previousAddressStr) {
         return 0;
     }
 
-    let matchCount = 0;
-    const totalFields = 3; // pincode, city, addressLine1
+    if (current.pincode !== prev.pincode) return 0;
 
-    if (current.pincode === prev.pincode) matchCount++;
-    if ((current.city || "").toLowerCase() === (prev.city || "").toLowerCase()) matchCount++;
-    if ((current.addressLine1 || "").toLowerCase() === (prev.addressLine1 || "").toLowerCase()) matchCount++;
+    let matchLevel = 1;
 
-    return Math.round((matchCount / totalFields) * 100);
+    const currentCity = (current.city || "").toLowerCase();
+    const prevCity = (prev.city || "").toLowerCase();
+    if (currentCity !== prevCity) return Math.round((matchLevel / 3) * 100);
+
+    matchLevel++;
+
+    const currentAddr = (current.addressLine1 || "").toLowerCase();
+    const prevAddr = (prev.addressLine1 || "").toLowerCase();
+    if (currentAddr !== prevAddr) return Math.round((matchLevel / 3) * 100);
+
+    matchLevel++;
+
+    return Math.round((matchLevel / 3) * 100);
 }
 
 function Row({ item, index, users }) {
@@ -149,10 +166,10 @@ function Row({ item, index, users }) {
 
     // Compute highest address match with all previous orders of the user
     let addressMatchPercentage = null;
-    if (user?.flagged && userOrders?.length > 1) {
-        const previousOrders = userOrders.filter(o => o.id !== item.id); // exclude current order
+    if (user?.flagged && userOrders?.length > 0) {
+        const previousOrders = userOrders?.filter(o => o.id !== item.id); // exclude current order
         const matches = previousOrders.map(prevOrder =>
-            calculateAddressMatch(item?.address?.address, prevOrder?.address?.address)
+            calculateAddressMatch(item?.checkout?.metadata?.address, prevOrder?.checkout?.metadata?.address)
         );
         addressMatchPercentage = matches.length > 0 ? Math.max(...matches) : 0;
     }
@@ -177,6 +194,21 @@ function Row({ item, index, users }) {
         Existing: "bg-blue-100 text-blue-700"
     };
 
+    let percentageColor = 'text-gray-600';
+    let percentageMessage = '';
+    if (addressMatchPercentage !== null) {
+        if (addressMatchPercentage >= 50) {
+            percentageColor = 'text-red-600';
+            percentageMessage = user?.flagged ? ' (High Match)' : ' (High Match)';
+        } else if (addressMatchPercentage === 0) {
+            percentageColor = 'text-green-600';
+            percentageMessage = ' (New Order Location)';
+        } else {
+            percentageColor = 'text-yellow-600';
+            percentageMessage = user?.flagged ? ' (Low Match)' : ' (Low Match)';
+        }
+    }
+
     return (
         <tr className="border-b hover:bg-gray-100 transition">
             <td className="px-4 py-3 text-center">{index + 1}</td>
@@ -192,10 +224,10 @@ function Row({ item, index, users }) {
             </td>
             <td className="border-y px-3 py-2 whitespace-nowrap text-gray-600">₹ {totalAmount.toFixed(2)}</td>
             <td className="border-y px-3 py-2 text-gray-600">{productItems.length}</td>
-            <td className="border-y px-3 py-2 text-xs md:text-sm text-gray-600">{item?.timestampCreate?.toDate()?.toLocaleString() || "N/A"}</td>
-            <td className="border-y px-3 py-2">
-                <span className="bg-red-100 text-blue-600 text-xs px-3 py-1 rounded-full">
-                    {item?.paymentMode === "cod" ? "Cash On Delivery" : item?.paymentMode || "N/A"}
+            <td className="border-y px-3 py-2 text-xs md:text-sm text-gray-600 whitespace-nowrap">{item?.timestampCreate?.toDate()?.toLocaleString() || "N/A"}</td>
+            <td className="border-y px-3 py-2 whitespace-nowrap">
+                <span className="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full">
+                    {item?.paymentMode === "cod" ? "COD" : item?.paymentMode || "N/A"}
                 </span>
             </td>
             <td className="border-y px-3 py-2">
@@ -214,7 +246,11 @@ function Row({ item, index, users }) {
                 </span>
             </td>
             <td className="border-y px-3 py-2 text-gray-600">{user?.flagged ? "Yes" : "No"}</td>
-            <td className="border-y px-3 py-2 text-gray-600">{addressMatchPercentage !== null ? `${addressMatchPercentage}%` : "-"}</td>
+            <td className="border-y px-3 py-2" colSpan={2}>
+                <span className={`text-gray-600 text-xs leading-tight font-medium ${percentageColor}`}>
+                    {addressMatchPercentage !== null ? `${addressMatchPercentage}%${percentageMessage}` : "-"}
+                </span>
+            </td>
             <td className="border-y px-3 py-2 text-gray-600">{user?.remarks || "N/A"}</td>
             <td className="border-y px-3 py-2 rounded-r-lg border-r">
                 <div className="flex">
