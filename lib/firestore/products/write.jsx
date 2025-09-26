@@ -1,5 +1,5 @@
 import { db, storage } from "@/lib/firebase";
-import { collection, deleteDoc, doc, setDoc, Timestamp } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, query, setDoc, Timestamp, where, writeBatch } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 // ✅ Create Product
@@ -126,4 +126,51 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
 export const deleteProduct = async ({ id }) => {
   if (!id) throw new Error("ID is required");
   await deleteDoc(doc(db, `products/${id}`));
+};
+
+
+// Bulk update price By category (Percentage Increase)
+
+export const bulkUpdatePricesByCategory = async ({ categoryId, percentage }) => {
+  if (!categoryId) throw new Error("Category ID is required");
+  if (isNaN(percentage)) throw new Error("Valid non-negative percentage is required");
+
+  const multiplier = 1 + (percentage / 100);
+
+  const productsRef = collection(db, "products");
+  const q = query(productsRef, where("categoryId", "==", categoryId));
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    console.log("No products found in this category.");
+    return;
+  }
+
+  const batch = writeBatch(db);
+
+  snapshot.docs.forEach((docSnap) => {
+    const productData = docSnap.data();
+    let updatedData = { ...productData };
+
+    // Assuming simple 'price' field; extend logic if variants/qualities have prices
+    if (updatedData.price && typeof updatedData.price === "number") {
+      updatedData.price = Math.round(updatedData.price * multiplier * 100) / 100; // Round to 2 decimals
+    }
+
+    // If salePrice exists
+    if (updatedData.salePrice && typeof updatedData.salePrice === "number") {
+      updatedData.salePrice = Math.round(updatedData.salePrice * multiplier * 100) / 100;
+    }
+
+
+
+    // Handle variants if prices per color (but based on code, variants seem image-only; assume no price per variant for now)
+
+    updatedData.timestampUpdate = Timestamp.now();
+
+    batch.set(docSnap.ref, updatedData);
+  });
+
+  await batch.commit();
+  console.log(`Updated prices for ${snapshot.docs.length} products in category ${categoryId}.`);
 };
