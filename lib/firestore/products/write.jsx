@@ -6,11 +6,13 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 export const createNewProduct = async ({ data, featureImage, imageList, variantImages }) => {
   if (!data?.title) throw new Error("Title is required");
   if (!featureImage) throw new Error("Feature Image is required");
-  // if (!data?.sku) throw new Error("SKU is required");
-  if (data?.isVariable && (!data?.colors || data?.colors.length === 0))
-    throw new Error("At least one color is required for variable products");
-  if (data?.hasQualityOptions && (!data?.qualities || data?.qualities.length === 0))
-    throw new Error("At least one quality is required for products with quality options");
+  if (data?.isVariable) {
+    if (!data?.variations || data?.variations.length === 0)
+      throw new Error("Variations are required for variable products");
+  } else {
+    if (!data?.price) throw new Error("Price is required for simple products");
+    if (!data?.stock) throw new Error("Stock is required for simple products");
+  }
 
   // Upload feature image
   const featureImageRef = ref(storage, `products/${featureImage?.name}`);
@@ -26,34 +28,43 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     imageURLList.push(url);
   }
 
-  // Upload variant images
-  let variantImagesURLs = {};
+  if (imageURLList.length === 0) throw new Error("At least one product image is required");
+
+  // Handle variations
   if (data?.isVariable) {
-    for (const color of data?.colors) {
-      const images = variantImages[color] || [];
-      const urls = [];
-      for (const image of images) {
-        const imageRef = ref(storage, `products/${color}_${image?.name}`);
+    data.variations = data.variations ?? [];
+    for (const varr of data.variations) {
+      let imgURLs = [];
+      for (const image of variantImages[varr.id] || []) {
+        const imageRef = ref(storage, `products/${varr.id}_${image?.name}`);
         await uploadBytes(imageRef, image);
         const url = await getDownloadURL(imageRef);
-        urls.push(url);
+        imgURLs.push(url);
       }
-      variantImagesURLs[color] = urls;
+      varr.imageURLs = imgURLs;
     }
+    data.price = null;
+    data.salePrice = null;
+    data.stock = null;
+  } else {
+    data.attributes = [];
+    data.variations = [];
   }
+
+  const generatedSlug = data?.title?.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
   const newId = doc(collection(db, `ids`)).id;
 
   await setDoc(doc(db, `products/${newId}`), {
     ...data,
-    seoSlug: data?.seoSlug || data?.title?.toLowerCase().replace(/\s+/g, "-"),
+    seoSlug: data?.seoSlug || generatedSlug,
     seoDescription: data?.seoDescription || "",
     seoKeywords: data?.seoKeywords || [],
     sku: data?.sku || "",
     featureImageURL,
     imageList: imageURLList,
-    variantImages: data?.isVariable ? variantImagesURLs : {},
-    qualities: data?.qualities || [],
     id: newId,
     timestampCreate: Timestamp.now(),
   });
@@ -63,22 +74,25 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
 export const updateProduct = async ({ data, featureImage, imageList, variantImages }) => {
   if (!data?.title) throw new Error("Title is required");
   if (!data?.id) throw new Error("ID is required");
-  // if (!data?.sku) throw new Error("SKU is required");
-  if (data?.isVariable && (!data?.colors || data?.colors.length === 0))
-    throw new Error("At least one color is required for variable products");
-  if (data?.hasQualityOptions && (!data?.qualities || data?.qualities.length === 0))
-    throw new Error("At least one quality is required for products with quality options");
+  if (data?.isVariable) {
+    if (!data?.variations || data?.variations.length === 0)
+      throw new Error("Variations are required for variable products");
+  } else {
+    if (!data?.price) throw new Error("Price is required for simple products");
+    if (!data?.stock) throw new Error("Stock is required for simple products");
+  }
 
   // Feature image update
-  let featureImageURL = data?.featureImageURL ?? "";
+  let featureImageURL = data?.featureImageURL ?? null;
   if (featureImage) {
     const featureImageRef = ref(storage, `products/${featureImage?.name}`);
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
   }
+  if (!featureImageURL) throw new Error("Feature Image is required");
 
   // Image list update
-  let imageURLList = imageList?.length === 0 ? data?.imageList : [];
+  let imageURLList = data?.imageList ?? [];
   for (const image of imageList || []) {
     const imageRef = ref(storage, `products/${image?.name}`);
     await uploadBytes(imageRef, image);
@@ -86,38 +100,41 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     imageURLList.push(url);
   }
 
-  // Variant images update
-  let variantImagesURLs = data?.variantImages ?? {};
+  if (imageURLList.length === 0) throw new Error("At least one product image is required");
+
+  // Handle variations
   if (data?.isVariable) {
-    for (const color of data?.colors) {
-      const images = variantImages[color] || [];
-      if (images.length > 0) {
-        const urls = [];
-        for (const image of images) {
-          const imageRef = ref(storage, `products/${color}_${image?.name}`);
-          await uploadBytes(imageRef, image);
-          const url = await getDownloadURL(imageRef);
-          urls.push(url);
-        }
-        variantImagesURLs[color] = urls;
-      } else {
-        variantImagesURLs[color] = variantImagesURLs[color] || [];
+    data.variations = data.variations ?? [];
+    for (const varr of data.variations) {
+      let imgURLs = varr.imageURLs ?? [];
+      for (const image of variantImages[varr.id] || []) {
+        const imageRef = ref(storage, `products/${varr.id}_${image?.name}`);
+        await uploadBytes(imageRef, image);
+        const url = await getDownloadURL(imageRef);
+        imgURLs.push(url);
       }
+      varr.imageURLs = imgURLs;
     }
+    data.price = null;
+    data.salePrice = null;
+    data.stock = null;
   } else {
-    variantImagesURLs = {};
+    data.attributes = [];
+    data.variations = [];
   }
+
+  const generatedSlug = data?.title?.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
   await setDoc(doc(db, `products/${data?.id}`), {
     ...data,
-    seoSlug: data?.seoSlug || data?.title?.toLowerCase().replace(/\s+/g, "-"),
+    seoSlug: data?.seoSlug || generatedSlug,
     seoDescription: data?.seoDescription || "",
     seoKeywords: data?.seoKeywords || [],
     sku: data?.sku || "",
     featureImageURL,
     imageList: imageURLList,
-    variantImages: variantImagesURLs,
-    qualities: data?.qualities || [],
     timestampUpdate: Timestamp.now(),
   });
 };
@@ -128,9 +145,7 @@ export const deleteProduct = async ({ id }) => {
   await deleteDoc(doc(db, `products/${id}`));
 };
 
-
 // Bulk update price By category (Percentage Increase)
-
 export const bulkUpdatePricesByCategory = async ({ categoryId, percentage }) => {
   if (!categoryId) throw new Error("Category ID is required");
   if (isNaN(percentage)) throw new Error("Valid non-negative percentage is required");
@@ -152,19 +167,20 @@ export const bulkUpdatePricesByCategory = async ({ categoryId, percentage }) => 
     const productData = docSnap.data();
     let updatedData = { ...productData };
 
-    // Assuming simple 'price' field; extend logic if variants/qualities have prices
-    if (updatedData.price && typeof updatedData.price === "number") {
-      updatedData.price = Math.round(updatedData.price * multiplier * 100) / 100; // Round to 2 decimals
+    if (!updatedData.isVariable) {
+      if (updatedData.price && typeof updatedData.price === "number") {
+        updatedData.price = Math.round(updatedData.price * multiplier * 100) / 100;
+      }
+      if (updatedData.salePrice && typeof updatedData.salePrice === "number") {
+        updatedData.salePrice = Math.round(updatedData.salePrice * multiplier * 100) / 100;
+      }
+    } else {
+      updatedData.variations = updatedData.variations?.map((v) => ({
+        ...v,
+        price: v.price ? Math.round(v.price * multiplier * 100) / 100 : v.price,
+        salePrice: v.salePrice ? Math.round(v.salePrice * multiplier * 100) / 100 : v.salePrice,
+      })) ?? [];
     }
-
-    // If salePrice exists
-    if (updatedData.salePrice && typeof updatedData.salePrice === "number") {
-      updatedData.salePrice = Math.round(updatedData.salePrice * multiplier * 100) / 100;
-    }
-
-
-
-    // Handle variants if prices per color (but based on code, variants seem image-only; assume no price per variant for now)
 
     updatedData.timestampUpdate = Timestamp.now();
 

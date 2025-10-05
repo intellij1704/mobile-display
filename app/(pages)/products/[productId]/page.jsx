@@ -27,6 +27,13 @@ export async function generateMetadata({ params }) {
         };
     }
 
+    let minPrice = product?.price || 0;
+    let hasStock = product?.stock > 0;
+    if (product?.isVariable && product?.variations?.length > 0) {
+        minPrice = Math.min(...product.variations.map(v => parseFloat(v.salePrice || v.price)));
+        hasStock = product.variations.some(v => parseInt(v.stock) > 0);
+    }
+
     const title =
         product.seoTitle ||
         `${product.title} - Elevate Visual Brilliance With Genuine Replacement - Cash On Delivery`;
@@ -78,22 +85,22 @@ export async function generateMetadata({ params }) {
             description,
             images: [image],
             label1: "Price",
-            data1: `₹${product.price}`,
+            data1: `₹${minPrice}`,
             label2: "Availability",
-            data2: product.stock > 0 ? "In Stock" : "Out of Stock",
+            data2: hasStock ? "In Stock" : "Out of Stock",
         },
         other: {
-            "product:price:amount": product.price || "0",
+            "product:price:amount": minPrice || "0",
             "product:price:currency": "INR",
             "product:availability":
-                product.stock > 0 ? "instock" : "outofstock",
+                hasStock ? "instock" : "outofstock",
         },
     };
 }
 
 export default async function Page({ params, searchParams }) {
     const { productId } = params;
-    const { color, quality } = searchParams;
+    let { color, quality } = searchParams;
 
     // ✅ First try by seoSlug, then fallback to Firestore id
     let rawProduct = await getProduct({ seoSlug: productId });
@@ -108,6 +115,30 @@ export default async function Page({ params, searchParams }) {
         timestampCreate: rawProduct.timestampCreate?.toDate().toISOString(),
         timestampUpdate: rawProduct.timestampUpdate?.toDate().toISOString(),
     };
+
+    // For variable products, select default variation with lowest price if no color/quality provided
+    if (product.isVariable && (!color || !quality) && product.variations?.length > 0) {
+        let minPrice = Infinity;
+        let defaultColor, defaultQuality;
+        product.variations.forEach(v => {
+            const p = parseFloat(v.salePrice || v.price);
+            if (p < minPrice) {
+                minPrice = p;
+                defaultColor = v.attributes.Color;
+                defaultQuality = v.attributes.Quality;
+            }
+        });
+        color = defaultColor;
+        quality = defaultQuality;
+    }
+
+    // Compute effective values for schema if variable
+    let effectivePrice = product.price || 0;
+    let isInStock = product.stock > 0;
+    if (product.isVariable && product.variations?.length > 0) {
+        effectivePrice = Math.min(...product.variations.map(v => parseFloat(v.salePrice || v.price)));
+        isInStock = product.variations.some(v => parseInt(v.stock) > 0);
+    }
 
     // ✅ Schema for SEO
     const schemaData = product.schemaData || {
@@ -126,9 +157,9 @@ export default async function Page({ params, searchParams }) {
             "@type": "Offer",
             url: `${process.env.NEXT_PUBLIC_DOMAIN}/product/${product.seoSlug || product.id}`,
             priceCurrency: "INR",
-            price: product.price || "0",
+            price: effectivePrice,
             availability:
-                product.stock > 0
+                isInStock
                     ? "https://schema.org/InStock"
                     : "https://schema.org/OutOfStock",
             seller: {
@@ -150,10 +181,8 @@ export default async function Page({ params, searchParams }) {
             <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                 {/* Images */}
                 <div className="flex justify-center">
-                    <Photos product={product} selectedColor={color} />
+                    <Photos product={product} selectedColor={color} selectedQuality={quality} />
                 </div>
-
-
 
                 {/* Product Details */}
                 <div>

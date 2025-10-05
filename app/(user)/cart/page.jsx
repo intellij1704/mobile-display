@@ -47,34 +47,29 @@ const CartPage = () => {
     return Object.values(cartSubtotals).reduce((sum, row) => sum + (row?.returnFee || 0), 0)
   }, [cartSubtotals])
 
-  // Summaries (product total, discount, final total)
+  // Summaries (subtotal, savings, final total)
   const calculateSummary = useCallback(() => {
     if (!data?.carts || !Array.isArray(data.carts)) {
       return {
-        productTotal: 0,
-        discount: 0,
-        discountPercent: 0,
+        subtotal: 0,
+        savings: 0,
+        savingsPercent: 0,
         total: 0,
       }
     }
 
-    let productTotal = 0
-    let discount = 0
+    const originalTotal = Object.values(cartSubtotals).reduce((sum, { originalSubtotal }) => sum + (originalSubtotal || 0), 0)
+    const subtotal = Object.values(cartSubtotals).reduce((sum, { subtotal }) => sum + (subtotal || 0), 0)
+    const savings = originalTotal - subtotal
+    const savingsPercent = originalTotal > 0 ? ((savings / originalTotal) * 100).toFixed(0) : 0
+    const total = subtotal + totalReturnReplacementFees
 
-    Object.values(cartSubtotals).forEach(({ originalSubtotal, subtotal }) => {
-      productTotal += originalSubtotal || 0
-      discount += originalSubtotal - subtotal || 0
-    })
-
-    const discountPercent = productTotal > 0 ? ((discount / productTotal) * 100).toFixed(0) : 0
-    const total = productTotal - discount + totalReturnReplacementFees
-
-    return { productTotal, discount, discountPercent, total }
+    return { subtotal, savings, savingsPercent, total }
   }, [cartSubtotals, totalReturnReplacementFees, data?.carts])
 
   const summary = useMemo(() => calculateSummary(), [calculateSummary])
   const freeShippingThreshold = shippingData?.minFreeDeliveryAmount || 0
-  const freeShippingVal = Math.max(0, freeShippingThreshold - summary.productTotal)
+  const freeShippingVal = Math.max(0, freeShippingThreshold - summary.subtotal)
 
   if (isLoading || isFetching) {
     return (
@@ -113,7 +108,7 @@ const CartPage = () => {
                   <div
                     className="h-full transition-all duration-300"
                     style={{
-                      width: `${Math.min(100, (summary.productTotal / freeShippingThreshold) * 100)}%`,
+                      width: `${Math.min(100, (summary.subtotal / freeShippingThreshold) * 100)}%`,
                       background: "repeating-linear-gradient(45deg, #4b5563, #4b5563 10px, #6b7280 10px, #6b7280 20px)",
                     }}
                   />
@@ -143,12 +138,12 @@ const CartPage = () => {
                 <div className="space-y-3 text-sm border-b border-gray-200 pb-4">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">₹{summary.productTotal.toFixed(2)}</span>
+                    <span className="font-medium">₹{summary.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Discount</span>
+                    <span className="text-gray-600">Savings</span>
                     <span className="font-medium text-green-600">
-                      -₹{summary.discount.toFixed(2)} ({summary.discountPercent}%)
+                      ₹{summary.savings.toFixed(2)} ({summary.savingsPercent}%)
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -179,13 +174,46 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   const [isUpdating, setIsUpdating] = useState(false)
   const { data: product } = useProduct({ productId: item?.id })
 
-  // Pricing
-  const hasSale = product?.salePrice && product?.salePrice < product?.price
-  const listPrice = useMemo(() => product?.price || item?.price || 0, [product, item])
-  const effectivePrice = useMemo(
-    () => (hasSale ? product?.salePrice : listPrice) || item?.salePrice || item?.price || 0,
-    [hasSale, product, listPrice, item],
-  )
+  // Find variation if product is variable
+  const variation = useMemo(() => {
+    if (product?.isVariable && product?.variations && item?.selectedColor && item?.selectedQuality) {
+      return product.variations.find(
+        (v) =>
+          v.attributes?.Color?.toLowerCase() === item.selectedColor?.toLowerCase() &&
+          v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase()
+      )
+    }
+    return null
+  }, [product, item.selectedColor, item.selectedQuality])
+
+  // Pricing - Prioritize variation, then product, then stored item values
+  const listPrice = useMemo(() => {
+    return parseFloat(variation?.price || product?.price || item?.price || 0)
+  }, [variation, product, item])
+
+  const salePrice = useMemo(() => {
+    return parseFloat(variation?.salePrice || product?.salePrice || item?.salePrice || 0)
+  }, [variation, product, item])
+
+  const hasSale = useMemo(() => {
+    return salePrice > 0 && salePrice < listPrice
+  }, [salePrice, listPrice])
+
+  const effectivePrice = useMemo(() => hasSale ? salePrice : listPrice, [hasSale, salePrice, listPrice])
+
+  // Image - Prioritize variation images, then variantImages by color, then featureImage, then fallback
+  const imageSrc = useMemo(() => {
+    if (variation?.imageURLs?.length > 0) {
+      return variation.imageURLs[0]
+    }
+    if (product?.variantImages && item?.selectedColor) {
+      const colorKey = item.selectedColor.toLowerCase()
+      if (product.variantImages[colorKey]?.length > 0) {
+        return product.variantImages[colorKey][0]
+      }
+    }
+    return product?.featureImageURL || "/cart-item.png"
+  }, [variation, product, item.selectedColor])
 
   const quantity = useMemo(() => item.quantity || 1, [item.quantity])
   const subtotal = useMemo(() => effectivePrice * quantity, [effectivePrice, quantity])
@@ -197,14 +225,14 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
       return Math.round(160 + 0.05 * effectivePrice * quantity)
     }
     if (item?.returnType === "easy-replacement" || item?.returnType === "self-shipping") {
-      // treat as per-unit fee times quantity for display/summary consistency
+      // Assuming returnFee is per unit, multiply by quantity for consistency
       const perUnit = item?.returnFee || 0
-      return perUnit 
+      return perUnit * quantity
     }
     return 0
   }, [item?.returnType, item?.returnFee, effectivePrice, quantity])
 
-  // report subtotals and returnFee to parent
+  // Report subtotals and returnFee to parent
   useEffect(() => {
     onSubtotalUpdate(uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee)
   }, [uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee, onSubtotalUpdate])
@@ -246,6 +274,9 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
             const next = { ...d, quantity: qty }
             if (d.returnType === "easy-return") {
               next.returnFee = Math.round(160 + 0.05 * effectivePrice * qty)
+            } else if (d.returnType === "easy-replacement" || d.returnType === "self-shipping") {
+              // If returnFee is per unit, keep it as is (assuming stored as per unit)
+              // Or adjust if needed; here assuming it's per unit and not updating total
             }
             return next
           }
@@ -269,7 +300,7 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
         {/* Image + Quantity */}
         <div className="flex items-center flex-col gap-2">
           <img
-            src={product?.featureImageURL || "/cart-item.png"}
+            src={imageSrc}
             alt={product?.title || "Product"}
             className="w-28 h-auto object-cover rounded"
           />
@@ -297,7 +328,7 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
           <h3 className="text-sm font-medium text-gray-800">{product?.title || "Product"}</h3>
           {item?.selectedColor && <p className="text-xs text-gray-500 capitalize">Color: {item.selectedColor}</p>}
           {item?.selectedQuality && (
-            <p className="text-xs text-gray-500 capitalize">Item Quality: {item.selectedQuality}</p>
+            <p className="text-xs text-gray-500 capitalize">Quality: {item.selectedQuality}</p>
           )}
 
           {/* Price Section */}

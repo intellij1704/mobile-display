@@ -24,7 +24,8 @@ import {
     UserCheck,
     Tags,
     Grid,
-    Folder
+    Folder,
+    RefreshCw
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { signOut } from "firebase/auth";
@@ -41,6 +42,7 @@ const menuList = [
     { name: "Add Special Offers", link: "/admin/special-offers", icon: <TicketPercent className="h-5 w-5" /> },
     { name: "Shipping Cost", link: "/admin/shipping", icon: <Truck className="h-5 w-5" /> },
     { name: "Orders", link: "/admin/orders", icon: <ShoppingCart className="h-5 w-5" /> },
+    { name: "Retrun & Replacement", link: "/admin/return-replacement", icon: <RefreshCw className="h-5 w-5" /> },
     { name: "Customers", link: "/admin/customers", icon: <User className="h-5 w-5" /> },
     { name: "Add Live Sale", link: "/admin/live-sale", icon: <Radio className="h-5 w-5" /> },
     { name: "Add Big Deals", link: "/admin/big-deals", icon: <BadgeDollarSign className="h-5 w-5" /> },

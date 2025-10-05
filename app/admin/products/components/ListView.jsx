@@ -22,9 +22,89 @@ export default function ProductListView() {
     const [isLoadingAll, setIsLoadingAll] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+    // Helper functions
+    const getMinEffectivePrice = (product) => {
+        if (!product.isVariable) {
+            return product.salePrice || product.price || 0;
+        }
+        return Math.min(...(product.variations || []).map(v => v.salePrice || v.price || Infinity)) || 0;
+    };
 
-    // Fetch all products for export
-    const fetchAllProducts = useCallback(async () => {
+    const getMaxEffectivePrice = (product) => {
+        if (!product.isVariable) {
+            return product.salePrice || product.price || 0;
+        }
+        return Math.max(...(product.variations || []).map(v => v.salePrice || v.price || 0)) || 0;
+    };
+
+    const getTotalStock = (product) => {
+        if (!product.isVariable) {
+            return product.stock || 0;
+        }
+        return (product.variations || []).reduce((sum, v) => sum + (v.stock || 0), 0);
+    };
+
+    const getPriceDisplay = (product) => {
+        if (!product.isVariable) {
+            const price = product.price || 0;
+            const sale = product.salePrice || 0;
+            if (sale && sale < price) {
+                return (
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400 line-through">
+                            ₹{price.toLocaleString()}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                            ₹{sale.toLocaleString()}
+                        </span>
+                    </div>
+                );
+            }
+            return (
+                <span className="text-sm font-medium text-gray-900">
+                    ₹{price.toLocaleString()}
+                </span>
+            );
+        } else {
+            const min = getMinEffectivePrice(product);
+            const max = getMaxEffectivePrice(product);
+            if (min === max) {
+                return (
+                    <span className="text-sm font-medium text-gray-900">
+                        ₹{min.toLocaleString()}
+                    </span>
+                );
+            } else {
+                return (
+                    <span className="text-sm font-medium text-gray-900">
+                        ₹{min.toLocaleString()} - ₹{max.toLocaleString()}
+                    </span>
+                );
+            }
+        }
+    };
+
+    const getExportPrice = (product) => {
+        if (!product.isVariable) {
+            const price = product.price || 0;
+            const sale = product.salePrice || 0;
+            if (sale && sale < price) {
+                return `₹${sale.toLocaleString()} (was ₹${price.toLocaleString()})`;
+            }
+            return `₹${price.toLocaleString()}`;
+        } else {
+            const min = getMinEffectivePrice(product);
+            const max = getMaxEffectivePrice(product);
+            if (min === max) {
+                return `₹${min.toLocaleString()}`;
+            } else {
+                return `₹${min.toLocaleString()} - ₹${max.toLocaleString()}`;
+            }
+        }
+    };
+
+    // Internal fetch function that returns data
+    const fetchAllProductsInternal = useCallback(async () => {
         setIsLoadingAll(true);
         try {
             const ref = collection(db, "products");
@@ -33,17 +113,24 @@ export default function ProductListView() {
             const products = snapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...doc.data(),
-                variantImages: doc.data().variantImages || {},
-                qualities: doc.data().qualities || [],
+                attributes: doc.data().attributes || [],
+                variations: doc.data().variations || [],
             }));
-            setAllProducts(products);
+            return products;
         } catch (error) {
             console.error("Error fetching all products:", error);
             toast.error("Failed to load products");
+            return [];
         } finally {
             setIsLoadingAll(false);
         }
     }, []);
+
+    // Fetch all products for state (optional pre-load)
+    const fetchAllProducts = useCallback(async () => {
+        const products = await fetchAllProductsInternal();
+        setAllProducts(products);
+    }, [fetchAllProductsInternal]);
 
     // Fetch paginated products for display
     const {
@@ -58,20 +145,19 @@ export default function ProductListView() {
     // Memoized filtered and sorted products
     const filteredAndSortedProducts = useMemo(() => {
         let result = [...paginatedProducts];
-        
+
         // Apply search filter
         if (searchQuery.trim()) {
-            const query = searchQuery.trim().toLowerCase();
+            const queryLower = searchQuery.trim().toLowerCase();
             result = result.filter((product) => {
                 const fieldsToSearch = [
                     product.title?.toLowerCase(),
                     product.shortDescription?.toLowerCase(),
                     product.brand?.toLowerCase(),
                     product.series?.toLowerCase(),
-                    ...(product.colors || []).map((color) => color.toLowerCase()),
-                    ...(product.qualities || []).map((quality) => quality.toLowerCase()),
+                    ...(product.attributes?.flatMap(att => att.values.map(v => v.toLowerCase())) || []),
                 ];
-                return fieldsToSearch.some(field => field?.includes(query));
+                return fieldsToSearch.some(field => field?.includes(queryLower));
             });
         }
 
@@ -79,15 +165,15 @@ export default function ProductListView() {
         if (sortConfig.key) {
             result.sort((a, b) => {
                 let aValue, bValue;
-                
+
                 switch (sortConfig.key) {
                     case 'price':
-                        aValue = a.salePrice || a.price;
-                        bValue = b.salePrice || b.price;
+                        aValue = getMinEffectivePrice(a);
+                        bValue = getMinEffectivePrice(b);
                         break;
                     case 'stock':
-                        aValue = a.stock;
-                        bValue = b.stock;
+                        aValue = getTotalStock(a);
+                        bValue = getTotalStock(b);
                         break;
                     case 'orders':
                         aValue = a.orders || 0;
@@ -108,10 +194,10 @@ export default function ProductListView() {
     const handleSort = (key) => {
         setSortConfig(prev => ({
             key,
-            direction: 
-                prev.key === key && prev.direction === 'asc' 
-                ? 'desc' 
-                : 'asc'
+            direction:
+                prev.key === key && prev.direction === 'asc'
+                    ? 'desc'
+                    : 'asc'
         }));
     };
 
@@ -130,20 +216,35 @@ export default function ProductListView() {
     const exportToExcel = useCallback(async () => {
         setIsExporting(true);
         try {
-            if (allProducts.length === 0) {
-                await fetchAllProducts();
+            let products = allProducts;
+            if (products.length === 0) {
+                products = await fetchAllProductsInternal();
+                setAllProducts(products);
             }
-            
-            const data = allProducts.map((product, index) => ({
+
+            const data = products.map((product, index) => ({
                 "#": index + 1,
+                "ID": product.id,
                 "Title": product.title,
-                "Brand": product.brand,
-                "Price": `₹${product.price}`,
-                "Sale Price": `₹${product.salePrice}`,
-                "Stock": product.stock,
+                "Short Description": product.shortDescription,
+                "Brand ID": product.brandId,
+                "Category ID": product.categoryId,
+                "Series ID": product.seriesId,
+                "Model ID": product.modelId,
+                "Price": getExportPrice(product),
+                "Stock": getTotalStock(product),
                 "Orders": product.orders || 0,
-                "Status": product.stock - (product.orders || 0) > 0 ? "In Stock" : "Out of Stock",
-                "Featured": product.isFeatured ? "Yes" : "No",
+                "Status": getTotalStock(product) - (product.orders || 0) > 0 ? "In Stock" : "Out of Stock",
+                "Best Selling": product.bestSelling ? "Yes" : "No",
+                "Big Deal": product.bigDeal ? "Yes" : "No",
+                "Top Pick": product.topPick ? "Yes" : "No",
+                "Live Sale": product.liveSale ? "Yes" : "No",
+                "Is Variable": product.isVariable ? "Yes" : "No",
+                "Attributes": product.attributes ? JSON.stringify(product.attributes) : "",
+                "Variations": product.variations ? JSON.stringify(product.variations) : "",
+                "SEO Slug": product.seoSlug,
+                "SEO Description": product.seoDescription,
+                "SEO Keywords": product.seoKeywords ? product.seoKeywords.join(", ") : "",
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(data);
@@ -157,65 +258,74 @@ export default function ProductListView() {
         } finally {
             setIsExporting(false);
         }
-    }, [allProducts, fetchAllProducts]);
+    }, [allProducts, fetchAllProductsInternal]);
 
     // Export to PDF function (all products)
     const exportToPDF = useCallback(async () => {
         setIsExporting(true);
         try {
-            if (allProducts.length === 0) {
-                await fetchAllProducts();
+            let products = allProducts;
+            if (products.length === 0) {
+                products = await fetchAllProductsInternal();
+                setAllProducts(products);
             }
 
             const doc = new jsPDF({
                 orientation: "landscape",
                 unit: "mm"
             });
-            
+
             doc.setFontSize(16);
             doc.text("Product List - All Products", 14, 10);
-            
+
             doc.setFontSize(10);
             doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 16);
-            
-            const tableData = allProducts.map((product, index) => [
+
+            const tableData = products.map((product, index) => [
                 index + 1,
+                product.id,
                 product.title,
-                product.brand,
-                `₹${product.price}`,
-                `₹${product.salePrice}`,
-                product.stock,
+                product.shortDescription?.substring(0, 50) + (product.shortDescription?.length > 50 ? "..." : ""),
+                product.brandId,
+                getExportPrice(product),
+                getTotalStock(product),
                 product.orders || 0,
-                product.stock - (product.orders || 0) > 0 ? "In Stock" : "Out of Stock",
-                product.isFeatured ? "Yes" : "No"
+                getTotalStock(product) - (product.orders || 0) > 0 ? "In Stock" : "Out of Stock",
+                product.bestSelling ? "Yes" : "No",
+                product.isVariable ? "Yes" : "No",
+                product.seoSlug
             ]);
-            
+
             autoTable(doc, {
-                head: [['#', 'Title', 'Brand', 'Price', 'Sale Price', 'Stock', 'Orders', 'Status', 'Featured']],
+                head: [['#', 'ID', 'Title', 'Short Desc', 'Brand ID', 'Price', 'Stock', 'Orders', 'Status', 'Best Selling', 'Variable', 'SEO Slug']],
                 body: tableData,
                 startY: 20,
-                styles: { 
-                    fontSize: 8,
-                    cellPadding: 2,
+                styles: {
+                    fontSize: 7,
+                    cellPadding: 1.5,
                     overflow: 'linebreak'
                 },
-                headStyles: { 
+                headStyles: {
                     fillColor: [41, 128, 185],
-                    textColor: 255
+                    textColor: 255,
+                    fontSize: 8
                 },
                 columnStyles: {
                     0: { cellWidth: 8 },
-                    1: { cellWidth: 40 },
-                    2: { cellWidth: 20 },
-                    3: { cellWidth: 15 },
-                    4: { cellWidth: 15 },
-                    5: { cellWidth: 10 },
+                    1: { cellWidth: 20 },
+                    2: { cellWidth: 40 },
+                    3: { cellWidth: 30 },
+                    4: { cellWidth: 20 },
+                    5: { cellWidth: 20 },
                     6: { cellWidth: 10 },
-                    7: { cellWidth: 15 },
-                    8: { cellWidth: 12 }
+                    7: { cellWidth: 10 },
+                    8: { cellWidth: 15 },
+                    9: { cellWidth: 12 },
+                    10: { cellWidth: 12 },
+                    11: { cellWidth: 25 }
                 }
             });
-            
+
             doc.save(`products_all_${new Date().toISOString().split('T')[0]}.pdf`);
             toast.success("Exported all products to PDF");
         } catch (error) {
@@ -224,16 +334,19 @@ export default function ProductListView() {
         } finally {
             setIsExporting(false);
         }
-    }, [allProducts, fetchAllProducts]);
+    }, [allProducts, fetchAllProductsInternal]);
 
     // Calculate display products
     const displayProducts = filteredAndSortedProducts;
+
+        console.log(displayProducts)
+
 
     return (
         <div className="flex flex-col gap-6 p-6 bg-white rounded-xl shadow-sm">
             <div className="flex flex-col md:flex-row justify-between gap-4">
                 <h1 className="text-2xl font-bold text-gray-800">Product Management</h1>
-                
+
                 <div className="flex flex-col sm:flex-row gap-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -253,21 +366,21 @@ export default function ProductListView() {
                             </button>
                         )}
                     </div>
-                    
+
                     <div className="flex gap-2">
                         <div className="relative">
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                disabled={isExporting}
-                                className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={isExporting || isLoadingAll}
+                                className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition ${isExporting || isLoadingAll ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <Download className="h-4 w-4" />
                                 Export
                             </button>
-                            
+
                             {isDropdownOpen && (
                                 <>
-                                    <div 
+                                    <div
                                         className="fixed inset-0 z-40"
                                         onClick={() => setIsDropdownOpen(false)}
                                     />
@@ -319,9 +432,9 @@ export default function ProductListView() {
                                     <button onClick={() => handleSort('price')} className="flex items-center gap-1">
                                         Price
                                         {sortConfig.key === 'price' && (
-                                            sortConfig.direction === 'asc' ? 
-                                            <ArrowUp className="h-3 w-3" /> : 
-                                            <ArrowDown className="h-3 w-3" />
+                                            sortConfig.direction === 'asc' ?
+                                                <ArrowUp className="h-3 w-3" /> :
+                                                <ArrowDown className="h-3 w-3" />
                                         )}
                                     </button>
                                 </th>
@@ -329,9 +442,9 @@ export default function ProductListView() {
                                     <button onClick={() => handleSort('stock')} className="flex items-center gap-1">
                                         Stock
                                         {sortConfig.key === 'stock' && (
-                                            sortConfig.direction === 'asc' ? 
-                                            <ArrowUp className="h-3 w-3" /> : 
-                                            <ArrowDown className="h-3 w-3" />
+                                            sortConfig.direction === 'asc' ?
+                                                <ArrowUp className="h-3 w-3" /> :
+                                                <ArrowDown className="h-3 w-3" />
                                         )}
                                     </button>
                                 </th>
@@ -339,9 +452,9 @@ export default function ProductListView() {
                                     <button onClick={() => handleSort('orders')} className="flex items-center gap-1">
                                         Total Orders
                                         {sortConfig.key === 'orders' && (
-                                            sortConfig.direction === 'asc' ? 
-                                            <ArrowUp className="h-3 w-3" /> : 
-                                            <ArrowDown className="h-3 w-3" />
+                                            sortConfig.direction === 'asc' ?
+                                                <ArrowUp className="h-3 w-3" /> :
+                                                <ArrowDown className="h-3 w-3" />
                                         )}
                                     </button>
                                 </th>
@@ -365,6 +478,8 @@ export default function ProductListView() {
                                         index={index + (searchQuery ? 0 : lastSnapDocList.length * pageLimit)}
                                         item={item}
                                         router={router}
+                                        getPriceDisplay={getPriceDisplay}
+                                        getTotalStock={getTotalStock}
                                     />
                                 ))
                             ) : (
@@ -393,7 +508,7 @@ export default function ProductListView() {
                             ))}
                         </select>
                     </div>
-                    
+
                     <div className="flex gap-2">
                         <button
                             disabled={isLoading || lastSnapDocList.length === 0}
@@ -418,7 +533,7 @@ export default function ProductListView() {
     );
 }
 
-function ProductRow({ item, index, router }) {
+function ProductRow({ item, index, router, getPriceDisplay, getTotalStock }) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
@@ -434,7 +549,8 @@ function ProductRow({ item, index, router }) {
         }
     };
 
-    const stockStatus = item.stock - (item.orders || 0);
+    const totalStock = getTotalStock(item);
+    const stockStatus = totalStock - (item.orders || 0);
 
     return (
         <tr className="hover:bg-gray-50 transition-colors">
@@ -444,10 +560,10 @@ function ProductRow({ item, index, router }) {
             <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 h-10 w-10">
-                        <img 
-                            className="h-10 w-10 rounded-md object-cover" 
-                            src={item.featureImageURL || "/placeholder-product.jpg"} 
-                            alt={item.title} 
+                        <img
+                            className="h-10 w-10 rounded-md object-cover"
+                            src={item.featureImageURL || "/placeholder-product.jpg"}
+                            alt={item.title}
                             loading="lazy"
                         />
                     </div>
@@ -455,29 +571,20 @@ function ProductRow({ item, index, router }) {
                         <div className="text-sm font-medium text-gray-900 line-clamp-1">
                             {item.title}
                         </div>
-                        <div className="text-xs text-gray-500">{item.brand}</div>
-                        {item.isFeatured && (
+                        {/* <div className="text-xs text-gray-500">{item.brand || item.brandId}</div> */}
+                        {item.bestSelling && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
-                                Featured
+                                Best Selling
                             </span>
                         )}
                     </div>
                 </div>
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-col">
-                    {item.salePrice < item.price && (
-                        <span className="text-xs text-gray-400 line-through">
-                            ₹{item.price?.toLocaleString()}
-                        </span>
-                    )}
-                    <span className="text-sm font-medium text-gray-900">
-                        ₹{item.salePrice?.toLocaleString()}
-                    </span>
-                </div>
+                {getPriceDisplay(item)}
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {item.stock?.toLocaleString()}
+                {totalStock.toLocaleString()}
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {item.orders?.toLocaleString() || 0}

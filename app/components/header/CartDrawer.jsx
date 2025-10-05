@@ -42,21 +42,16 @@ export default function CartDrawer({ isOpen, onClose }) {
 
   const calculateSummary = useCallback(() => {
     if (!data?.carts || !Array.isArray(data.carts)) {
-      return { productTotal: 0, discount: 0, discountPercent: 0, total: 0 }
+      return { subtotal: 0, savings: 0, savingsPercent: 0, total: 0 }
     }
 
-    let productTotal = 0
-    let discount = 0
+    const originalTotal = Object.values(cartSubtotals).reduce((sum, { originalSubtotal }) => sum + (originalSubtotal || 0), 0)
+    const subtotal = Object.values(cartSubtotals).reduce((sum, { subtotal }) => sum + (subtotal || 0), 0)
+    const savings = originalTotal - subtotal
+    const savingsPercent = originalTotal > 0 ? ((savings / originalTotal) * 100).toFixed(0) : 0
+    const total = subtotal + totalReturnReplacementFees
 
-    Object.values(cartSubtotals).forEach(({ originalSubtotal, subtotal }) => {
-      productTotal += originalSubtotal || 0
-      discount += originalSubtotal - subtotal || 0
-    })
-
-    const discountPercent = productTotal > 0 ? ((discount / productTotal) * 100).toFixed(0) : 0
-    const total = productTotal - discount + totalReturnReplacementFees
-
-    return { productTotal, discount, discountPercent, total }
+    return { subtotal, savings, savingsPercent, total }
   }, [cartSubtotals, totalReturnReplacementFees, data?.carts])
 
   const summary = useMemo(() => calculateSummary(), [calculateSummary])
@@ -145,13 +140,13 @@ export default function CartDrawer({ isOpen, onClose }) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">₹{summary.productTotal.toFixed(2)}</span>
+                  <span className="font-medium">₹{summary.subtotal.toFixed(2)}</span>
                 </div>
-                {summary.discount > 0 && (
+                {summary.savings > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Discount</span>
+                    <span className="text-gray-600">Savings</span>
                     <span className="font-medium text-green-600">
-                      -₹{summary.discount.toFixed(2)}
+                      ₹{summary.savings.toFixed(2)} ({summary.savingsPercent}%)
                     </span>
                   </div>
                 )}
@@ -187,12 +182,46 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   const [isUpdating, setIsUpdating] = useState(false)
   const { data: product } = useProduct({ productId: item?.id })
 
-  const hasSale = product?.salePrice && product?.salePrice < product?.price
-  const listPrice = useMemo(() => product?.price || item?.price || 0, [product, item])
-  const effectivePrice = useMemo(
-    () => (hasSale ? product?.salePrice : listPrice) || item?.salePrice || item?.price || 0,
-    [hasSale, product, listPrice, item]
-  )
+  // Find variation if product is variable
+  const variation = useMemo(() => {
+    if (product?.isVariable && product?.variations && item?.selectedColor && item?.selectedQuality) {
+      return product.variations.find(
+        (v) =>
+          v.attributes?.Color?.toLowerCase() === item.selectedColor?.toLowerCase() &&
+          v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase()
+      )
+    }
+    return null
+  }, [product, item.selectedColor, item.selectedQuality])
+
+  // Pricing - Prioritize variation, then product, then stored item values
+  const listPrice = useMemo(() => {
+    return parseFloat(variation?.price || product?.price || item?.price || 0)
+  }, [variation, product, item])
+
+  const salePrice = useMemo(() => {
+    return parseFloat(variation?.salePrice || product?.salePrice || item?.salePrice || 0)
+  }, [variation, product, item])
+
+  const hasSale = useMemo(() => {
+    return salePrice > 0 && salePrice < listPrice
+  }, [salePrice, listPrice])
+
+  const effectivePrice = useMemo(() => hasSale ? salePrice : listPrice, [hasSale, salePrice, listPrice])
+
+  // Image - Prioritize variation images, then variantImages by color, then featureImage, then fallback
+  const imageSrc = useMemo(() => {
+    if (variation?.imageURLs?.length > 0) {
+      return variation.imageURLs[0]
+    }
+    if (product?.variantImages && item?.selectedColor) {
+      const colorKey = item.selectedColor.toLowerCase()
+      if (product.variantImages[colorKey]?.length > 0) {
+        return product.variantImages[colorKey][0]
+      }
+    }
+    return product?.featureImageURL || "/cart-item.png"
+  }, [variation, product, item.selectedColor])
 
   const quantity = useMemo(() => item.quantity || 1, [item.quantity])
   const subtotal = useMemo(() => effectivePrice * quantity, [effectivePrice, quantity])
@@ -204,7 +233,9 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
       return Math.round(160 + 0.05 * effectivePrice * quantity)
     }
     if (item?.returnType === "easy-replacement" || item?.returnType === "self-shipping") {
-      return item?.returnFee || 0
+      // Assuming returnFee is per unit, multiply by quantity for consistency
+      const perUnit = item?.returnFee || 0
+      return perUnit * quantity
     }
     return 0
   }, [item?.returnType, item?.returnFee, effectivePrice, quantity])
@@ -250,6 +281,9 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
             const next = { ...d, quantity: qty }
             if (d.returnType === "easy-return") {
               next.returnFee = Math.round(160 + 0.05 * effectivePrice * qty)
+            } else if (d.returnType === "easy-replacement" || d.returnType === "self-shipping") {
+              // If returnFee is per unit, keep it as is (assuming stored as per unit)
+              // Or adjust if needed; here assuming it's per unit and not updating total
             }
             return next
           }
@@ -272,7 +306,7 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
       {/* Product Image */}
       <div className="flex-shrink-0">
         <img
-          src={product?.featureImageURL || "/cart-item.png"}
+          src={imageSrc}
           alt={product?.title || "Product"}
           className="w-16 h-16 object-cover rounded"
         />
@@ -311,6 +345,9 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
               </span>
               <span className="text-sm font-semibold text-black">
                 ₹{effectivePrice.toFixed(2)}
+              </span>
+              <span className="text-xs text-green-600 font-medium">
+                ({Math.round(((listPrice - effectivePrice) / listPrice) * 100)}% OFF)
               </span>
             </div>
           ) : (

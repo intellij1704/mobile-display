@@ -41,7 +41,7 @@ const NextArrow = ({ onClick }) => (
     </button>
 );
 
-function Photos({ product, selectedColor }) {
+function Photos({ product, selectedColor, selectedQuality }) {
     const defaultImage = "/prodduct.png";
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
@@ -52,10 +52,22 @@ function Photos({ product, selectedColor }) {
     const mainSliderRef = useRef(null);
     const thumbnailSliderRef = useRef(null);
 
-    // Determine images to display
-    const images = product?.isVariable && selectedColor && product?.variantImages?.[selectedColor]?.length
-        ? product.variantImages[selectedColor]
-        : [product?.featureImageURL, ...(product?.imageList ?? [])].filter(Boolean);
+    // Find selected variation if variable
+    const selectedVariation = product?.isVariable && selectedColor && selectedQuality
+        ? product.variations?.find(v => 
+            v.attributes.Color === selectedColor && v.attributes.Quality === selectedQuality
+          )
+        : null;
+
+    // Determine images to display: prefer variation images, fallback to color variantImages or default
+    let images = [];
+    if (product?.isVariable && selectedVariation?.imageURLs?.length > 0) {
+        images = selectedVariation.imageURLs;
+    } else if (product?.isVariable && selectedColor && product?.variantImages?.[selectedColor]?.length > 0) {
+        images = product.variantImages[selectedColor];
+    } else {
+        images = [product?.featureImageURL, ...(product?.imageList ?? [])].filter(Boolean);
+    }
 
     const displayImages = images.length ? images : [defaultImage];
 
@@ -140,7 +152,7 @@ function Photos({ product, selectedColor }) {
 
     useEffect(() => {
         resetSlider();
-    }, [selectedColor, resetSlider]);
+    }, [selectedColor, selectedQuality, resetSlider]);
 
     const handleWheel = useCallback((e) => {
         e.stopPropagation();

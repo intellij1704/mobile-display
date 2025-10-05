@@ -35,9 +35,8 @@ export function useProducts({ pageLimit, lastSnapDoc }) {
                 : snapshot.docs.map((snap) => ({
                   id: snap.id,
                   ...snap.data(),
-                  variantImages: snap.data().variantImages || {},
-                  qualities: snap.data().qualities || [],
-                  // ✅ SEO Fields
+                  attributes: snap.data().attributes || [],
+                  variations: snap.data().variations || [],
                   seoSlug: snap.data().seoSlug || "",
                   seoDescription: snap.data().seoDescription || "",
                   seoKeywords: snap.data().seoKeywords || [],
@@ -76,9 +75,8 @@ export function useProduct({ productId }) {
           next(null, {
             id: snapshot.id,
             ...snapshot.data(),
-            variantImages: snapshot.data()?.variantImages || {},
-            qualities: snapshot.data()?.qualities || [],
-            // ✅ SEO Fields
+            attributes: snapshot.data()?.attributes || [],
+            variations: snapshot.data()?.variations || [],
             seoSlug: snapshot.data()?.seoSlug || "",
             seoDescription: snapshot.data()?.seoDescription || "",
             seoKeywords: snapshot.data()?.seoKeywords || [],
@@ -116,9 +114,8 @@ export function useProductsByIds({ idsList }) {
               : snapshot.docs.map((snap) => ({
                 id: snap.id,
                 ...snap.data(),
-                variantImages: snap.data().variantImages || {},
-                qualities: snap.data().qualities || [],
-                // ✅ SEO Fields
+                attributes: snap.data().attributes || [],
+                variations: snap.data().variations || [],
                 seoSlug: snap.data().seoSlug || "",
                 seoDescription: snap.data().seoDescription || "",
                 seoKeywords: snap.data().seoKeywords || [],
@@ -154,9 +151,8 @@ export const searchProducts = async (searchTerm) => {
       .map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        variantImages: doc.data().variantImages || {},
-        qualities: doc.data().qualities || [],
-        // ✅ SEO Fields
+        attributes: doc.data().attributes || [],
+        variations: doc.data().variations || [],
         seoSlug: doc.data().seoSlug || "",
         seoDescription: doc.data().seoDescription || "",
         seoKeywords: doc.data().seoKeywords || [],
@@ -170,11 +166,9 @@ export const searchProducts = async (searchTerm) => {
           product.description?.toLowerCase(),
           product.brand?.toLowerCase(),
           product.series?.toLowerCase(),
-          product.sku?.toLowerCase(), // ✅ SKU Search
-          product.seoSlug?.toLowerCase(), // ✅ Slug Search
-          ...(product.seoKeywords || []).map((kw) => kw.toLowerCase()), // ✅ Keywords Search
-          ...(product.colors || []).map((color) => color.toLowerCase()),
-          ...(product.qualities || []).map((quality) => quality.toLowerCase()),
+          product.sku?.toLowerCase(),
+          product.seoSlug?.toLowerCase(),
+          ...(product.seoKeywords || []).map((kw) => kw.toLowerCase()),
         ].some((field) => field?.includes(lowerSearchTerm))
       );
 
@@ -199,9 +193,8 @@ export function useProductsByModelId(modelId) {
             snap.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
-              variantImages: doc.data().variantImages || {},
-              qualities: doc.data().qualities || [],
-              // ✅ SEO Fields
+              attributes: doc.data().attributes || [],
+              variations: doc.data().variations || [],
               seoSlug: doc.data().seoSlug || "",
               seoDescription: doc.data().seoDescription || "",
               seoKeywords: doc.data().seoKeywords || [],
@@ -250,9 +243,8 @@ export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, 
                 : snapshot.docs.map((snap) => ({
                   id: snap.id,
                   ...snap.data(),
-                  variantImages: snap.data().variantImages || {},
-                  qualities: snap.data().qualities || [],
-                  // ✅ SEO Fields
+                  attributes: snap.data().attributes || [],
+                  variations: snap.data().variations || [],
                   seoSlug: snap.data().seoSlug || "",
                   seoDescription: snap.data().seoDescription || "",
                   seoKeywords: snap.data().seoKeywords || [],

@@ -78,7 +78,7 @@ function ProductSection({ title, products = [], seeAllLink = "/product" }) {
                 <div className="w-full">
                     {/* Desktop Grid View */}
                     <div className="hidden md:grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                        {products.map((product) => (
+                        {products.slice(0, 10).map((product) => (
                             <ProductCard key={product.id} product={product} />
                         ))}
                     </div>
@@ -86,7 +86,7 @@ function ProductSection({ title, products = [], seeAllLink = "/product" }) {
                     {/* Mobile Slider View */}
                     <div className="md:hidden relative">
                         <Slider {...sliderSettings}>
-                            {products.map((product) => (
+                            {products.slice(0, 10).map((product) => (
                                 <div key={product.id} className="px-2">
                                     <ProductCard product={product} />
                                 </div>

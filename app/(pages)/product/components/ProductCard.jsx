@@ -20,16 +20,18 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
   const {
     id,
     title,
-    price,
-    salePrice,
+    price: basePrice,
+    salePrice: baseSalePrice,
     featureImageURL,
     shortDescription,
     bigDeal,
     liveSale,
     topPick,
-    stock,
+    stock: baseStock,
     seoSlug,
     orders = 0,
+    attributes = [],
+    variations = [],
   } = product
 
   const router = useRouter()
@@ -43,31 +45,94 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
   const [tempColor, setTempColor] = useState(selectedColor)
   const [tempQuality, setTempQuality] = useState(selectedQuality)
 
-  const isOutOfStock = stock <= orders
-  const showLowStock = !isOutOfStock && stock && stock - orders < 10
+  // Compute effective isVariable and hasQualityOptions if not passed
+  const effectiveIsVariable = isVariable || product?.isVariable || variations?.length > 0
+  const effectiveHasQualityOptions = hasQualityOptions || product?.hasQualityOptions || attributes?.some(attr => attr.name?.toLowerCase().includes('quality'))
 
-  // <CHANGE> Fixed cart item detection for variable products
+  // Extract colors from attributes if present, else from product.colors
+  const colors = useMemo(() => {
+    const colorAttr = attributes.find(attr => attr.name?.toLowerCase().includes('color'))
+    if (colorAttr) return colorAttr.values
+    if (product?.colors) {
+      return Array.isArray(product.colors) ? product.colors : Object.values(product.colors)
+    }
+    return []
+  }, [product?.colors, attributes])
+
+  // Compute prices and stocks for display
+  const { minEffective, displayOriginal, discountPercentage, maxSave, effectiveStockSum } = useMemo(() => {
+    let minEff = Number(baseSalePrice || basePrice || 0)
+    let dispOrig = Number(basePrice || 0)
+    let discPercent = 0
+    let mSave = 0
+    let stockSum = Number(baseStock || 0)
+
+    if (effectiveIsVariable && variations.length > 0) {
+      const activeVars = variations.filter(v => Number(v.stock ?? 0) > 0 || variations.every(vv => Number(vv.stock ?? 0) <= 0))
+      const validVars = activeVars.filter(v => Number(v.price ?? 0) > 0)
+      stockSum = validVars.reduce((sum, v) => sum + Number(v.stock ?? 0), 0)
+
+      if (validVars.length > 0) {
+        const varData = validVars.map(v => {
+          const eff = Number(v.salePrice && Number(v.salePrice) > 0 ? v.salePrice : v.price)
+          const orig = Number(v.price)
+          const save = (v.salePrice && Number(v.salePrice) > 0 && Number(v.salePrice) < orig) ? (orig - Number(v.salePrice)) : 0
+          const disc = save > 0 ? Math.round((save / orig) * 100) : 0
+          return { v, effective: eff, original: orig, save, disc }
+        })
+
+        const minEffValue = Math.min(...varData.map(d => d.effective))
+        const minVar = varData.find(d => d.effective === minEffValue) || varData[0]
+
+        minEff = minVar.effective
+        dispOrig = minVar.original
+        discPercent = minVar.disc
+        mSave = minVar.save
+      }
+    } else {
+      minEff = Number(baseSalePrice || basePrice || 0)
+      dispOrig = Number(basePrice || 0)
+      if (baseSalePrice && Number(baseSalePrice) > 0 && Number(baseSalePrice) < dispOrig) {
+        discPercent = Math.round(((dispOrig - Number(baseSalePrice)) / dispOrig) * 100)
+        mSave = dispOrig - Number(baseSalePrice)
+      }
+    }
+
+    return { minEffective: minEff, displayOriginal: dispOrig, discountPercentage: discPercent, maxSave: mSave, effectiveStockSum: stockSum }
+  }, [effectiveIsVariable, variations, basePrice, baseSalePrice, baseStock])
+
+  const isOutOfStock = effectiveStockSum <= orders
+  const showLowStock = !isOutOfStock && effectiveStockSum && effectiveStockSum - orders < 10
+
+  // Fixed cart item detection for variable products
   const isAdded = useMemo(() => {
     if (!userData?.carts) return false
+    if ((effectiveIsVariable && !selectedColor) || (effectiveHasQualityOptions && !selectedQuality)) return false
 
     return userData.carts.find((item) => {
       // For non-variable products, just match the ID
-      if (!isVariable && !hasQualityOptions) {
+      if (!effectiveIsVariable && !effectiveHasQualityOptions) {
         return item?.id === id
       }
 
       // For variable products, match ID and selected options
       const matchesId = item?.id === id
-      const matchesColor = !isVariable || !selectedColor || item?.selectedColor === selectedColor
-      const matchesQuality = !hasQualityOptions || !selectedQuality || item?.selectedQuality === selectedQuality
+      const matchesColor = !effectiveIsVariable || !selectedColor || item?.selectedColor === selectedColor
+      const matchesQuality = !effectiveHasQualityOptions || !selectedQuality || item?.selectedQuality === selectedQuality
 
       return matchesId && matchesColor && matchesQuality
     })
-  }, [userData?.carts, id, isVariable, hasQualityOptions, selectedColor, selectedQuality])
+  }, [userData?.carts, id, effectiveIsVariable, effectiveHasQualityOptions, selectedColor, selectedQuality])
 
-  const formatPrice = (amount) => `₹${amount?.toLocaleString("en-IN")}`
-  const discountPercentage = salePrice && price > salePrice ? Math.round(((price - salePrice) / price) * 100) : 0
+  const formatPrice = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`
   const hasDiscount = discountPercentage > 0
+
+  // Display only the smallest effective price for variable products (sale if available, else regular)
+  // For non-variable, show the single price
+  const effectivePriceDisplay = formatPrice(minEffective)
+
+  // For original price display (struck through), show the corresponding original for the lowest effective
+  const originalPriceDisplay = formatPrice(displayOriginal)
 
   const handleAddToCart = () => {
     if (!user?.uid) {
@@ -78,7 +143,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     setActionType("cart")
 
     // If variable product, show modal
-    if (product?.isVariable || product?.hasQualityOptions) {
+    if (effectiveIsVariable || effectiveHasQualityOptions) {
       setShowVariantModal(true)
       return
     }
@@ -96,7 +161,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     setActionType("buy")
 
     // If variable product, show modal
-    if (product?.isVariable || product?.hasQualityOptions) {
+    if (effectiveIsVariable || effectiveHasQualityOptions) {
       setShowVariantModal(true)
       return
     }
@@ -105,7 +170,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     setShowReturnSelector(true)
   }
 
-  // <CHANGE> Completely rewritten cart removal logic for variable products
+  // Completely rewritten cart removal logic for variable products
   const handleRemove = useCallback(async () => {
     if (!confirm("Remove this item from cart?")) return
 
@@ -119,7 +184,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
       // Filter out the matching item(s)
       const newList = userData.carts.filter((cartItem) => {
         // For non-variable products, remove all items with matching ID
-        if (!isVariable && !hasQualityOptions) {
+        if (!effectiveIsVariable && !effectiveHasQualityOptions) {
           return cartItem?.id !== id
         }
 
@@ -128,8 +193,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         if (!matchesId) return true // Keep items with different IDs
 
         // If IDs match, check if this is the specific variant to remove
-        const matchesColor = !isVariable || !selectedColor || cartItem?.selectedColor === selectedColor
-        const matchesQuality = !hasQualityOptions || !selectedQuality || cartItem?.selectedQuality === selectedQuality
+        const matchesColor = !effectiveIsVariable || !selectedColor || cartItem?.selectedColor === selectedColor
+        const matchesQuality = !effectiveHasQualityOptions || !selectedQuality || cartItem?.selectedQuality === selectedQuality
 
         // Return false to remove this item (if all conditions match)
         return !(matchesColor && matchesQuality)
@@ -149,7 +214,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     } finally {
       setIsRemoving(false)
     }
-  }, [userData?.carts, id, selectedColor, selectedQuality, user?.uid, isVariable, hasQualityOptions])
+  }, [userData?.carts, id, selectedColor, selectedQuality, user?.uid, effectiveIsVariable, effectiveHasQualityOptions])
 
   const handleVariantConfirm = (color, quality) => {
     setTempColor(color)
@@ -252,7 +317,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         </div>
 
         {/* Image section - takes left side on mobile */}
-        <Link href={`/products/${id}`} className="block relative md:w-full w-1/2 ">
+        <Link href={`/products/${seoSlug || id}`} className="block relative md:w-full w-1/2 ">
           <div className="relative h-full bg-gray-50 overflow-hidden">
             {featureImageURL ? (
               <>
@@ -314,20 +379,22 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
             </div>
           </div>
 
-          {/* Price Section - Stacked for mobile */}
+          {/* Price Section - Stacked for mobile, show smallest effective price for variables */}
           <div className="mt-1 md:mt-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1 flex-wrap">
-                {hasDiscount ? (
+                <span className="text-base md:text-lg font-bold text-gray-900">
+                  {effectivePriceDisplay}
+                </span>
+                {hasDiscount && (
                   <>
-                    <span className="text-base md:text-lg font-bold text-gray-900">{formatPrice(salePrice)}</span>
-                    <span className="text-xs md:text-sm text-gray-500 line-through">{formatPrice(price)}</span>
+                    <span className="text-xs md:text-sm text-gray-500 line-through">
+                      {originalPriceDisplay}
+                    </span>
                     <span className="text-[10px] md:text-xs font-medium bg-green-100 text-green-600 px-1 py-0.5 rounded">
                       {discountPercentage}% OFF
                     </span>
                   </>
-                ) : (
-                  <span className="text-base md:text-lg font-bold text-gray-900">{formatPrice(price)}</span>
                 )}
               </div>
 
@@ -341,26 +408,26 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
 
               {hasDiscount && (
                 <span className="text-[10px] md:text-[14px] text-green-500 font-semibold">
-                  You save: ₹{(price - salePrice).toLocaleString("en-IN")}
+                  You save up to: ₹{maxSave.toLocaleString("en-IN")}
                 </span>
               )}
 
 
-              {product?.colors && (
+              {colors.length > 0 && (
                 <div className="flex items-center">
-                  {Object.values(product?.colors || {})
+                  {colors
                     .slice(0, 2)
                     .map((color, index) => (
                       <span
                         key={index}
                         className={`h-4 w-4 rounded-full border border-gray-300 ${index > 0 ? "-ml-2" : ""}`}
-                        style={{ backgroundColor: color }}
+                        style={{ backgroundColor: color.toLowerCase() }}
                         title={color}
                       />
                     ))}
 
-                  {Object.values(product?.colors || {}).length > 2 && (
-                    <span className="text-sm text-black">+{Object.values(product.colors).length - 2}</span>
+                  {colors.length > 2 && (
+                    <span className="text-sm text-black">+{colors.length - 2}</span>
                   )}
                 </div>
               )}
@@ -383,10 +450,10 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
               <div className="w-full bg-gray-200 rounded-full h-1 md:h-1.5">
                 <div
                   className="bg-green-500 h-full rounded-full"
-                  style={{ width: `${Math.min(100, Math.max(10, 100 - (orders / stock) * 100))}%` }}
+                  style={{ width: `${Math.min(100, Math.max(10, 100 - (orders / effectiveStockSum) * 100))}%` }}
                 ></div>
               </div>
-              <p className="text-[10px] md:text-xs text-gray-500 mt-0.5">Only {stock - orders} left in stock</p>
+              <p className="text-[10px] md:text-xs text-gray-500 mt-0.5">Only {effectiveStockSum - orders} left in stock</p>
             </div>
           )}
 
@@ -439,6 +506,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         product={product}
         isOpen={showVariantModal}
         onClose={() => setShowVariantModal(false)}
+        onConfirm={handleVariantConfirm} // Added onConfirm to handle selection
       />
 
       {/* Return Type Selector for non-variable products */}
@@ -446,7 +514,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         open={showReturnSelector}
         onClose={() => setShowReturnSelector(false)}
         onConfirm={handleReturnConfirm}
-        productPrice={product?.salePrice || product?.price}
+        productPrice={minEffective}
       />
     </>
   )

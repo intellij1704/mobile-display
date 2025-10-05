@@ -1,78 +1,174 @@
-"use client";
+"use client"
 
-import { useBrands } from "@/lib/firestore/brands/read";
-import { useCategories } from "@/lib/firestore/categories/read";
-import { useSeriesByBrand } from "@/lib/firestore/series/read";
-import { useModelsBySeries } from "@/lib/firestore/models/read";
-import { useState, useEffect } from "react";
+import { useBrands } from "@/lib/firestore/brands/read"
+import { useCategories } from "@/lib/firestore/categories/read"
+import { useSeriesByBrand } from "@/lib/firestore/series/read"
+import { useModelsBySeries } from "@/lib/firestore/models/read"
+import { useState, useEffect } from "react"
+import { Accordion, AccordionItem } from "@nextui-org/react"
+import toast from "react-hot-toast"
 
-export default function BasicDetails({ data, handleData }) {
-  const { data: brands } = useBrands();
-  const { data: categories } = useCategories();
-  const [selectedBrand, setSelectedBrand] = useState(data?.brandId ?? "");
-  const [selectedSeries, setSelectedSeries] = useState(data?.seriesId ?? "");
-  const [hasQualityOptions, setHasQualityOptions] = useState(data?.hasQualityOptions ? "yes" : "no");
-  const [newQuality, setNewQuality] = useState("");
+export default function BasicDetails({ data, handleData, variantImages, setVariantImages, variationValidationErrors }) {
+  const { data: brands } = useBrands()
+  const { data: categories } = useCategories()
+  const [selectedBrand, setSelectedBrand] = useState(data?.brandId ?? "")
+  const [selectedSeries, setSelectedSeries] = useState(data?.seriesId ?? "")
+  const [attributeValueStrings, setAttributeValueStrings] = useState([])
+  const [attributeErrors, setAttributeErrors] = useState([]) // [{name:'', values:'', duplicate:''}]
 
-  const { data: series } = useSeriesByBrand(selectedBrand);
-  const { data: models } = useModelsBySeries(selectedBrand, selectedSeries);
-
-  const colorOptions = [
-    { id: "red", name: "Red" },
-    { id: "white", name: "White" },
-    { id: "black", name: "Black" },
-    { id: "blue", name: "Blue" },
-    { id: "green", name: "Green" },
-  ];
-
-  const qualityOptions = [
-    { id: "amoled", name: "AMOLED" },
-    { id: "incell", name: "Incell" },
-    { id: "oled", name: "OLED" },
-    { id: "lcd", name: "LCD" },
-    { id: "super_amoled", name: "Super AMOLED" },
-  ];
+  const { data: series } = useSeriesByBrand(selectedBrand)
+  const { data: models } = useModelsBySeries(selectedBrand, selectedSeries)
 
   useEffect(() => {
-    setSelectedBrand(data?.brandId ?? "");
-    setSelectedSeries(data?.seriesId ?? "");
-    setHasQualityOptions(data?.hasQualityOptions ? "yes" : "no");
-  }, [data?.brandId, data?.seriesId, data?.hasQualityOptions]);
+    setSelectedBrand(data?.brandId ?? "")
+    setSelectedSeries(data?.seriesId ?? "")
+  }, [data?.brandId, data?.seriesId])
+
+  useEffect(() => {
+    setAttributeValueStrings((data?.attributes ?? []).map((att) => att.values.join("|")))
+  }, [data?.attributes])
 
   useEffect(() => {
     if (selectedBrand && selectedBrand !== data?.brandId) {
-      handleData("brandId", selectedBrand);
-      handleData("seriesId", "");
-      handleData("modelId", "");
-      setSelectedSeries("");
+      handleData("brandId", selectedBrand)
+      handleData("seriesId", "")
+      handleData("modelId", "")
+      setSelectedSeries("")
     }
-  }, [selectedBrand, data?.brandId, handleData]);
+  }, [selectedBrand, data?.brandId, handleData])
 
   useEffect(() => {
     if (selectedSeries && selectedSeries !== data?.seriesId) {
-      handleData("seriesId", selectedSeries);
-      handleData("modelId", "");
+      handleData("seriesId", selectedSeries)
+      handleData("modelId", "")
     }
-  }, [selectedSeries, data?.seriesId, handleData]);
+  }, [selectedSeries, data?.seriesId, handleData])
 
-  const handleColorToggle = (colorId) => {
-    const currentColors = data?.colors ?? [];
-    const newColors = currentColors.includes(colorId)
-      ? currentColors.filter((id) => id !== colorId)
-      : [...currentColors, colorId];
-    handleData("colors", newColors);
-  };
+  const handleAddAttribute = () => {
+    const newAtt = { name: "", values: [], visible: true, usedForVariations: true, highlight: false }
+    handleData("attributes", [...(data?.attributes ?? []), newAtt])
+  }
 
-  const handleAddQuality = () => {
-    if (newQuality && !data?.qualities?.includes(newQuality)) {
-      handleData("qualities", [...(data?.qualities ?? []), newQuality]);
-      setNewQuality("");
+  const handleRemoveAttribute = (index) => {
+    const updated = (data?.attributes ?? []).filter((_, i) => i !== index)
+    handleData("attributes", updated)
+  }
+
+  const handleUpdateAttribute = (index, key, value) => {
+    const updated = (data?.attributes ?? []).map((att, i) => {
+      if (i === index) {
+        if (key === "values") {
+          const vals = value
+            .split("|")
+            .map((v) => v.trim())
+            .filter((v) => v)
+          return { ...att, values: vals }
+        }
+        if (key === "usedForVariations" || key === "visible" || key === "highlight") {
+          return { ...att, [key]: !!value }
+        }
+        return { ...att, [key]: value }
+      }
+      return att
+    })
+
+    // validate name presence and duplicates, values presence
+    const errors = updated.map((att, i) => {
+      const err = { name: "", values: "", duplicate: "" }
+      if (!att.name?.trim()) err.name = "Attribute name is required"
+      if ((att.values ?? []).length === 0) err.values = "Add at least one value"
+      // check duplicate name
+      const nameLower = (att.name || "").trim().toLowerCase()
+      if (nameLower && updated.some((a, ai) => ai !== i && (a.name || "").trim().toLowerCase() === nameLower)) {
+        err.duplicate = "Duplicate attribute name"
+      }
+      return err
+    })
+
+    setAttributeErrors(errors)
+    handleData("attributes", updated)
+  }
+
+  const generateCombinations = (attrs) => {
+    const usedAttrs = attrs.filter((a) => a.usedForVariations)
+    if (!usedAttrs.length) return []
+    const valueLists = usedAttrs.map((a) => a.values)
+    const combine = (lists) => {
+      return lists.reduce(
+        (acc, curr) => acc.flatMap((a) => curr.map((c) => ({ ...a, [usedAttrs[lists.indexOf(curr)].name]: c }))),
+        [{}],
+      )
     }
-  };
+    return combine(valueLists)
+  }
 
-  const handleRemoveQuality = (qualityId) => {
-    handleData("qualities", data?.qualities?.filter((id) => id !== qualityId) ?? []);
-  };
+  const handleRegenerateVariations = () => {
+    const attrs = data?.attributes ?? []
+    if (attrs.length === 0) {
+      toast.error("Add attributes first.")
+      return
+    }
+    const names = attrs.map((a) => (a?.name || "").trim().toLowerCase()).filter(Boolean)
+    const dupNames = names.filter((n, i) => names.indexOf(n) !== i)
+    const hasEmptyName = attrs.some((a) => !a?.name?.trim())
+    const hasEmptyValues = attrs.some((a) => (a?.values ?? []).length === 0)
+
+    if (hasEmptyName || hasEmptyValues) {
+      toast.error("Each attribute needs a name and at least one value.")
+      return
+    }
+    if (dupNames.length > 0) {
+      toast.error("Attribute names must be unique.")
+      return
+    }
+
+    const combos = generateCombinations(attrs)
+    const existing = data?.variations ?? []
+    const existingMap = new Map(
+      existing.map((v) => [
+        JSON.stringify(
+          Object.keys(v.attributes)
+            .sort()
+            .map((k) => [k, v.attributes[k]]),
+        ),
+        v,
+      ]),
+    )
+    const newVars = combos.map((attMap) => {
+      const key = JSON.stringify(
+        Object.keys(attMap)
+          .sort()
+          .map((k) => [k, attMap[k]]),
+      )
+      if (existingMap.has(key)) {
+        return existingMap.get(key)
+      } else {
+        return {
+          id: Math.floor(Math.random() * 1000000) + 100000,
+          attributes: attMap,
+          price: "",
+          salePrice: "",
+          stock: "",
+          imageURLs: [],
+        }
+      }
+    })
+    handleData("variations", newVars)
+
+    toast.success("Variations updated.")
+  }
+
+  const handleUpdateVariation = (index, key, value) => {
+    const updated = (data?.variations ?? []).map((varr, i) => {
+      if (i === index) {
+        return { ...varr, [key]: value }
+      }
+      return varr
+    })
+    handleData("variations", updated)
+  }
+
+  const hasUsedForVariations = (data?.attributes ?? []).some((a) => a.usedForVariations)
 
   return (
     <section className="flex-1 flex flex-col gap-4 bg-white rounded-xl p-5 border shadow-sm">
@@ -82,22 +178,41 @@ export default function BasicDetails({ data, handleData }) {
         label="Product Name"
         value={data?.title ?? ""}
         onChange={(e) => handleData("title", e.target.value)}
-        required
+        isRequired={true}
+        error={variationValidationErrors?.title}
       />
 
-      <InputField
-        label="Short Description"
-        value={data?.shortDescription ?? ""}
-        onChange={(e) => handleData("shortDescription", e.target.value)}
-        required
-      />
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Short Description
+        </label>
+
+        <textarea
+          className={`w-full rounded-md border p-2 text-sm focus:outline-none ${variationValidationErrors?.shortDescription
+              ? "border-red-500"
+              : "border-gray-300"
+            }`}
+          value={data?.shortDescription ?? ""}
+          onChange={(e) => handleData("shortDescription", e.target.value)}
+            placeholder="Enter Short Description"
+          rows={2}
+        >
+        </textarea>
+
+        {variationValidationErrors?.shortDescription && (
+          <p className="mt-1 text-sm text-red-500">
+            {variationValidationErrors.shortDescription}
+          </p>
+        )}
+      </div>
 
       <SelectField
         label="Brand"
         value={selectedBrand}
         onChange={(e) => setSelectedBrand(e.target.value)}
         options={brands}
-        required
+        isRequired={true}
+        error={variationValidationErrors?.brandId}
       />
 
       <SelectField
@@ -105,8 +220,9 @@ export default function BasicDetails({ data, handleData }) {
         value={selectedSeries}
         onChange={(e) => setSelectedSeries(e.target.value)}
         options={series}
-        required
+        isRequired={true}
         disabled={!selectedBrand}
+        error={variationValidationErrors?.seriesId}
       />
 
       <SelectField
@@ -114,8 +230,9 @@ export default function BasicDetails({ data, handleData }) {
         value={data?.modelId ?? ""}
         onChange={(e) => handleData("modelId", e.target.value)}
         options={models}
-        required
+        isRequired={true}
         disabled={!selectedSeries}
+        error={variationValidationErrors?.modelId}
       />
 
       <SelectField
@@ -123,16 +240,24 @@ export default function BasicDetails({ data, handleData }) {
         value={data?.categoryId ?? ""}
         onChange={(e) => handleData("categoryId", e.target.value)}
         options={categories}
-        required
+        isRequired={true}
+        error={variationValidationErrors?.categoryId}
       />
 
       <div className="flex flex-col gap-1">
         <label className="text-gray-500 text-sm font-medium">Variable Product</label>
         <select
           value={data?.isVariable ? "yes" : "no"}
-          onChange={(e) => handleData("isVariable", e.target.value === "yes")}
+          onChange={(e) => {
+            const isVar = e.target.value === "yes"
+            handleData("isVariable", isVar)
+            if (!isVar) {
+              handleData("attributes", [])
+              handleData("variations", [])
+              setVariantImages({}) // Clear variant images when not variable
+            }
+          }}
           className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
-          required
         >
           <option value="no">No</option>
           <option value="yes">Yes</option>
@@ -140,169 +265,296 @@ export default function BasicDetails({ data, handleData }) {
       </div>
 
       {data?.isVariable && (
-        <div className="flex flex-col gap-2">
-          <label className="text-gray-500 text-sm font-medium">
-            Colors <span className="text-red-500">*</span>
-          </label>
-          <div className="flex flex-wrap gap-4">
-            {colorOptions.map((color) => (
-              <label key={color.id} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={data?.colors?.includes(color.id) ?? false}
-                  onChange={() => handleColorToggle(color.id)}
-                  className="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-gray-700">{color.name}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1">
-        <label className="text-gray-500 text-sm font-medium">Has Quality Options</label>
-        <select
-          value={hasQualityOptions}
-          onChange={(e) => {
-            setHasQualityOptions(e.target.value);
-            handleData("hasQualityOptions", e.target.value === "yes");
-            if (e.target.value === "no") handleData("qualities", []);
-          }}
-          className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
-
-      {hasQualityOptions === "yes" && (
-        <div className="flex flex-col gap-2">
-          <label className="text-gray-500 text-sm font-medium">
-            Qualities <span className="text-red-500">*</span>
-          </label>
-          <div className="flex gap-2 items-center">
-            <select
-              value={newQuality}
-              onChange={(e) => setNewQuality(e.target.value)}
-              className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Quality</option>
-              {qualityOptions.map((quality) => (
-                <option key={quality.id} value={quality.id}>
-                  {quality.name}
-                </option>
-              ))}
-            </select>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-md font-semibold text-gray-800">Attributes</h2>
             <button
-              onClick={handleAddQuality}
-              disabled={!newQuality}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg disabled:bg-gray-300"
+              type="button"
+              onClick={handleAddAttribute}
+              className="bg-gray-900 text-white px-3 py-2 rounded-md text-sm"
             >
-              +
+              + Add attribute
             </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {data?.qualities?.map((qualityId) => {
-              const quality = qualityOptions.find((q) => q.id === qualityId);
-              return (
-                <div key={qualityId} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full">
-                  <span className="text-gray-700">{quality?.name || qualityId}</span>
-                  <button
-                    onClick={() => handleRemoveQuality(qualityId)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    ×
-                  </button>
+
+          {(data?.attributes ?? []).map((att, index) => (
+            <div key={index} className="rounded-lg border p-4 bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <InputField
+                    label="Attribute name"
+                    value={att.name}
+                    onChange={(e) => handleUpdateAttribute(index, "name", e.target.value)}
+                    isRequired={true}
+                    error={attributeErrors?.[index]?.name || attributeErrors?.[index]?.duplicate}
+                  />
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex items-center gap-4 pt-6 md:pt-8">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!att.usedForVariations}
+                      onChange={(e) => handleUpdateAttribute(index, "usedForVariations", e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm text-gray-700">Used for variations</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!att.visible}
+                      onChange={(e) => handleUpdateAttribute(index, "visible", e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm text-gray-700">Visible on product page</span>
+                  </label>
+                </div>
+                <div className="md:col-span-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-gray-500 text-sm font-medium">Values (separate with |)</label>
+                    <textarea
+                      value={attributeValueStrings[index] ?? ""}
+                      onChange={(e) => {
+                        const next = [...attributeValueStrings]
+                        next[index] = e.target.value
+                        setAttributeValueStrings(next)
+                      }}
+                      onBlur={(e) => handleUpdateAttribute(index, "values", e.target.value)}
+                      className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${attributeErrors?.[index]?.values ? "border-red-500" : "border-gray-300"
+                        }`}
+                      placeholder="Red|Blue|Black"
+                    />
+                    {attributeErrors?.[index]?.values && (
+                      <p className="text-xs text-red-600">{attributeErrors[index].values}</p>
+                    )}
+                    {attributeErrors?.[index]?.duplicate && (
+                      <p className="text-xs text-red-600">{attributeErrors[index].duplicate}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => handleRemoveAttribute(index)}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  Remove attribute
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      <InputField
-        label="Stock"
-        type="number"
-        value={data?.stock ?? ""}
-        onChange={(e) => handleData("stock", e.target.valueAsNumber)}
-        required
-      />
+      {data?.isVariable && hasUsedForVariations && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-md font-semibold text-gray-800">Variations</h2>
+            <button
+              type="button"
+              onClick={handleRegenerateVariations}
+              className="bg-gray-900 text-white px-3 py-2 rounded-md text-sm"
+            >
+              Regenerate variations
+            </button>
+          </div>
 
-      <InputField
-        label="Price"
-        type="number"
-        value={data?.price ?? ""}
-        onChange={(e) => handleData("price", e.target.valueAsNumber)}
-        required
-      />
+          <Accordion>
+            {(data?.variations ?? []).map((varr, index) => {
+              const vErr = variationValidationErrors?.[varr.id] || {}
+              return (
+                <AccordionItem
+                  key={varr.id}
+                  title={`#${varr.id} ${Object.entries(varr.attributes)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" ")}`}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <InputField
+                        label="Regular price"
+                        value={varr.price ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "" || /^\d+$/.test(val)) {
+                            handleUpdateVariation(index, "price", val)
+                          }
+                        }}
+                        isRequired={true}
+                        error={vErr?.price}
+                      />
+                    </div>
+                    <div>
+                      <InputField
+                        label="Sale price"
+                        value={varr.salePrice ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "" || /^\d+$/.test(val)) {
+                            handleUpdateVariation(index, "salePrice", val)
+                          }
+                        }}
+                        isRequired={false}
+                        error={vErr?.salePrice}
+                      />
+                    </div>
+                    <div>
+                      <InputField
+                        label="Stock"
+                        value={varr.stock ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "" || /^\d+$/.test(val)) {
+                            handleUpdateVariation(index, "stock", val)
+                          }
+                        }}
+                        isRequired={true}
+                        error={vErr?.stock}
+                      />
+                    </div>
+                  </div>
 
-      <InputField
-        label="Sale Price"
-        type="number"
-        value={data?.salePrice ?? ""}
-        onChange={(e) => handleData("salePrice", e.target.valueAsNumber)}
-      />
+                  <div className="mt-4">
+                    <label className="text-gray-500 text-sm font-medium">Variation images</label>
+                    {/* Thumbnails */}
+                    {(variantImages?.[varr.id] ?? []).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-3">
+                        {variantImages[varr.id].map((file, idx) => (
+                          <img
+                            key={idx}
+                            className="w-20 h-20 object-cover rounded-md border"
+                            src={URL.createObjectURL(file) || "/placeholder.svg"}
+                            alt=""
+                          />
+                        ))}
+                      </div>
+                    )}
 
-      <div className="flex flex-col gap-1">
-        <label className="text-gray-500 text-sm font-medium">Best Selling</label>
-        <select
-          value={data?.bestSelling ? "yes" : "no"}
-          onChange={(e) => handleData("bestSelling", e.target.value === "yes")}
-          className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
+                    {/* Controls: hidden file + visible button with + icon */}
+                    <div className="mt-2 flex items-center gap-3">
+                      <input
+                        type="file"
+                        id={`var-images-${varr.id}`}
+                        className="hidden"
+                        multiple
+                        onChange={(e) => {
+                          const newFiles = Array.from(e.target.files || [])
+                          if (newFiles.length === 0) return
+                          setVariantImages((prev) => {
+                            const prevList = prev?.[varr.id] ?? []
+                            return { ...prev, [varr.id]: [...prevList, ...newFiles] }
+                          })
+                        }}
+                      />
+                      <label
+                        htmlFor={`var-images-${varr.id}`}
+                        className="inline-flex items-center justify-center h-10 px-3 rounded-md border border-dashed border-gray-300 hover:border-gray-400 text-sm text-gray-700 cursor-pointer bg-white"
+                      >
+                        <span className="mr-2 text-lg leading-none">+</span>
+                        Add images
+                      </label>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-gray-500 text-sm font-medium">Top Pick Products</label>
-        <select
-          value={data?.isTopPick ? "yes" : "no"}
-          onChange={(e) => handleData("isTopPick", e.target.value === "yes")}
-          className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
+                      {/* Optional: clear all images for this variation */}
+                      {(variantImages?.[varr.id] ?? []).length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVariantImages((prev) => {
+                              const clone = { ...prev }
+                              clone[varr.id] = []
+                              return clone
+                            })
+                          }
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          Remove all
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </AccordionItem>
+              )
+            })}
+          </Accordion>
+        </div>
+      )}
+
+      {!data?.isVariable && (
+        <>
+          <InputField
+            label="Stock"
+            value={data?.stock ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) {
+                handleData("stock", val)
+              }
+            }}
+            isRequired={true}
+            error={variationValidationErrors?.stock}
+          />
+          <InputField
+            label="Price"
+            value={data?.price ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) {
+                handleData("price", val)
+              }
+            }}
+            isRequired={true}
+            error={variationValidationErrors?.price}
+          />
+          <InputField
+            label="Sale Price"
+            value={data?.salePrice ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) {
+                handleData("salePrice", val)
+              }
+            }}
+            isRequired={false}
+            error={variationValidationErrors?.salePrice}
+          />
+        </>
+      )}
     </section>
-  );
+  )
 }
 
-function InputField({ label, type = "text", value, onChange, required = false }) {
+function InputField({ label, type = "text", value, onChange, isRequired = false, error }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-gray-500 text-sm font-medium">
-        {label} {required && <span className="text-red-500">*</span>}
+        {label} {isRequired && <span className="text-red-500">*</span>}
       </label>
       <input
         type={type}
         value={value}
         onChange={onChange}
-        className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
-        required={required}
+        className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${error ? "border-red-500" : "border-gray-300"
+          }`}
       />
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
-  );
+  )
 }
 
-function SelectField({ label, value, onChange, options = [], required = false, disabled = false }) {
+function SelectField({ label, value, onChange, options = [], isRequired = false, disabled = false, error }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-gray-500 text-sm font-medium">
-        {label} {required && <span className="text-red-500">*</span>}
+        {label} {isRequired && <span className="text-red-500">*</span>}
       </label>
       <select
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className="border border-gray-300 px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500"
-        required={required}
+        className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${error ? "border-red-500" : "border-gray-300"
+          }`}
       >
         <option value="">Select {label}</option>
         {options?.map((item) => (
@@ -311,6 +563,7 @@ function SelectField({ label, value, onChange, options = [], required = false, d
           </option>
         ))}
       </select>
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
-  );
+  )
 }

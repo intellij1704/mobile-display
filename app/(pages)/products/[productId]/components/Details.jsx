@@ -5,19 +5,30 @@ import MyRating from "@/app/components/MyRating";
 import { AuthContextProvider } from "@/context/AuthContext";
 import { getProductReviewCounts } from "@/lib/firestore/products/count/read";
 import { ShoppingCart } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
-import ColorSelector from "./ColorSelector";
-import QualitySelector from "./QualitySelector";
-import ActionButtons from "./ActionButtons";
 import OffersSection from "./OffersSection"; // New component for offers
 import DeliveryChecker from "./DeliveryChecker";
 import { addDays, format } from "date-fns";
+import ColorSelector from "./ColorSelector";
+import QualitySelector from "./QualitySelector";
+import ActionButtons from "./ActionButtons";
 
 async function Details({ product, selectedColor, selectedQuality }) {
-  const discount = product?.price && product?.salePrice
-    ? Math.round(((product.price - product.salePrice) / product.price) * 100)
+  // For variable products, find selected variation
+  const selectedVariation = product?.isVariable
+    ? product.variations?.find(v => 
+        v.attributes.Color === selectedColor && v.attributes.Quality === selectedQuality
+      )
+    : null;
+
+  const effectivePrice = product?.isVariable ? (selectedVariation?.salePrice || selectedVariation?.price) : (product?.salePrice || product?.price);
+  const effectiveOriginalPrice = product?.isVariable ? selectedVariation?.price : product?.price;
+  const discount = effectiveOriginalPrice && effectivePrice && effectiveOriginalPrice > effectivePrice
+    ? Math.round(((effectiveOriginalPrice - effectivePrice) / effectiveOriginalPrice) * 100)
     : 0;
+
+  const effectiveStock = product?.isVariable ? parseInt(selectedVariation?.stock || 0) : (product?.stock || 0);
+  const isOutOfStock = product?.isVariable ? (!selectedVariation || effectiveStock <= 0) : (product.stock <= (product.orders ?? 0));
 
   const whyBuyUs = [
     {
@@ -40,7 +51,6 @@ async function Details({ product, selectedColor, selectedQuality }) {
     },
   ];
 
-
   function getEstimatedDelivery(days) {
     const today = new Date();
     const startDate = format(today, "dd MMMM, yyyy"); // Today
@@ -48,8 +58,12 @@ async function Details({ product, selectedColor, selectedQuality }) {
     return ` ${endDate}`;
   }
 
-
   const estimatedDate = getEstimatedDelivery(3);
+
+  // Compute colors and qualities from attributes
+  const colors = product?.attributes?.find(a => a.name === "Color")?.values || [];
+  const qualities = product?.attributes?.find(a => a.name === "Quality")?.values || [];
+  const hasQualityOptions = qualities.length > 0;
 
   return (
     <div className="w-full ">
@@ -73,18 +87,17 @@ async function Details({ product, selectedColor, selectedQuality }) {
       {/* Price Section with Enhanced Discount Display */}
       <div className="flex items-center gap-3 mt-4">
         <h2 className="text-2xl font-bold text-gray-900">
-          ₹{product?.salePrice || product?.price}
+          ₹{effectivePrice || "N/A"}
         </h2>
-        {product?.price && product?.salePrice && product.price > product.salePrice && (
+        {effectiveOriginalPrice && effectivePrice && effectiveOriginalPrice > effectivePrice && (
           <>
             <span className="text-gray-500 line-through text-md">
-              ₹{product?.price}
+              ₹{effectiveOriginalPrice}
             </span>
             <div className="flex flex-col items-start">
               <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-lg">
                 {discount}% OFF
               </span>
-
             </div>
           </>
         )}
@@ -103,29 +116,30 @@ async function Details({ product, selectedColor, selectedQuality }) {
       </div>
 
       {/* Color Selection */}
-      {product?.isVariable && product?.colors?.length > 0 && (
+      {product?.isVariable && colors.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-4">Select Color</h3>
           <ColorSelector
-            colors={product.colors}
+            colors={colors}
             selectedColor={selectedColor}
             productId={product.id}
+            currentQuality={selectedQuality}
           />
         </div>
       )}
 
       {/* Quality Selection */}
-      {product?.hasQualityOptions && product?.qualities?.length > 0 && (
+      {product?.isVariable && hasQualityOptions && (
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-4">Select Quality</h3>
           <QualitySelector
-            qualities={product.qualities}
+            qualities={qualities}
             selectedQuality={selectedQuality}
             productId={product.id}
+            currentColor={selectedColor}
           />
         </div>
       )}
-
 
       <div className="mt-6">
         <DeliveryChecker />
@@ -137,11 +151,12 @@ async function Details({ product, selectedColor, selectedQuality }) {
           product={product}
           selectedColor={selectedColor}
           selectedQuality={selectedQuality}
+          isDisabled={isOutOfStock}
         />
       </AuthContextProvider>
 
       {/* Stock Info */}
-      {product?.stock <= (product?.orders ?? 0) && (
+      {isOutOfStock && (
         <div className="mt-3">
           <h3 className="text-red-500 bg-red-50 py-1 px-2 rounded-lg text-sm">
             Out of Stock

@@ -127,6 +127,7 @@ const OrdersPage = () => {
               const lineItems = order?.checkout?.line_items || [];
 
               // Filter out fees
+              
               const productItems = lineItems.filter(
                 (item) =>
                   item?.price_data?.product_data?.name !== "COD Fee" &&
@@ -181,6 +182,7 @@ const OrdersPage = () => {
                     {productItems.map((product, idx) => {
                       const metadata = product?.price_data?.product_data?.metadata || {};
                       const selectedColor = metadata?.selectedColor || "";
+                      const selectedQuality = metadata?.selectedQuality || "";
 
                       return (
                         <div
@@ -210,6 +212,14 @@ const OrdersPage = () => {
                                 Color:{" "}
                                 <span className="font-medium">
                                   {selectedColor}
+                                </span>
+                              </p>
+                            )}
+                            {selectedColor && (
+                              <p className="text-sm text-gray-600">
+                                Quality:{" "}
+                                <span className="font-medium">
+                                  {selectedQuality}
                                 </span>
                               </p>
                             )}

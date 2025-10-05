@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
-import { ChevronLeft, CreditCard, Truck } from "lucide-react"
+import { ChevronLeft } from "lucide-react"
 
 // External app hooks and actions
 import { useAuth } from "@/context/AuthContext"
@@ -225,7 +225,7 @@ function ContactAndAddress({ userData, user, productList }) {
         }, 500)
     }
 
-    // Pricing logic (unchanged)
+    // Pricing logic (updated for variable products)
     const cartCategorySet = useMemo(() => new Set(productList?.map((item) => item.product?.categoryId)), [productList])
     const allCategories = useMemo(() => [...cartCategorySet], [cartCategorySet])
     const getCategoryName = (categoryId) => {
@@ -238,8 +238,31 @@ function ContactAndAddress({ userData, user, productList }) {
         return couponCategories.some((cat) => cartCategorySet.has(cat))
     }
 
+    const getItemPrice = (item) => {
+        const product = item?.product
+        if (!product) return 0
+        if (product.isVariable && product.variations?.length > 0) {
+            const selectedColor = item.selectedColor
+            const selectedQuality = item.selectedQuality
+            const matchingVariation = product.variations.find(v => {
+                const attrs = v.attributes || {}
+                return attrs.Color === selectedColor && attrs.Quality === selectedQuality
+            })
+            if (matchingVariation) {
+                return parseFloat(matchingVariation.salePrice || matchingVariation.price) || 0
+            }
+            return 0
+        } else {
+            return parseFloat(product.salePrice || product.price) || 0
+        }
+    }
+
     const totalPrice = useMemo(() => {
-        return productList?.reduce((prev, curr) => prev + (curr?.quantity || 0) * (curr?.product?.salePrice || 0), 0) || 0
+        return productList?.reduce((prev, curr) => {
+            const quantity = curr?.quantity || 0
+            const itemPrice = getItemPrice(curr)
+            return prev + (quantity * itemPrice)
+        }, 0) || 0
     }, [productList])
 
     const prepaidOffers = useMemo(
@@ -276,7 +299,7 @@ function ContactAndAddress({ userData, user, productList }) {
         for (const cat of allCategories) {
             const catSum = productList
                 .filter((item) => item.product?.categoryId === cat)
-                .reduce((sum, item) => sum + (item.quantity || 0) * (item.product?.salePrice || 0), 0)
+                .reduce((sum, item) => sum + (item.quantity || 0) * getItemPrice(item), 0)
             if (!catSum) continue
 
             const couponP = couponPMap[cat] || 0
@@ -310,20 +333,20 @@ function ContactAndAddress({ userData, user, productList }) {
 
             if (displayCouponP > 0) {
                 lines.push({
-                    label: `Coupon Discount for ${categoriesMap.get(cat)?.name || "Unknown Category"} (${displayCouponP}%)`,
+                    label: `Coupon Discount for ${getCategoryName(cat)} (${displayCouponP}%)`,
                     amount: -(catSum * (displayCouponP / 100)),
                 })
             }
             if (displayAdditionalP > 0) {
                 const prefix = displayCouponP > 0 ? "Additional " : ""
                 lines.push({
-                    label: `${prefix}Prepaid Discount for ${categoriesMap.get(cat)?.name || "Unknown Category"} (${displayAdditionalP}%)`,
+                    label: `${prefix}Prepaid Discount for ${getCategoryName(cat)} (${displayAdditionalP}%)`,
                     amount: -(catSum * (displayAdditionalP / 100)),
                 })
             }
         }
         return { discountLines: lines, discount: d }
-    }, [allCategories, productList, couponPMap, categoryMaxPrepaid, paymentMode, categoriesMap])
+    }, [allCategories, productList, couponPMap, categoryMaxPrepaid, paymentMode])
 
     const { minFreeDelivery, shippingExtraCharges, airExpressDeliveryCharge } = {
         minFreeDelivery: shippingData?.minFreeDeliveryAmount || 499,
@@ -334,7 +357,7 @@ function ContactAndAddress({ userData, user, productList }) {
     const returnFees = useMemo(() => {
         return productList.reduce((sum, item) => {
             if (item?.returnType === "easy-return") {
-                const itemSubtotal = (item?.quantity || 0) * (item?.product?.salePrice || 0)
+                const itemSubtotal = (item?.quantity || 0) * getItemPrice(item)
                 return sum + 160 + 0.05 * itemSubtotal
             }
             return sum

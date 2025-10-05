@@ -18,8 +18,18 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
   const { user } = useAuth()
   const { data: userData } = useUser({ uid: user?.uid })
 
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || "")
-  const [selectedQuality, setSelectedQuality] = useState(product?.qualities?.[0] || "")
+  const colors = useMemo(() => 
+    product?.attributes?.find(attr => attr.name === "Color")?.values || [], 
+  [product])
+
+  const qualities = useMemo(() => 
+    product?.attributes?.find(attr => attr.name === "Quality")?.values || [], 
+  [product])
+
+  const hasQualityOptions = qualities.length > 0
+
+  const [selectedColor, setSelectedColor] = useState("")
+  const [selectedQuality, setSelectedQuality] = useState("")
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showReturnSelector, setShowReturnSelector] = useState(false)
   const [actionType, setActionType] = useState("") // "cart" or "buy"
@@ -34,27 +44,86 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     }
   }, [isOpen])
 
-  // Get images for selected color or fallback to main images
-  const displayImages = useMemo(() => {
-    if (selectedColor && product?.variantImages?.[selectedColor]?.length > 0) {
-      return product.variantImages[selectedColor]
+  // Set initial selections to the variation with the lowest price
+  useEffect(() => {
+    if (isOpen && product?.variations?.length > 0) {
+      let minPrice = Infinity
+      let minVariation = null
+      product.variations.forEach(variation => {
+        const price = parseFloat(variation.salePrice) || parseFloat(variation.price)
+        if (price < minPrice) {
+          minPrice = price
+          minVariation = variation
+        }
+      })
+      if (minVariation) {
+        setSelectedColor(minVariation.attributes.Color || "")
+        setSelectedQuality(minVariation.attributes.Quality || "")
+      } else {
+        setSelectedColor(colors[0] || "")
+        setSelectedQuality(qualities[0] || "")
+      }
     }
-    return product?.imageList || [product?.featureImageURL].filter(Boolean)
-  }, [selectedColor, product])
+  }, [isOpen, product, colors, qualities])
+
+  const selectedVariation = useMemo(() => {
+    if (selectedColor && (hasQualityOptions ? selectedQuality : true)) {
+      return product?.variations?.find(v => 
+        v.attributes.Color === selectedColor && 
+        (!hasQualityOptions || v.attributes.Quality === selectedQuality)
+      )
+    }
+    return null
+  }, [selectedColor, selectedQuality, product, hasQualityOptions])
+
+  // Get images: variation images first, then append product.imageList as additional slides
+  const displayImages = useMemo(() => {
+    let images = []
+
+    // Priority 1: Selected variation's imageURLs
+    if (selectedVariation?.imageURLs?.length > 0) {
+      images = [...selectedVariation.imageURLs]
+    } 
+    // Priority 2: variantImages by selected color (if no variation images)
+    else if (selectedColor && product?.variantImages?.[selectedColor.toLowerCase()]?.length > 0) {
+      images = [...product.variantImages[selectedColor.toLowerCase()]]
+    }
+
+    // Always append product.imageList as additional slides (after variation images)
+    if (product?.imageList?.length > 0) {
+      // To avoid duplicates, filter out images already in the variation list
+      const imageListSet = new Set(images)
+      const additionalImages = product.imageList.filter(img => !imageListSet.has(img))
+      images = [...images, ...additionalImages]
+    }
+
+    // Final fallback if no images yet
+    if (images.length === 0) {
+      images = [product?.featureImageURL].filter(Boolean)
+    }
+
+    return images
+  }, [selectedVariation, selectedColor, product])
+
+  const currentPrice = selectedVariation ? (parseFloat(selectedVariation.salePrice) || parseFloat(selectedVariation.price)) : 0
+  const originalPrice = selectedVariation?.salePrice ? parseFloat(selectedVariation.price) : null
+  const discountPercentage = originalPrice && currentPrice < originalPrice
+    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+    : 0
 
   const formatPrice = (amount) => `₹${amount?.toLocaleString("en-IN")}`
-  const discountPercentage =
-    product?.salePrice && product?.price > product?.salePrice
-      ? Math.round(((product.price - product.salePrice) / product.price) * 100)
-      : 0
 
   const validateSelections = () => {
-    if (product?.isVariable && product?.colors?.length > 0 && !selectedColor) {
+    if (product?.isVariable && colors.length > 0 && !selectedColor) {
       toast.error("Please select a color!")
       return false
     }
-    if (product?.hasQualityOptions && product?.qualities?.length > 0 && !selectedQuality) {
+    if (hasQualityOptions && qualities.length > 0 && !selectedQuality) {
       toast.error("Please select a quality!")
+      return false
+    }
+    if (!selectedVariation) {
+      toast.error("Selected variation not found!")
       return false
     }
     return true
@@ -89,7 +158,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
               id: product.id,
               quantity: 1,
               ...(product?.isVariable && { selectedColor }),
-              ...(product?.hasQualityOptions && { selectedQuality }),
+              ...(hasQualityOptions && { selectedQuality }),
               returnType: choice.id,
               returnFee: choice.fee,
             },
@@ -249,12 +318,12 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
                   <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                     <span className="text-xl sm:text-2xl font-bold text-gray-900">
-                      {formatPrice(product.salePrice || product.price)}
+                      {formatPrice(currentPrice)}
                     </span>
-                    {product.salePrice && product.price > product.salePrice && (
+                    {selectedVariation?.salePrice && originalPrice > currentPrice && (
                       <>
                         <span className="text-lg sm:text-xl text-gray-500 line-through">
-                          {formatPrice(product.price)}
+                          {formatPrice(originalPrice)}
                         </span>
                         <Badge
                           variant="destructive"
@@ -266,11 +335,11 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                     )}
                   </div>
                 </div>
-                {product.salePrice && (
+                {selectedVariation?.salePrice && (
                   <div className="flex items-center gap-2 mt-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <p className="text-xs sm:text-sm text-green-700 font-semibold">
-                      You save: {formatPrice(product.price - product.salePrice)}
+                      You save: {formatPrice(originalPrice - currentPrice)}
                     </p>
                   </div>
                 )}
@@ -290,13 +359,13 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
               )}
 
               {/* Color Selection */}
-              {product?.isVariable && product?.colors?.length > 0 && (
+              {product?.isVariable && colors.length > 0 && (
                 <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-5">
                   <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
                     Select Color
                   </h4>
                   <div className="flex gap-2 flex-wrap">
-                    {product.colors.map((color) => (
+                    {colors.map((color) => (
                       <button
                         key={color}
                         onClick={() => setSelectedColor(color)}
@@ -304,25 +373,25 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                           ? "border-gray-800 ring-2 ring-gray-300 scale-110"
                           : "border-gray-300 hover:border-gray-400"
                           }`}
-                        style={{ backgroundColor: color }}
+                        style={{ backgroundColor: color.toLowerCase() }}
                         title={color}
                       />
                     ))}
                   </div>
                   <p className="text-xs sm:text-sm text-gray-600 font-medium capitalize">
-                    Selected: <span className="text-gray-900 font-semibold">{selectedColor}</span>
+                    Selected: <span className="text-gray-900 font-semibold">{selectedColor || "None"}</span>
                   </p>
                 </div>
               )}
 
               {/* Quality Selection */}
-              {product?.hasQualityOptions && product?.qualities?.length > 0 && (
+              {hasQualityOptions && qualities.length > 0 && (
                 <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-5">
                   <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
                     Select Quality
                   </h4>
                   <div className="flex gap-2 flex-wrap">
-                    {product.qualities.map((quality) => (
+                    {qualities.map((quality) => (
                       <Button
                         key={quality}
                         variant={selectedQuality === quality ? "default" : "outline"}
@@ -341,7 +410,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
               <div className="flex flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                 <Button
                   onClick={handleAddToCart}
-                  disabled={isLoading}
+                  disabled={isLoading || !selectedVariation}
                   className="w-full sm:flex-1 bg-gray-900 hover:bg-gray-800 text-white h-12 sm:h-12 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 hover:shadow-xl"
                 >
                   <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
@@ -349,7 +418,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                 </Button>
                 <Button
                   onClick={handleBuyNow}
-                  disabled={isLoading}
+                  disabled={isLoading || !selectedVariation}
                   className="w-full sm:flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white h-12 sm:h-12 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 hover:shadow-xl"
                 >
                   <Zap className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
@@ -365,7 +434,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
         open={showReturnSelector}
         onClose={() => setShowReturnSelector(false)}
         onConfirm={handleReturnConfirm}
-        productPrice={product?.salePrice || product?.price}
+        productPrice={currentPrice}
       />
     </>
   )

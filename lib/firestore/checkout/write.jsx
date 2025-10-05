@@ -27,9 +27,29 @@ export const createCheckoutCODAndGetId = async ({
     const shippingExtraCharges = shippingData.shippingExtraCharges ?? 0
     const airExpressDeliveryCharge = shippingData.airExpressDeliveryCharge ?? 0
 
+    // Helper to get item price considering variations
+    const getItemPrice = (item) => {
+        const product = item?.product
+        if (!product) return 0
+        if (product.isVariable && product.variations?.length > 0) {
+            const selectedColor = item.selectedColor
+            const selectedQuality = item.selectedQuality
+            const matchingVariation = product.variations.find(v => {
+                const attrs = v.attributes || {}
+                return attrs.Color === selectedColor && attrs.Quality === selectedQuality
+            })
+            if (matchingVariation) {
+                return parseFloat(matchingVariation.salePrice || matchingVariation.price) || 0
+            }
+            return 0
+        } else {
+            return parseFloat(product.salePrice || product.price) || 0
+        }
+    }
+
     // Subtotal before discount
     const subtotal = products.reduce(
-        (prev, curr) => prev + (curr?.quantity || 0) * (curr?.product?.salePrice || curr?.product?.price || 0),
+        (prev, curr) => prev + (curr?.quantity || 0) * getItemPrice(curr),
         0
     )
 
@@ -49,7 +69,7 @@ export const createCheckoutCODAndGetId = async ({
     for (const cat of [...cartCategorySet]) {
         const catSum = products
             .filter((item) => item?.product?.categoryId === cat)
-            .reduce((sum, item) => sum + (item?.quantity || 0) * (item?.product?.salePrice || item?.product?.price || 0), 0)
+            .reduce((sum, item) => sum + (item?.quantity || 0) * getItemPrice(item), 0)
         const couponP = couponPMap[cat] || 0
         discount += catSum * (couponP / 100)
     }
@@ -64,7 +84,7 @@ export const createCheckoutCODAndGetId = async ({
     let returnFees = 0
     let replacementFees = 0
     products.forEach((item) => {
-        const itemSubtotal = (item?.quantity || 0) * (item?.product?.salePrice || item?.product?.price || 0)
+        const itemSubtotal = (item?.quantity || 0) * getItemPrice(item)
         if (item?.returnFee) {
             if (item?.returnType === "easy-return") {
                 returnFees += item.returnFee
@@ -102,7 +122,7 @@ export const createCheckoutCODAndGetId = async ({
                     returnFee: item?.returnFee || 0,
                 },
             },
-            unit_amount: Math.round(item?.product?.salePrice || item?.product?.price || 0) * 100,
+            unit_amount: Math.round(getItemPrice(item)) * 100,
         },
         quantity: item?.quantity ?? 1,
     }))
