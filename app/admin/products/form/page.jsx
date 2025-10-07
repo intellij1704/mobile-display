@@ -126,7 +126,8 @@ export default function Page() {
           return
         }
 
-        // Variation validation: price and stock are required, salePrice if set must be < price
+        // Variation validation
+        let variationsHaveErrors = false;
         vars.forEach((v) => {
           const varErrors = {}
           const price = Number(v?.price)
@@ -135,52 +136,53 @@ export default function Page() {
 
           if (v?.price === "" || isNaN(price) || price <= 0) {
             varErrors.price = "Valid regular price is required"
-            hasError = true
+            console.log(" Price error")
+            variationsHaveErrors = true;
           }
-          if (v?.stock === "" || isNaN(stock) || stock < 0) {
-            varErrors.stock = "Valid stock is required"
-            hasError = true
-          }
-          if (v?.salePrice !== "" && (!isNaN(salePrice) && salePrice >= price)) {
+     
+          if ((v?.salePrice !== "" && v?.salePrice != null) && (!isNaN(salePrice) && salePrice >= price)) {
             varErrors.salePrice = "Sale price must be less than regular price"
-            hasError = true
-          } else if (v?.salePrice !== "" && isNaN(salePrice)) {
+            console.log(" Sale price error")
+            variationsHaveErrors = true;
+          } else if ((v?.salePrice !== "" && v?.salePrice != null) && isNaN(salePrice)) {
             varErrors.salePrice = "Sale price must be a valid number"
-            hasError = true
+            console.log(" Sale price error")
+            variationsHaveErrors = true;
           }
           if (Object.keys(varErrors).length > 0) {
             errors[v.id] = varErrors
           }
         })
 
-        if (hasError) {
+        if (variationsHaveErrors) {
           toast.error("Please fill required fields and ensure sale prices are valid for each variation.")
           setValidationErrors(errors)
           return
         }
       } else {
         // Simple product validation
+        let simpleProductHasError = false;
         const price = Number(data?.price)
         const salePrice = Number(data?.salePrice)
         const stock = Number(data?.stock)
 
         if (data?.price === "" || isNaN(price) || price <= 0) {
           errors.price = "Valid price is required"
-          hasError = true
+          simpleProductHasError = true;
         }
         if (data?.stock === "" || isNaN(stock) || stock < 0) {
           errors.stock = "Valid stock is required"
-          hasError = true
+          simpleProductHasError = true;
         }
-        if (data?.salePrice !== "" && (!isNaN(salePrice) && salePrice >= price)) {
+        if ((data?.salePrice !== "" && data?.salePrice != null) && (!isNaN(salePrice) && salePrice >= price)) {
           errors.salePrice = "Sale price must be less than price"
-          hasError = true
-        } else if (data?.salePrice !== "" && isNaN(salePrice)) {
+          simpleProductHasError = true;
+        } else if ((data?.salePrice !== "" && data?.salePrice != null) && isNaN(salePrice)) {
           errors.salePrice = "Sale price must be a valid number"
-          hasError = true
+          simpleProductHasError = true;
         }
 
-        if (hasError) {
+        if (simpleProductHasError) {
           toast.error("Please fill required fields and ensure sale price is valid.")
           setValidationErrors(errors)
           return

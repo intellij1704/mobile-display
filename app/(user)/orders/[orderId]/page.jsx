@@ -294,21 +294,18 @@ const OrderDetailPage = () => {
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <button
-                                                        className={`self-end px-4 py-2 rounded-lg transition-colors ${canReturn
+                                                    {isDelivered &&
+                                                        <button
+                                                            className={`self-end px-4 py-2 rounded-lg transition-colors ${canReturn
                                                                 ? "bg-black text-white hover:bg-red-700"
                                                                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                            }`}
-                                                        onClick={() => openModal(item)}
-                                                        disabled={!canReturn}
-                                                    >
-                                                        {returnTitle}
-                                                    </button>
-                                                    {!isDelivered && (
-                                                        <p className="self-end text-sm text-gray-500 mt-1">
-                                                            Return option enabled when order is delivered
-                                                        </p>
-                                                    )}
+                                                                }`}
+                                                            onClick={() => openModal(item)}
+                                                            disabled={!canReturn}
+                                                        >
+                                                            {returnTitle}
+                                                        </button>
+                                                    }
                                                 </>
                                             )}
                                         </div>
@@ -360,10 +357,10 @@ const OrderDetailPage = () => {
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         className={`w-4 h-4 rounded-full flex items-center justify-center ${isCompleted
-                                                                ? "bg-green-500"
-                                                                : isCurrent
-                                                                    ? "bg-blue-500"
-                                                                    : "bg-gray-300"
+                                                            ? "bg-green-500"
+                                                            : isCurrent
+                                                                ? "bg-blue-500"
+                                                                : "bg-gray-300"
                                                             }`}
                                                     >
                                                         {isCompleted ? (
@@ -549,7 +546,7 @@ const OrderDetailPage = () => {
 
             {/* Return/Replacement Modal */}
             {modalOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) closeModal();
@@ -585,8 +582,8 @@ const OrderDetailPage = () => {
                         {/* Reason Selection */}
                         <div className="space-y-3 mb-6">
                             {returnReasons.map((reason) => (
-                                <label 
-                                    key={reason.value} 
+                                <label
+                                    key={reason.value}
                                     className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-blue-50 border border-gray-200 transition-colors"
                                 >
                                     <input
@@ -635,11 +632,10 @@ const OrderDetailPage = () => {
 
                         {/* Submit Button */}
                         <button
-                            className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${
-                                selectedReason && !isSubmitting
-                                    ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
-                                    : "bg-gray-300 cursor-not-allowed"
-                            }`}
+                            className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isSubmitting
+                                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
+                                : "bg-gray-300 cursor-not-allowed"
+                                }`}
                             disabled={!selectedReason || isSubmitting}
                             onClick={handleSubmit}
                         >

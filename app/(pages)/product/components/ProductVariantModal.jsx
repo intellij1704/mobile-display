@@ -37,6 +37,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
   const [actionType, setActionType] = useState("") // "cart" or "buy"
   const [isLoading, setIsLoading] = useState(false)
   const [animate, setAnimate] = useState(false)
+  const [error, setError] = useState("")
 
   // Effect to handle animations and set initial selections when the modal opens
   useEffect(() => {
@@ -46,20 +47,6 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
       let initialColor = ""
       let initialQuality = ""
-
-      if (isActuallyVariable) {
-        // Find the variation with the lowest price to set as the default
-        const lowestPriceVariation = product.variations.reduce((lowest, current) => {
-          const lowestPrice = parseFloat(lowest.salePrice || lowest.price)
-          const currentPrice = parseFloat(current.salePrice || current.price)
-          return currentPrice < lowestPrice ? current : lowest
-        }, product.variations[0])
-
-        if (lowestPriceVariation) {
-          initialColor = lowestPriceVariation.attributes.Color || ""
-          initialQuality = lowestPriceVariation.attributes.Quality || ""
-        }
-      }
 
       // If there's only one option for an attribute, auto-select it.
       // This ensures single-color products are selected by default.
@@ -79,8 +66,12 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
       setSelectedColor("")
       setSelectedQuality("")
     }
-  }, [isOpen, product, colors, qualities, isActuallyVariable])
+  }, [isOpen, product, colors, qualities])
 
+  // Clear error when selections change
+  useEffect(() => {
+    setError("")
+  }, [selectedColor, selectedQuality])
 
   const selectedVariation = useMemo(() => {
     // For non-variable products, create a mock variation from the base product
@@ -89,6 +80,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
         price: product.price,
         salePrice: product.salePrice,
         attributes: {},
+        imageURLs: [],
       }
     }
 
@@ -100,18 +92,39 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     })
   }, [selectedColor, selectedQuality, product, hasColorOptions, hasQualityOptions, isActuallyVariable])
 
+  // Compute the lowest variation for initial display
+  const lowestVariation = useMemo(() => {
+    if (!isActuallyVariable) {
+      return {
+        price: product.price,
+        salePrice: product.salePrice,
+        attributes: {},
+        imageURLs: [],
+      }
+    }
+    return product.variations.reduce((lowest, current) => {
+      const lowestP = parseFloat(lowest.salePrice || lowest.price)
+      const currentP = parseFloat(current.salePrice || current.price)
+      return currentP < lowestP ? current : lowest
+    }, product.variations[0])
+  }, [product, isActuallyVariable])
+
+  const displayVariation = selectedVariation || lowestVariation
 
   // Get images: variation images first, then append product.imageList as additional slides
   const displayImages = useMemo(() => {
     let images = []
 
-    // Priority 1: Selected variation's imageURLs
-    if (selectedVariation?.imageURLs?.length > 0) {
-      images = [...selectedVariation.imageURLs]
+    // Priority 1: display variation's imageURLs
+    if (displayVariation?.imageURLs?.length > 0) {
+      images = [...displayVariation.imageURLs]
     }
-    // Priority 2: variantImages by selected color (if no variation images)
-    else if (selectedColor && product?.variantImages?.[selectedColor.toLowerCase()]?.length > 0) {
-      images = [...product.variantImages[selectedColor.toLowerCase()]]
+    // Priority 2: variantImages by selected color or lowest color (if no variation images)
+    else {
+      const color = (selectedColor || displayVariation?.attributes?.Color || "").toLowerCase()
+      if (color && product?.variantImages?.[color]?.length > 0) {
+        images = [...product.variantImages[color]]
+      }
     }
 
     // Always append product.imageList as additional slides (after variation images)
@@ -128,10 +141,10 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     }
 
     return images
-  }, [selectedVariation, selectedColor, product])
+  }, [displayVariation, selectedColor, product])
 
-  const currentPrice = selectedVariation ? (parseFloat(selectedVariation.salePrice) || parseFloat(selectedVariation.price)) : 0
-  const originalPrice = selectedVariation?.salePrice ? parseFloat(selectedVariation.price) : null
+  const currentPrice = parseFloat(displayVariation?.salePrice || displayVariation?.price) || 0
+  const originalPrice = displayVariation?.salePrice ? parseFloat(displayVariation.price) : null
   const discountPercentage = originalPrice && currentPrice < originalPrice
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : 0
@@ -140,17 +153,18 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
   const validateSelections = () => {
     if (isActuallyVariable && hasColorOptions && !selectedColor) {
-      toast.error("Please select a color!")
+      setError("Please select a color!")
       return false
     }
     if (isActuallyVariable && hasQualityOptions && !selectedQuality) {
-      toast.error("Please select a quality!")
+      setError("Please select a quality!")
       return false
     }
     if (isActuallyVariable && !selectedVariation) {
-      toast.error("This combination is not available.")
+      setError("Please select a variation. This combination is not available.")
       return false
     }
+    setError("")
     return true
   }
 
@@ -245,7 +259,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
   if (!product || (!isOpen && !animate)) return null
 
-  const isActionDisabled = isLoading || (isActuallyVariable && !selectedVariation)
+  const isActionDisabled = isLoading
 
   return (
     <>
@@ -347,7 +361,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                     <span className="text-xl sm:text-2xl font-bold text-gray-900">
                       {formatPrice(currentPrice)}
                     </span>
-                    {selectedVariation?.salePrice && originalPrice > currentPrice && (
+                    {displayVariation?.salePrice && originalPrice > currentPrice && (
                       <>
                         <span className="text-lg sm:text-xl text-gray-500 line-through">
                           {formatPrice(originalPrice)}
@@ -362,7 +376,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                     )}
                   </div>
                 </div>
-                {selectedVariation?.salePrice && (
+                {displayVariation?.salePrice && originalPrice > currentPrice && (
                   <div className="flex items-center gap-2 mt-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <p className="text-xs sm:text-sm text-green-700 font-semibold">
@@ -433,6 +447,8 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                   </div>
                 </div>
               )}
+
+              {error && <p className="text-red-500 text-sm pt-4">{error}</p>}
 
               <div className="flex flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                 <Button

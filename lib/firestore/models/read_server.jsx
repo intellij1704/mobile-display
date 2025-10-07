@@ -1,38 +1,37 @@
-import { getBrands } from "@/lib/firestore/brands/read";
-import { getSeriesByBrand } from "@/lib/firestore/series/read";
-import { getModelsBySeries } from "@/lib/firestore/models/read";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 
-export async function getServerSideProps(context) {
-  try {
-    const brands = await getBrands();
-    const brandId = context.query.brandId || "";
-    const seriesId = context.query.seriesId || "";
+/**
+ * Get all models
+ */
+export const getAllModels = async () => {
+  const snapshot = await getDocs(collection(db, "models"));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
 
-    let series = [];
-    let models = [];
+/**
+ * Get models by brand & series
+ */
+export const getModelsBySeries = async (brandId, seriesId) => {
+  if (!brandId || !seriesId) return [];
+  const q = query(
+    collection(db, "models"),
+    where("brandId", "==", brandId),
+    where("seriesId", "==", seriesId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
 
-    if (brandId) {
-      series = await getSeriesByBrand(brandId);
-    }
-    if (brandId && seriesId) {
-      models = await getModelsBySeries(brandId, seriesId);
-    }
-
-    return {
-      props: {
-        brands,
-        series,
-        models,
-      },
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      props: {
-        brands: [],
-        series: [],
-        models: [],
-      },
-    };
+/**
+ * Get model by ID
+ */
+export const getModel = async ({ id }) => {
+  if (!id) throw new Error("Model ID is required");
+  const docRef = doc(db, "models", id);
+  const modelDoc = await getDoc(docRef);
+  if (modelDoc.exists()) {
+    return { id: modelDoc.id, ...modelDoc.data() };
   }
-}
+  return null;
+};

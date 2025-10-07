@@ -35,7 +35,7 @@
     "html-react-parser": "^5.2.3",
     "jodit-react": "^5.2.19",
     "jquery": "^3.7.1",
-    "jspdf": "^3.0.1",
+    "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
     "next": "^15.3.0",

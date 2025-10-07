@@ -27,9 +27,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     bigDeal,
     liveSale,
     topPick,
-    stock: baseStock,
     seoSlug,
-    orders = 0,
     attributes = [],
     variations = [],
   } = product
@@ -59,18 +57,15 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     return []
   }, [product?.colors, attributes])
 
-  // Compute prices and stocks for display
-  const { minEffective, displayOriginal, discountPercentage, maxSave, effectiveStockSum } = useMemo(() => {
+  // Compute prices for display
+  const { minEffective, displayOriginal, discountPercentage, maxSave } = useMemo(() => {
     let minEff = Number(baseSalePrice || basePrice || 0)
     let dispOrig = Number(basePrice || 0)
     let discPercent = 0
     let mSave = 0
-    let stockSum = Number(baseStock || 0)
 
     if (effectiveIsVariable && variations.length > 0) {
-      const activeVars = variations.filter(v => Number(v.stock ?? 0) > 0 || variations.every(vv => Number(vv.stock ?? 0) <= 0))
-      const validVars = activeVars.filter(v => Number(v.price ?? 0) > 0)
-      stockSum = validVars.reduce((sum, v) => sum + Number(v.stock ?? 0), 0)
+      const validVars = variations.filter(v => Number(v.price ?? 0) > 0)
 
       if (validVars.length > 0) {
         const varData = validVars.map(v => {
@@ -98,11 +93,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
       }
     }
 
-    return { minEffective: minEff, displayOriginal: dispOrig, discountPercentage: discPercent, maxSave: mSave, effectiveStockSum: stockSum }
-  }, [effectiveIsVariable, variations, basePrice, baseSalePrice, baseStock])
-
-  const isOutOfStock = effectiveStockSum <= orders
-  const showLowStock = !isOutOfStock && effectiveStockSum && effectiveStockSum - orders < 10
+    return { minEffective: minEff, displayOriginal: dispOrig, discountPercentage: discPercent, maxSave: mSave }
+  }, [effectiveIsVariable, variations, basePrice, baseSalePrice])
 
   // Fixed cart item detection for variable products
   const isAdded = useMemo(() => {
@@ -289,7 +281,6 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     <>
       <div
         className={`group relative bg-white rounded-lg overflow-hidden transition-all duration-300 
-        ${isOutOfStock ? "opacity-70 grayscale" : "hover:shadow-lg hover:translate-y-[-4px]"} 
         border border-[#00000033]
         md:flex-col md:h-full
         flex flex-row h-auto w-full`}
@@ -444,60 +435,39 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
 
           </div>
 
-          {/* Stock information - Show only if stock is less than 10 */}
-          {showLowStock && (
-            <div className="mt-1 md:mt-2">
-              <div className="w-full bg-gray-200 rounded-full h-1 md:h-1.5">
-                <div
-                  className="bg-green-500 h-full rounded-full"
-                  style={{ width: `${Math.min(100, Math.max(10, 100 - (orders / effectiveStockSum) * 100))}%` }}
-                ></div>
-              </div>
-              <p className="text-[10px] md:text-xs text-gray-500 mt-0.5">Only {effectiveStockSum - orders} left in stock</p>
+          <div className="mt-1 pt-2 border-t-2 border-none md:border-dashed border-black/20 md:mt-3 md:pt-3">
+            <div className="flex gap-2 w-full">
+              <Button
+                onClick={isAdded ? handleRemove : handleAddToCart}
+                disabled={isLoading || isRemoving}
+                size="sm"
+                className={`text-xs py-4 flex items-center justify-center ${isAdded
+                  ? "bg-black hover:bg-gray-800 text-white"
+                  : "bg-black border text-white border-black"
+                  }`}
+              >
+                {isAdded ? (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-1" />
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-4 h-4 mr-1" />
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleBuyNow}
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+                className="flex-1 border-red-500 text-white hover:bg-red-500 hover:text-white text-xs py-4 bg-[#BB0300] flex items-center justify-center"
+              >
+                Buy Now
+              </Button>
             </div>
-          )}
+          </div>
 
-          {/* Out of Stock */}
-          {isOutOfStock && (
-            <div className="mt-1 md:mt-2 text-[10px] md:text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 md:py-1 rounded text-center">
-              Out of Stock
-            </div>
-          )}
-
-          {!isOutOfStock && (
-            <div className="mt-1 pt-2 border-t-2 border-none md:border-dashed border-black/20 md:mt-3 md:pt-3">
-              <div className="flex gap-2 w-full">
-                <Button
-                  onClick={isAdded ? handleRemove : handleAddToCart}
-                  disabled={isLoading || isRemoving}
-                  size="sm"
-                  className={`text-xs py-4 flex items-center justify-center ${isAdded
-                    ? "bg-black hover:bg-gray-800 text-white"
-                    : "bg-black border text-white border-black"
-                    }`}
-                >
-                  {isAdded ? (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-1" />
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="w-4 h-4 mr-1" />
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={handleBuyNow}
-                  disabled={isLoading}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 border-red-500 text-white hover:bg-red-500 hover:text-white text-xs py-4 bg-[#BB0300] flex items-center justify-center"
-                >
-                  Buy Now
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
