@@ -15,9 +15,10 @@ export function ProductCard({ product }) {
   let maxSave = 0;
   let discountPercentage = 0;
 
-  if (product?.isVariable && product?.variations && product.variations.length > 0) {
+  if (product?.isVariable && product?.variations && Object.keys(product.variations).length > 0) {
+    const variations = Object.values(product.variations);
     // Find the variation with the lowest salePrice (fallback to price if no salePrice)
-    const lowestVariation = product.variations.reduce((lowest, variation) => {
+    const lowestVariation = variations.reduce((lowest, variation) => {
       const varSalePrice = parseFloat(variation.salePrice || variation.price || "0");
       const lowestSalePrice = parseFloat(lowest.salePrice || lowest.price || "0");
       return varSalePrice < lowestSalePrice ? variation : lowest;
@@ -55,9 +56,10 @@ export function ProductCard({ product }) {
   }
 
   // Fallback if no colors
-  if (colors.length === 0 && product?.isVariable && product?.variations?.length > 0) {
+  if (colors.length === 0 && product?.isVariable && product?.variations && Object.keys(product.variations).length > 0) {
+    const variations = Object.values(product.variations);
     // Extract unique colors from variations
-    const uniqueColors = [...new Set(product.variations.map(v => v.attributes?.Color).filter(Boolean))];
+    const uniqueColors = [...new Set(variations.map(v => v.attributes?.Color).filter(Boolean))];
     colors = uniqueColors;
   }
 
@@ -103,7 +105,7 @@ export function ProductCard({ product }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mt-1 gap-2">
+              <div className={`flex items-center ${hasDiscount ? 'justify-between' : 'justify-start'} mt-1 ${hasDiscount?'gap-2':'gap-0'}`}>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] md:text-base font-extralight text-[#4E4D4D] line-through">
                     {displayPrice > displaySalePrice && `₹${displayPrice.toLocaleString("en-IN")}`}
@@ -135,7 +137,6 @@ export function ProductCard({ product }) {
                     </span>
                   )}
                 </div>
-                <div></div>
               </div>
               {hasDiscount && (
                 <span className="text-[10px] md:text-[14px] text-green-500 font-semibold mr-2 mt-2">

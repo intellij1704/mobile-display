@@ -18,15 +18,17 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
   const { user } = useAuth()
   const { data: userData } = useUser({ uid: user?.uid })
 
-  const colors = useMemo(() => 
-    product?.attributes?.find(attr => attr.name === "Color")?.values || [], 
-  [product])
+  const colors = useMemo(() =>
+    product?.attributes?.find(attr => attr.name === "Color")?.values || [],
+    [product])
 
-  const qualities = useMemo(() => 
-    product?.attributes?.find(attr => attr.name === "Quality")?.values || [], 
-  [product])
+  const qualities = useMemo(() =>
+    product?.attributes?.find(attr => attr.name === "Quality")?.values || [],
+    [product])
 
+  const hasColorOptions = colors.length > 0
   const hasQualityOptions = qualities.length > 0
+  const isActuallyVariable = product?.isVariable && product.variations?.length > 0
 
   const [selectedColor, setSelectedColor] = useState("")
   const [selectedQuality, setSelectedQuality] = useState("")
@@ -36,45 +38,68 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
   const [isLoading, setIsLoading] = useState(false)
   const [animate, setAnimate] = useState(false)
 
+  // Effect to handle animations and set initial selections when the modal opens
   useEffect(() => {
     if (isOpen) {
       setAnimate(true)
+      setCurrentImageIndex(0)
+
+      let initialColor = ""
+      let initialQuality = ""
+
+      if (isActuallyVariable) {
+        // Find the variation with the lowest price to set as the default
+        const lowestPriceVariation = product.variations.reduce((lowest, current) => {
+          const lowestPrice = parseFloat(lowest.salePrice || lowest.price)
+          const currentPrice = parseFloat(current.salePrice || current.price)
+          return currentPrice < lowestPrice ? current : lowest
+        }, product.variations[0])
+
+        if (lowestPriceVariation) {
+          initialColor = lowestPriceVariation.attributes.Color || ""
+          initialQuality = lowestPriceVariation.attributes.Quality || ""
+        }
+      }
+
+      // If there's only one option for an attribute, auto-select it.
+      // This ensures single-color products are selected by default.
+      if (colors.length === 1) {
+        initialColor = colors[0]
+      }
+      if (qualities.length === 1) {
+        initialQuality = qualities[0]
+      }
+
+      setSelectedColor(initialColor)
+      setSelectedQuality(initialQuality)
+
     } else {
       setAnimate(false)
+      // Reset selections when modal closes for a clean state on next open
+      setSelectedColor("")
+      setSelectedQuality("")
     }
-  }, [isOpen])
+  }, [isOpen, product, colors, qualities, isActuallyVariable])
 
-  // Set initial selections to the variation with the lowest price
-  useEffect(() => {
-    if (isOpen && product?.variations?.length > 0) {
-      let minPrice = Infinity
-      let minVariation = null
-      product.variations.forEach(variation => {
-        const price = parseFloat(variation.salePrice) || parseFloat(variation.price)
-        if (price < minPrice) {
-          minPrice = price
-          minVariation = variation
-        }
-      })
-      if (minVariation) {
-        setSelectedColor(minVariation.attributes.Color || "")
-        setSelectedQuality(minVariation.attributes.Quality || "")
-      } else {
-        setSelectedColor(colors[0] || "")
-        setSelectedQuality(qualities[0] || "")
-      }
-    }
-  }, [isOpen, product, colors, qualities])
 
   const selectedVariation = useMemo(() => {
-    if (selectedColor && (hasQualityOptions ? selectedQuality : true)) {
-      return product?.variations?.find(v => 
-        v.attributes.Color === selectedColor && 
-        (!hasQualityOptions || v.attributes.Quality === selectedQuality)
-      )
+    // For non-variable products, create a mock variation from the base product
+    if (!isActuallyVariable) {
+      return {
+        price: product.price,
+        salePrice: product.salePrice,
+        attributes: {},
+      }
     }
-    return null
-  }, [selectedColor, selectedQuality, product, hasQualityOptions])
+
+    // Find the variation that matches the selected attributes
+    return product.variations.find(v => {
+      const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
+      const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
+      return colorMatch && qualityMatch
+    })
+  }, [selectedColor, selectedQuality, product, hasColorOptions, hasQualityOptions, isActuallyVariable])
+
 
   // Get images: variation images first, then append product.imageList as additional slides
   const displayImages = useMemo(() => {
@@ -83,7 +108,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     // Priority 1: Selected variation's imageURLs
     if (selectedVariation?.imageURLs?.length > 0) {
       images = [...selectedVariation.imageURLs]
-    } 
+    }
     // Priority 2: variantImages by selected color (if no variation images)
     else if (selectedColor && product?.variantImages?.[selectedColor.toLowerCase()]?.length > 0) {
       images = [...product.variantImages[selectedColor.toLowerCase()]]
@@ -114,16 +139,16 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
   const formatPrice = (amount) => `₹${amount?.toLocaleString("en-IN")}`
 
   const validateSelections = () => {
-    if (product?.isVariable && colors.length > 0 && !selectedColor) {
+    if (isActuallyVariable && hasColorOptions && !selectedColor) {
       toast.error("Please select a color!")
       return false
     }
-    if (hasQualityOptions && qualities.length > 0 && !selectedQuality) {
+    if (isActuallyVariable && hasQualityOptions && !selectedQuality) {
       toast.error("Please select a quality!")
       return false
     }
-    if (!selectedVariation) {
-      toast.error("Selected variation not found!")
+    if (isActuallyVariable && !selectedVariation) {
+      toast.error("This combination is not available.")
       return false
     }
     return true
@@ -157,8 +182,8 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
             {
               id: product.id,
               quantity: 1,
-              ...(product?.isVariable && { selectedColor }),
-              ...(hasQualityOptions && { selectedQuality }),
+              ...(isActuallyVariable && { selectedColor }),
+              ...(isActuallyVariable && hasQualityOptions && { selectedQuality }),
               returnType: choice.id,
               returnFee: choice.fee,
             },
@@ -219,6 +244,8 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
   }
 
   if (!product || (!isOpen && !animate)) return null
+
+  const isActionDisabled = isLoading || (isActuallyVariable && !selectedVariation)
 
   return (
     <>
@@ -359,7 +386,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
               )}
 
               {/* Color Selection */}
-              {product?.isVariable && colors.length > 0 && (
+              {isActuallyVariable && hasColorOptions && (
                 <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-5">
                   <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
                     Select Color
@@ -385,7 +412,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
               )}
 
               {/* Quality Selection */}
-              {hasQualityOptions && qualities.length > 0 && (
+              {isActuallyVariable && hasQualityOptions && (
                 <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-5">
                   <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
                     Select Quality
@@ -410,7 +437,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
               <div className="flex flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                 <Button
                   onClick={handleAddToCart}
-                  disabled={isLoading || !selectedVariation}
+                  disabled={isActionDisabled}
                   className="w-full sm:flex-1 bg-gray-900 hover:bg-gray-800 text-white h-12 sm:h-12 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 hover:shadow-xl"
                 >
                   <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
@@ -418,7 +445,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                 </Button>
                 <Button
                   onClick={handleBuyNow}
-                  disabled={isLoading || !selectedVariation}
+                  disabled={isActionDisabled}
                   className="w-full sm:flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white h-12 sm:h-12 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 hover:shadow-xl"
                 >
                   <Zap className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />

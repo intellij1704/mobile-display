@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useBrands } from "@/lib/firestore/brands/read"
 import { useCategories } from "@/lib/firestore/categories/read"
@@ -72,12 +72,10 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
       return att
     })
 
-    // validate name presence and duplicates, values presence
     const errors = updated.map((att, i) => {
       const err = { name: "", values: "", duplicate: "" }
       if (!att.name?.trim()) err.name = "Attribute name is required"
       if ((att.values ?? []).length === 0) err.values = "Add at least one value"
-      // check duplicate name
       const nameLower = (att.name || "").trim().toLowerCase()
       if (nameLower && updated.some((a, ai) => ai !== i && (a.name || "").trim().toLowerCase() === nameLower)) {
         err.duplicate = "Duplicate attribute name"
@@ -96,7 +94,7 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
     const combine = (lists) => {
       return lists.reduce(
         (acc, curr) => acc.flatMap((a) => curr.map((c) => ({ ...a, [usedAttrs[lists.indexOf(curr)].name]: c }))),
-        [{}],
+        [{}]
       )
     }
     return combine(valueLists)
@@ -148,7 +146,6 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
           attributes: attMap,
           price: "",
           salePrice: "",
-          stock: "",
           imageURLs: [],
         }
       }
@@ -167,6 +164,20 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
     })
     handleData("variations", updated)
   }
+
+  const handleRemoveExistingImage = (variationIndex, imageIndex) => {
+    const updatedVariations = [...data.variations];
+    const variation = updatedVariations[variationIndex];
+    variation.imageURLs = (variation.imageURLs || []).filter((_, i) => i !== imageIndex);
+    handleData("variations", updatedVariations);
+  };
+
+  const handleRemoveNewImage = (variationId, imageIndex) => {
+    setVariantImages(prev => {
+      const updatedImages = (prev[variationId] || []).filter((_, i) => i !== imageIndex);
+      return { ...prev, [variationId]: updatedImages };
+    });
+  };
 
   const hasUsedForVariations = (data?.attributes ?? []).some((a) => a.usedForVariations)
 
@@ -188,13 +199,14 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
         </label>
 
         <textarea
-          className={`w-full rounded-md border p-2 text-sm focus:outline-none ${variationValidationErrors?.shortDescription
+          className={`w-full rounded-md border p-2 text-sm focus:outline-none ${
+            variationValidationErrors?.shortDescription
               ? "border-red-500"
               : "border-gray-300"
-            }`}
+          }`}
           value={data?.shortDescription ?? ""}
           onChange={(e) => handleData("shortDescription", e.target.value)}
-            placeholder="Enter Short Description"
+          placeholder="Enter Short Description"
           rows={2}
         >
         </textarea>
@@ -320,8 +332,9 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
                         setAttributeValueStrings(next)
                       }}
                       onBlur={(e) => handleUpdateAttribute(index, "values", e.target.value)}
-                      className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${attributeErrors?.[index]?.values ? "border-red-500" : "border-gray-300"
-                        }`}
+                      className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${
+                        attributeErrors?.[index]?.values ? "border-red-500" : "border-gray-300"
+                      }`}
                       placeholder="Red|Blue|Black"
                     />
                     {attributeErrors?.[index]?.values && (
@@ -371,7 +384,7 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
                     .map(([k, v]) => `${k}: ${v}`)
                     .join(" ")}`}
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <InputField
                         label="Regular price"
@@ -400,78 +413,76 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
                         error={vErr?.salePrice}
                       />
                     </div>
-                    <div>
-                      <InputField
-                        label="Stock"
-                        value={varr.stock ?? ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === "" || /^\d+$/.test(val)) {
-                            handleUpdateVariation(index, "stock", val)
-                          }
-                        }}
-                        isRequired={true}
-                        error={vErr?.stock}
-                      />
-                    </div>
                   </div>
 
                   <div className="mt-4">
-                    <label className="text-gray-500 text-sm font-medium">Variation images</label>
-                    {/* Thumbnails */}
-                    {(variantImages?.[varr.id] ?? []).length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-3">
-                        {variantImages[varr.id].map((file, idx) => (
-                          <img
-                            key={idx}
-                            className="w-20 h-20 object-cover rounded-md border"
-                            src={URL.createObjectURL(file) || "/placeholder.svg"}
-                            alt=""
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Controls: hidden file + visible button with + icon */}
-                    <div className="mt-2 flex items-center gap-3">
-                      <input
-                        type="file"
-                        id={`var-images-${varr.id}`}
-                        className="hidden"
-                        multiple
-                        onChange={(e) => {
-                          const newFiles = Array.from(e.target.files || [])
-                          if (newFiles.length === 0) return
-                          setVariantImages((prev) => {
-                            const prevList = prev?.[varr.id] ?? []
-                            return { ...prev, [varr.id]: [...prevList, ...newFiles] }
-                          })
-                        }}
-                      />
-                      <label
-                        htmlFor={`var-images-${varr.id}`}
-                        className="inline-flex items-center justify-center h-10 px-3 rounded-md border border-dashed border-gray-300 hover:border-gray-400 text-sm text-gray-700 cursor-pointer bg-white"
-                      >
-                        <span className="mr-2 text-lg leading-none">+</span>
-                        Add images
-                      </label>
-
-                      {/* Optional: clear all images for this variation */}
-                      {(variantImages?.[varr.id] ?? []).length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setVariantImages((prev) => {
-                              const clone = { ...prev }
-                              clone[varr.id] = []
-                              return clone
-                            })
-                          }
-                          className="text-sm text-red-600 hover:underline"
+                    <label className="text-gray-500 text-sm font-medium">Variation Images</label>
+                    
+                    <div className="mt-2">
+                        <input
+                            type="file"
+                            id={`var-images-${varr.id}`}
+                            className="hidden"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => {
+                                const newFiles = Array.from(e.target.files || []);
+                                if (newFiles.length === 0) return;
+                                setVariantImages((prev) => ({
+                                    ...prev,
+                                    [varr.id]: [...(prev[varr.id] || []), ...newFiles],
+                                }));
+                            }}
+                        />
+                        <label
+                            htmlFor={`var-images-${varr.id}`}
+                            className="inline-flex items-center justify-center h-10 px-4 rounded-md border border-dashed border-gray-300 hover:border-gray-500 text-sm font-medium text-gray-700 cursor-pointer bg-gray-50 hover:bg-gray-100"
                         >
-                          Remove all
-                        </button>
-                      )}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            Upload Images
+                        </label>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                        {(varr.imageURLs || []).map((url, imageIndex) => (
+                            <div key={`existing-${imageIndex}`} className="relative group">
+                                <img
+                                    src={url}
+                                    alt={`Variation image ${imageIndex + 1}`}
+                                    className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-opacity">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveExistingImage(index, imageIndex)}
+                                        className="text-white opacity-0 group-hover:opacity-100 p-2 bg-red-600 rounded-full hover:bg-red-700 transition-all"
+                                        aria-label="Remove image"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {(variantImages[varr.id] || []).map((file, imageIndex) => (
+                            <div key={`new-${imageIndex}`} className="relative group">
+                                <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`New image ${imageIndex + 1}`}
+                                    className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-opacity">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveNewImage(varr.id, imageIndex)}
+                                        className="text-white opacity-0 group-hover:opacity-100 p-2 bg-red-600 rounded-full hover:bg-red-700 transition-all"
+                                        aria-label="Remove image"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                   </div>
                 </AccordionItem>
@@ -483,18 +494,6 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
 
       {!data?.isVariable && (
         <>
-          <InputField
-            label="Stock"
-            value={data?.stock ?? ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "" || /^\d+$/.test(val)) {
-                handleData("stock", val)
-              }
-            }}
-            isRequired={true}
-            error={variationValidationErrors?.stock}
-          />
           <InputField
             label="Price"
             value={data?.price ?? ""}
@@ -535,8 +534,9 @@ function InputField({ label, type = "text", value, onChange, isRequired = false,
         type={type}
         value={value}
         onChange={onChange}
-        className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${error ? "border-red-500" : "border-gray-300"
-          }`}
+        className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${
+          error ? "border-red-500" : "border-gray-300"
+        }`}
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
@@ -553,8 +553,9 @@ function SelectField({ label, value, onChange, options = [], isRequired = false,
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${error ? "border-red-500" : "border-gray-300"
-          }`}
+        className={`border px-4 py-2 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 ${
+          error ? "border-red-500" : "border-gray-300"
+        }`}
       >
         <option value="">Select {label}</option>
         {options?.map((item) => (

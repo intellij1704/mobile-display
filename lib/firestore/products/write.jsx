@@ -11,7 +11,6 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
       throw new Error("Variations are required for variable products");
   } else {
     if (!data?.price) throw new Error("Price is required for simple products");
-    if (!data?.stock) throw new Error("Stock is required for simple products");
   }
 
   // Upload feature image
@@ -45,7 +44,6 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     }
     data.price = null;
     data.salePrice = null;
-    data.stock = null;
   } else {
     data.attributes = [];
     data.variations = [];
@@ -79,7 +77,6 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
       throw new Error("Variations are required for variable products");
   } else {
     if (!data?.price) throw new Error("Price is required for simple products");
-    if (!data?.stock) throw new Error("Stock is required for simple products");
   }
 
   // Feature image update
@@ -117,7 +114,6 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     }
     data.price = null;
     data.salePrice = null;
-    data.stock = null;
   } else {
     data.attributes = [];
     data.variations = [];

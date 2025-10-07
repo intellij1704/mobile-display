@@ -677,7 +677,7 @@ function ContactAndAddress({ userData, user, productList }) {
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span>Pay remaining balance on delivery in cash</span>
+                                        <span>Pay remaining 90% balance on delivery in cash</span>
                                         <span>
                                             ₹{remaining.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
