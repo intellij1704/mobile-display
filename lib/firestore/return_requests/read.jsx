@@ -1,6 +1,4 @@
-// Path: src/lib/firestore/return_requests/read.jsx
 "use client";
-
 import { db } from "@/lib/firebase";
 import {
     collection,
@@ -16,11 +14,10 @@ import useSWRSubscription from "swr/subscription";
 
 export function useReturnRequest({ id }) {
     const { data, error } = useSWRSubscription(
-        ["return_requests", id],
-        ([path, id], { next }) => {
-            if (!id) return;
-
-            const ref = doc(db, `${path}/${id}`);
+        id ? ["return_requests", id] : null,
+        ([path, currentId], { next }) => {
+            if (!currentId) return () => {};
+            const ref = doc(db, `${path}/${currentId}`);
             const unsub = onSnapshot(
                 ref,
                 (snapshot) => next(null, snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
@@ -29,21 +26,24 @@ export function useReturnRequest({ id }) {
             return () => unsub();
         }
     );
-
+    if (error) {
+        console.log(error?.message);
+    }
     return {
         data,
-        error,
-        isLoading: data === undefined && !error,
+        error: error?.message,
+        isLoading: id && data === undefined && !error,
     };
 }
 
 export function useReturnRequests({ orderId }) {
     const { data, error } = useSWRSubscription(
-        ["return_requests", orderId],
-        ([path, orderId], { next }) => {
+        orderId ? ["return_requests", orderId] : null,
+        ([path, currentOrderId], { next }) => {
+            if (!currentOrderId) return () => {};
             const ref = query(
                 collection(db, path),
-                where("orderId", "==", orderId),
+                where("orderId", "==", currentOrderId),
                 orderBy("timestamp", "desc")
             );
             const unsub = onSnapshot(
@@ -55,58 +55,83 @@ export function useReturnRequests({ orderId }) {
                             ? []
                             : snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() }))
                     ),
-                (err) => next(err, [])
+                (err) => next(err, null)
             );
-
             return () => unsub();
         }
     );
-
     if (error) {
         console.log(error?.message);
     }
-
-    return { data, error: error?.message, isLoading: data === undefined };
+    return { data, error: error?.message, isLoading: orderId && data === undefined && !error };
 }
 
-export function useAllReturnRequests({ pageLimit, lastSnapDoc }) {
+export function useAllReturnRequests({ pageLimit = 10, lastSnapDoc, status }) {
+    const key = status === "all" ? ["return_requests", pageLimit, lastSnapDoc] : ["return_requests", pageLimit, lastSnapDoc, status];
     const { data, error } = useSWRSubscription(
-        ["return_requests", pageLimit, lastSnapDoc],
-        ([path, pageLimit, lastSnapDoc], { next }) => {
+        key,
+        ([path, currentPageLimit, currentLastSnapDoc, currentStatus], { next }) => {
             const ref = collection(db, path);
             let q = query(
                 ref,
-                limit(pageLimit ?? 10),
-                orderBy("timestamp", "desc")
+                orderBy("timestamp", "desc"),
+                limit(currentPageLimit)
             );
-
-            if (lastSnapDoc) {
-                q = query(q, startAfter(lastSnapDoc));
+            if (currentStatus && currentStatus !== "all") {
+                q = query(q, where("status", "==", currentStatus));
             }
-
+            if (currentLastSnapDoc) {
+                q = query(q, startAfter(currentLastSnapDoc));
+            }
             const unsub = onSnapshot(
                 q,
                 (snapshot) =>
                     next(null, {
-                        list:
-                            snapshot.docs.length === 0
-                                ? []
-                                : snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() })),
-                        lastSnapDoc:
-                            snapshot.docs.length === 0
-                                ? null
-                                : snapshot.docs[snapshot.docs.length - 1],
+                        list: snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() })),
+                        lastSnapDoc: snapshot.docs[snapshot.docs.length - 1] || null,
                     }),
                 (err) => next(err, null)
             );
             return () => unsub();
         }
     );
-
+    if (error) {
+        console.log(error?.message);
+    }
     return {
-        data: data?.list,
+        data: data?.list || [],
         lastSnapDoc: data?.lastSnapDoc,
         error: error?.message,
-        isLoading: data === undefined,
+        isLoading: data === undefined && !error,
     };
+}
+
+export function useUserReturnRequests({ uid }) {
+  const { data, error } = useSWRSubscription(
+    uid ? ["return_requests", uid] : null,
+    ([path, currentUid], { next }) => {
+      if (!currentUid) return () => {};
+      const ref = query(
+        collection(db, path),
+        where("userId", "==", currentUid),
+        orderBy("timestamp", "desc")
+      );
+      const unsub = onSnapshot(
+        ref,
+        (snapshot) =>
+          next(
+            null,
+            snapshot.docs.length === 0
+              ? []
+              : snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() }))
+          ),
+        (err) => next(err, null)
+      );
+      return () => unsub();
+    }
+  );
+  if (error) {
+    console.log(error?.message);
+  }
+  return { data, error: error?.message, isLoading: uid && data === undefined && !error };
 }

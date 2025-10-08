@@ -1,8 +1,8 @@
 "use client"
 
 import { db, storage } from "@/lib/firebase"
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { collection, addDoc, serverTimestamp, doc, getDoc, deleteDoc } from "firebase/firestore"
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { v4 as uuidv4 } from "uuid"
 
 export const addShopOwner = async (formData) => {
@@ -49,6 +49,35 @@ export const addShopOwner = async (formData) => {
     return { success: true, id: docRef.id }
   } catch (error) {
     console.error("Error adding shop owner:", error.message)
+    return { success: false, error: error.message }
+  }
+}
+
+export const deleteShopOwner = async (id) => {
+  try {
+    const docRef = doc(db, "shopOwners", id)
+    const docSnap = await getDoc(docRef)
+
+    if (!docSnap.exists()) {
+      throw new Error("Shop owner not found")
+    }
+
+    const data = docSnap.data()
+
+    // Delete associated images from storage if they exist
+    if (data.images && data.images.length > 0) {
+      for (const url of data.images) {
+        const imageRef = ref(storage, url)
+        await deleteObject(imageRef)
+      }
+    }
+
+    // Delete the Firestore document
+    await deleteDoc(docRef)
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error deleting shop owner:", error.message)
     return { success: false, error: error.message }
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
-import { User, ChevronDown, LogOut, ShoppingBag, UserCircle } from "lucide-react"
+import { User, ChevronDown, LogOut, ShoppingBag, UserCircle, Repeat  } from "lucide-react"
 
 export default function UserDropdown({ user, username, handleLogout, closeMobileMenu }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -83,6 +83,14 @@ export default function UserDropdown({ user, username, handleLogout, closeMobile
                 >
                   <ShoppingBag size={16} />
                   <span>My Orders</span>
+                </Link>
+                <Link
+                  href="/return-replacement"
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                  onClick={closeDropdown}
+                >
+                  <Repeat size={16} />
+                  <span>Replacement Requests</span>
                 </Link>
                 <div className="border-t border-gray-100 mt-1 pt-1">
                   <button

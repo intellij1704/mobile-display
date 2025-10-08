@@ -16,10 +16,10 @@ import useSWRSubscription from "swr/subscription";
 export function useOrder({ id }) {
   const { data, error } = useSWRSubscription(
     ["orders", id],
-    ([path, id], { next }) => {
-      if (!id) return;
+    ([path, currentId], { next }) => {
+      if (!currentId) return () => {}; // Return no-op unsubscribe
 
-      const ref = doc(db, `orders/${id}`);
+      const ref = doc(db, `${path}/${currentId}`);
       const unsub = onSnapshot(
         ref,
         (snapshot) => next(null, snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),

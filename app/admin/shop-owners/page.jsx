@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react"
 import { useShopOwners } from "@/lib/firestore/shopOwner/read"
+import { deleteShopOwner } from "@/lib/firestore/shopOwner/write"
 import Image from "next/image"
-import { Loader2, Verified, Download, X } from "lucide-react"
+import { Loader2, Verified, Download, X, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -20,6 +21,7 @@ const Page = () => {
   const [search, setSearch] = useState("")
   const [selectedImage, setSelectedImage] = useState(null)
   const [loadingImage, setLoadingImage] = useState(false)
+  const [deletingIds, setDeletingIds] = useState(new Set())
 
   // ----------------- EXPORT TO EXCEL -----------------
   const handleExportExcel = () => {
@@ -58,6 +60,29 @@ const Page = () => {
     })
 
     doc.save("shop_owners.pdf")
+  }
+
+  // ----------------- DELETE HANDLER -----------------
+  const handleDelete = async (id) => {
+    if (confirm("Are you sure you want to delete this shop owner?")) {
+      setDeletingIds((prev) => new Set([...prev, id]))
+      try {
+        const result = await deleteShopOwner(id)
+        if (!result.success) {
+          throw new Error(result.error || "Deletion failed")
+        }
+        // Assuming useShopOwners hook handles real-time updates or refetch
+      } catch (err) {
+        console.error("Deletion error:", err.message)
+        alert("Failed to delete shop owner: " + err.message)
+      } finally {
+        setDeletingIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(id)
+          return newSet
+        })
+      }
+    }
   }
 
   // ----------------- FILTERING -----------------
@@ -149,7 +174,7 @@ const Page = () => {
           {filteredOwners.map((owner) => (
             <div
               key={owner.id}
-              className="bg-white rounded-xl shadow p-4 border border-gray-200 hover:shadow-md transition"
+              className="relative bg-white rounded-xl shadow p-4 border border-gray-200 hover:shadow-md transition"
             >
               <div className="flex items-center gap-3 mb-1">
                 <div>
@@ -167,7 +192,7 @@ const Page = () => {
                 <span className="font-medium">Mobile:</span> {owner.mobile}
               </p>
 
-              {owner.images?.length > 1 && (
+              {owner.images?.length > 0 && (
                 <div className="mt-3 flex gap-2 flex-wrap">
                   {owner.images.map((img, i) => (
                     <Image
@@ -185,6 +210,20 @@ const Page = () => {
                   ))}
                 </div>
               )}
+
+              {/* Delete Button */}
+              <Button
+                variant="ghost"
+                className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700"
+                onClick={() => handleDelete(owner.id)}
+                disabled={deletingIds.has(owner.id)}
+              >
+                {deletingIds.has(owner.id) ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-5 h-5" />
+                )}
+              </Button>
             </div>
           ))}
         </div>

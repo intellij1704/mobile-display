@@ -1,11 +1,13 @@
-"use client"
-import { useCategories } from '@/lib/firestore/categories/read'
-import { bulkUpdatePricesByCategory } from '@/lib/firestore/products/write';
-import React, { useState } from 'react'
-import toast from 'react-hot-toast';
+"use client";
+import { useCategories } from "@/lib/firestore/categories/read";
+import { bulkUpdatePricesByCategory } from "@/lib/firestore/products/write";
+import React, { useState } from "react";
+import toast from "react-hot-toast";
 
 const Page = () => {
-  const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useCategories();
+  const { data: categories, isLoading: categoriesLoading, error: categoriesError } =
+    useCategories();
+
   const [selectedCategory, setSelectedCategory] = useState("");
   const [percentage, setPercentage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,8 @@ const Page = () => {
       });
       setSuccess("Prices updated successfully!");
       toast.success("Prices updated successfully!");
+      setPercentage("");
+      setSelectedCategory("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -31,36 +35,44 @@ const Page = () => {
     }
   };
 
-  // ✅ Allow only numbers & decimal
+  // ✅ Allow both positive and negative numbers (e.g., -5, 10.5)
   const handlePercentageChange = (e) => {
     const value = e.target.value;
-    if (/^\d*\.?\d*$/.test(value)) {
+    if (/^-?\d*\.?\d*$/.test(value)) {
       setPercentage(value);
     }
   };
 
   return (
-    <div className='min-h-screen bg-gray-100 flex items-center justify-center p-4'>
-      <div className='bg-white shadow-lg rounded-lg p-8 max-w-md w-full'>
-        <h2 className='text-2xl font-bold mb-6 text-center'>Bulk Price Update by Category</h2>
-        {categoriesError && <p className='text-red-500 mb-4'>{categoriesError}</p>}
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white shadow-lg rounded-lg p-8 max-w-md w-full">
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Bulk Price Update by Category
+        </h2>
+
+        {categoriesError && (
+          <p className="text-red-500 mb-4 text-center">{categoriesError}</p>
+        )}
 
         <form onSubmit={handleUpdatePrice}>
           {/* Category Dropdown */}
-          <div className='mb-4'>
-            <label htmlFor="category" className='block text-sm font-medium text-gray-700 mb-2'>
+          <div className="mb-4">
+            <label
+              htmlFor="category"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Select Category
             </label>
             <select
-              id='category'
+              id="category"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none 
-              focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none 
+              focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               disabled={categoriesLoading || loading}
             >
               <option value="">Choose a category</option>
-              {categories.map((cat) => (
+              {categories?.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name || cat.title || cat.id}
                 </option>
@@ -69,27 +81,35 @@ const Page = () => {
           </div>
 
           {/* Percentage Input */}
-          <div className='mb-6'>
-            <label htmlFor="percentage" className="block text-sm font-medium text-gray-700 mb-2">
-              Percentage Increase (%)
+          <div className="mb-6">
+            <label
+              htmlFor="percentage"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Percentage Change (%)
             </label>
             <input
               id="percentage"
-              type="text" 
+              type="text"
               value={percentage}
               onChange={handlePercentageChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none 
               focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="e.g., 5 for 5%"
+              placeholder="e.g., 10 for +10% or -5 for -5%"
               disabled={loading}
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Use a negative value (e.g., -10) to decrease prices.
+            </p>
           </div>
 
           <button
-            type='submit'
-            className='w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50'
-            disabled={!selectedCategory || !percentage || loading || categoriesLoading}
+            type="submit"
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 
+            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            disabled={
+              !selectedCategory || !percentage || loading || categoriesLoading
+            }
           >
             {loading ? "Updating..." : "Update Prices"}
           </button>

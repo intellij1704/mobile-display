@@ -8,7 +8,8 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc, arrayUnion, query, where, getDocs } from "firebase/firestore";
+import jsPDF from "jspdf";
 
 const OrderDetailPage = () => {
     const { user } = useAuth();
@@ -20,25 +21,34 @@ const OrderDetailPage = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
     const [selectedReason, setSelectedReason] = useState(null);
+    const [customReason, setCustomReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [printModalOpen, setPrintModalOpen] = useState(false);
+    const [selectedReturn, setSelectedReturn] = useState(null);
+    const [localReturnRequests, setLocalReturnRequests] = useState([]);
+
+    console.log(orders)
 
     // Fetch return requests for this order
     const { data: returnRequests, returnError, returnIsLoading } = useReturnRequests({ orderId });
 
-    console.log(returnRequests);
+    useEffect(() => {
+        if (returnRequests) {
+            setLocalReturnRequests(returnRequests);
+        }
+    }, [returnRequests]);
 
     // ESC key handler for modal
     useEffect(() => {
         const handleEsc = (e) => {
-            if (e.key === "Escape" && modalOpen) {
+            if (e.key === "Escape" && (modalOpen || printModalOpen)) {
                 closeModal();
+                closePrintModal();
             }
         };
-        if (modalOpen) {
-            document.addEventListener("keydown", handleEsc);
-            return () => document.removeEventListener("keydown", handleEsc);
-        }
-    }, [modalOpen]);
+        document.addEventListener("keydown", handleEsc);
+        return () => document.removeEventListener("keydown", handleEsc);
+    }, [modalOpen, printModalOpen]);
 
     if (isLoading || !orders || returnIsLoading) {
         return (
@@ -118,13 +128,13 @@ const OrderDetailPage = () => {
     const isCancelled = order.status === "cancelled";
     const isDelivered = order.status === "delivered";
 
-    // Calculate return window end (15 days from order date)
     const returnWindowEnd = new Date(orderDate?.getTime() + 15 * 24 * 60 * 60 * 1000);
     const isReturnWindowOpen = new Date() <= returnWindowEnd;
 
     const openModal = (item) => {
         setSelectedItem(item);
         setSelectedReason(null);
+        setCustomReason("");
         setModalOpen(true);
     };
 
@@ -132,65 +142,115 @@ const OrderDetailPage = () => {
         setModalOpen(false);
         setSelectedItem(null);
         setSelectedReason(null);
+        setCustomReason("");
         setIsSubmitting(false);
+    };
+
+    const openPrintModal = (returnRequest) => {
+        setSelectedReturn(returnRequest);
+        setPrintModalOpen(true);
+    };
+
+    const closePrintModal = () => {
+        setPrintModalOpen(false);
+        setSelectedReturn(null);
     };
 
     const handleSubmit = async () => {
         if (!selectedReason || !selectedItem || isSubmitting) return;
+        if (selectedReason === "others" && !customReason.trim()) return alert("Please specify the reason.");
 
         setIsSubmitting(true);
         try {
             const productData = selectedItem.price_data.product_data;
-            const returnType = productData.metadata?.returnType || "easy-return"; // Fallback to default
-            const lineItemId = selectedItem.id || productData.id || `temp-${Date.now()}`; // Fallback to prevent undefined
+            const returnType = productData.metadata?.returnType || "easy-return";
+            const lineItemId = selectedItem.id || productData.metadata?.productId;
 
             if (!lineItemId) {
                 throw new Error("Unable to determine line item ID");
             }
 
+            const q = query(collection(db, "return_requests"), where("orderId", "==", orderId), where("lineItemId", "==", lineItemId));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                throw new Error("A return request for this product has already been submitted.");
+            }
+
+            let requestType;
+            if (returnType === "self-shipping") {
+                requestType = "self-shipping";
+            } else if (returnType.includes("replacement")) {
+                requestType = "replacement";
+            } else {
+                requestType = "return";
+            }
+
             const newReturnRequest = {
                 orderId: orderId,
-                lineItemId: lineItemId, // Now guaranteed to be defined
+                lineItemId: lineItemId,
                 userId: user.uid,
-                reason: selectedReason,
-                type: returnType.includes("replacement") ? "replacement" : "return",
+                reason: selectedReason === "others" ? "others" : selectedReason,
+                ...(selectedReason === "others" && { reason_remarks: customReason }),
+                type: requestType,
                 status: "pending",
                 timestamp: new Date(),
                 productDetails: productData,
-                quantity: selectedItem.quantity || 1, // Fallback quantity
+                quantity: selectedItem.quantity || 1,
                 originalOrderTotal: total,
-                // Additional fields for tracking
                 createdAt: new Date(),
             };
 
-            // Create new return request in 'return_requests' collection
             const docRef = await addDoc(collection(db, "return_requests"), newReturnRequest);
 
-            // Update the original order to reference this return request (using arrayUnion to avoid duplicates)
             const orderRef = doc(db, "orders", orderId);
             await updateDoc(orderRef, {
-                returnRequestIds: arrayUnion(docRef.id), // Assuming array field; create if not exists
+                returnRequestIds: arrayUnion(docRef.id),
                 updatedAt: new Date(),
             });
 
-            // Close modal with animation delay
+            // Update local state to immediately reflect the change
+            setLocalReturnRequests([...localReturnRequests, { ...newReturnRequest, id: docRef.id }]);
+
             setTimeout(() => {
                 closeModal();
-                // Refresh data
                 router.refresh();
             }, 1000);
         } catch (err) {
             console.error("Error submitting return request:", err);
-            alert("Failed to submit return request. Please try again.");
+            alert(err.message || "Failed to submit return request. Please try again.");
             setIsSubmitting(false);
         }
     };
 
+    const generatePDF = () => {
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text("Shipping Label", 105, 10, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text(`Return ID: ${selectedReturn?.id}`, 10, 30);
+        doc.text(`Order ID: ${orderId}`, 10, 40);
+        doc.text(`Product: ${selectedReturn?.productDetails?.name}`, 10, 50);
+        doc.text(`Quantity: ${selectedReturn?.quantity}`, 10, 60);
+        doc.text("Send To (Office Address):", 10, 80);
+        doc.text(selfShippingDetails.address.company, 10, 90);
+        doc.text(selfShippingDetails.address.street, 10, 100);
+        doc.text(`${selfShippingDetails.address.city}, ${selfShippingDetails.address.state} - ${selfShippingDetails.address.pincode}`, 10, 110);
+        doc.text(selfShippingDetails.address.country, 10, 120);
+        doc.text(`Phone: ${selfShippingDetails.address.phone}`, 10, 130);
+        doc.text("From (Your Address):", 10, 150);
+        doc.text(addressData.fullName, 10, 160);
+        doc.text(addressData.addressLine1, 10, 170);
+        doc.text(`${addressData.city}, ${addressData.state} - ${addressData.pincode}`, 10, 180);
+        doc.text(`Landmark: ${addressData.landmark}`, 10, 190);
+        doc.text(`Phone: ${addressData.mobile}`, 10, 200);
+        doc.save("shipping_label.pdf");
+    };
+
     const getReturnStatusForItem = (item) => {
-        if (!returnRequests || !item) return null;
-        const lineItemId = item.id || item.price_data.product_data.id; // Use fallback for matching
-        const matchingRequest = returnRequests.find((req) => req.lineItemId === lineItemId);
-        return matchingRequest ? matchingRequest.status : null;
+        if (!localReturnRequests || !item) return null;
+        const lineItemId = item.id || item.price_data.product_data.metadata?.productId;
+        const matchingRequest = localReturnRequests.find((req) => req.lineItemId === lineItemId);
+        return matchingRequest ? matchingRequest : null;
     };
 
     const returnReasons = [
@@ -198,9 +258,9 @@ const OrderDetailPage = () => {
         { icon: "🚫", label: "Quality Issue", value: "quality_issue" },
         { icon: "👕💔", label: "Damaged Product", value: "damaged" },
         { icon: "📦", label: "Missing Item", value: "missing_item" },
+        { icon: "📝", label: "Others", value: "others" },
     ];
 
-    // Self-shipping details
     const selfShippingDetails = {
         address: {
             company: "FabStore Office",
@@ -224,9 +284,7 @@ const OrderDetailPage = () => {
         <div className="min-h-screen bg-gray-50 py-6 relative">
             <div className="max-w-6xl mx-auto px-4">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Order Details */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Product Cards - Multiple Products */}
                         <div className="bg-white rounded-lg shadow-sm border p-6">
                             <div className="space-y-6">
                                 {lineItems.map((item, index) => {
@@ -235,8 +293,12 @@ const OrderDetailPage = () => {
                                     const totalPrice = unitPrice * item.quantity;
                                     const returnType = product.metadata?.returnType || null;
                                     const returnTitle = returnType ? returnOptionsMap[returnType] || "No Return Type Selected" : "No Return Type Selected";
-                                    const returnStatus = getReturnStatusForItem(item);
+                                    const returnRequest = getReturnStatusForItem(item);
+                                    const returnStatus = returnRequest?.status || null;
+                                    const returnReqType = returnRequest?.type || null;
                                     const canReturn = isDelivered && isReturnWindowOpen && !returnStatus;
+
+                                    console.log('Return Request for item:', returnRequest);
 
                                     return (
                                         <div key={item.id || index} className={`flex flex-col gap-4 ${index > 0 ? "pt-6 border-t border-gray-100" : ""}`}>
@@ -255,7 +317,6 @@ const OrderDetailPage = () => {
                                                         </h2>
                                                     </Link>
                                                     <p className="text-gray-600 text-sm mb-2">{product.description}</p>
-                                                    {/* Product Options */}
                                                     <div className="flex flex-col md:flex-row gap-1 md:gap-4 mb-3 text-sm">
                                                         {product.metadata?.selectedColor && (
                                                             <div className="flex items-center gap-1">
@@ -278,7 +339,6 @@ const OrderDetailPage = () => {
                                                             <span className="text-gray-700">{returnTitle}</span>
                                                         </div>
                                                     </div>
-                                                    {/* Product Price */}
                                                     <div className="flex items-center gap-2">
                                                         {item.quantity > 1 && (
                                                             <span className="text-sm text-gray-500">(₹{unitPrice.toFixed(0)} x {item.quantity})</span>
@@ -287,14 +347,37 @@ const OrderDetailPage = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            {/* Return Button or Status */}
                                             {returnStatus ? (
-                                                <div className="self-end text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                                                    <p>Already Submitted Return Request - {returnStatus.charAt(0).toUpperCase() + returnStatus.slice(1)}</p>
+                                                <div className="self-end flex flex-col items-end gap-2">
+                                                    <div className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-lg border border-green-200">
+                                                        <p className="text-center">
+                                                            {returnReqType === "replacement"
+                                                                ? "Replacement"
+                                                                : returnReqType === "return"
+                                                                    ? "Return"
+                                                                    : returnReqType === "self-shipping"
+                                                                        ? "Self Shipping"
+                                                                        : "Request"}{" "}
+                                                            request submitted 
+                                                            {/* Current Status -{" "}
+                                                            {returnStatus.charAt(0).toUpperCase() + returnStatus.slice(1)} */}
+                                                            . Please check{" "}
+                                                            {returnReqType === "self-shipping" ? "Self Shipping" : returnReqType} status.
+                                                        </p>
+
+                                                    </div>
+                                                    {returnType === "self-shipping" && (
+                                                        <button
+                                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                            onClick={() => openPrintModal(returnRequest)}
+                                                        >
+                                                            Print Label
+                                                        </button>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <>
-                                                    {isDelivered &&
+                                                    {isDelivered && (
                                                         <button
                                                             className={`self-end px-4 py-2 rounded-lg transition-colors ${canReturn
                                                                 ? "bg-black text-white hover:bg-red-700"
@@ -305,7 +388,7 @@ const OrderDetailPage = () => {
                                                         >
                                                             {returnTitle}
                                                         </button>
-                                                    }
+                                                    )}
                                                 </>
                                             )}
                                         </div>
@@ -314,12 +397,10 @@ const OrderDetailPage = () => {
                             </div>
                         </div>
 
-                        {/* Order Timeline */}
                         <div className="bg-white rounded-lg shadow-sm border p-6">
                             <div className="space-y-4">
                                 {isCancelled ? (
                                     <>
-                                        {/* Order Confirmed Step */}
                                         <div className="flex items-center gap-3">
                                             <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                                 <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 8 8">
@@ -330,11 +411,7 @@ const OrderDetailPage = () => {
                                                 <p className="font-medium text-gray-900">Order Confirmed, {formatDate(orderDate)}</p>
                                             </div>
                                         </div>
-
-                                        {/* Connecting Line */}
                                         <div className="ml-2 w-0.5 h-6 bg-red-500"></div>
-
-                                        {/* Cancelled Step */}
                                         <div className="flex items-center gap-3">
                                             <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                                                 <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 8 8">
@@ -387,9 +464,9 @@ const OrderDetailPage = () => {
                                 )}
                             </div>
 
-                            {!isCancelled && (
+                            {!isCancelled && isDelivered && isReturnWindowOpen && (
                                 <div className="mt-6 pt-4 border-t border-gray-100">
-                                    <p className="text-sm text-gray-500">Return policy ended on {formatDate(returnWindowEnd)}</p>
+                                    <p className="text-sm text-gray-500">Return policy ends on {formatDate(returnWindowEnd)}</p>
                                 </div>
                             )}
 
@@ -409,10 +486,7 @@ const OrderDetailPage = () => {
                             </Link>
                         </div>
                     </div>
-
-                    {/* Right Column - Delivery & Price Details */}
                     <div className="space-y-6">
-                        {/* Delivery Details */}
                         <div className="bg-white rounded-lg shadow-sm border p-6">
                             <h3 className="font-semibold text-gray-900 mb-4">Delivery details</h3>
                             <div className="space-y-3">
@@ -437,7 +511,6 @@ const OrderDetailPage = () => {
                                         <p className="text-gray-600">Landmark: {addressData.landmark}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-start gap-3">
                                     <div className="w-5 h-5 mt-0.5 flex-shrink-0">
                                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -458,8 +531,6 @@ const OrderDetailPage = () => {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Price Details */}
                         <div className="bg-white rounded-lg shadow-sm border p-6">
                             <h3 className="font-semibold text-gray-900 mb-4">Price details</h3>
                             <div className="space-y-3 text-sm">
@@ -469,7 +540,6 @@ const OrderDetailPage = () => {
                                     </span>
                                     <span className="text-gray-900">₹{subtotal.toFixed(2)}</span>
                                 </div>
-
                                 <div className="flex justify-between text-green-600">
                                     <span className="text-gray-600">
                                         Discount{" "}
@@ -483,17 +553,14 @@ const OrderDetailPage = () => {
                                     </span>
                                     <span>-₹{discount.toFixed(2)}</span>
                                 </div>
-
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Shipping Charge</span>
                                     <span className="text-gray-900">{shippingCharge > 0 ? `₹${shippingCharge.toFixed(2)}` : "Free"}</span>
                                 </div>
-
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Air Express Fee</span>
                                     <span className="text-gray-900">₹{airExpressFee.toFixed(2)}</span>
                                 </div>
-
                                 {returnFees > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Return Fees</span>
@@ -506,21 +573,18 @@ const OrderDetailPage = () => {
                                         <span className="text-gray-900">₹{replacementFees.toFixed(2)}</span>
                                     </div>
                                 )}
-
                                 <div className="border-t border-gray-100 pt-3 mt-4">
                                     <div className="flex justify-between items-center font-semibold">
                                         <span className="text-gray-900">Total</span>
                                         <span className="text-gray-900">₹{total.toFixed(2)}</span>
                                     </div>
                                 </div>
-
                                 {advance > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">10% advance paid</span>
                                         <span className="text-green-600">-₹{advance.toFixed(2)}</span>
                                     </div>
                                 )}
-
                                 {remaining > 0 && (
                                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
                                         <div className="flex justify-between items-center">
@@ -529,7 +593,6 @@ const OrderDetailPage = () => {
                                         </div>
                                     </div>
                                 )}
-
                                 <div className="pt-3 border-t border-gray-100">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Paid by</span>
@@ -544,7 +607,6 @@ const OrderDetailPage = () => {
                 </div>
             </div>
 
-            {/* Return/Replacement Modal */}
             {modalOpen && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
@@ -553,7 +615,6 @@ const OrderDetailPage = () => {
                     }}
                 >
                     <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
-                        {/* Close Button */}
                         <button
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
                             onClick={closeModal}
@@ -562,8 +623,6 @@ const OrderDetailPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
-
-                        {/* Modal Header */}
                         <div className="text-center mb-6">
                             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -578,8 +637,6 @@ const OrderDetailPage = () => {
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">Choose the best option that describes your issue</p>
                         </div>
-
-                        {/* Reason Selection */}
                         <div className="space-y-3 mb-6">
                             {returnReasons.map((reason) => (
                                 <label
@@ -604,8 +661,15 @@ const OrderDetailPage = () => {
                                 </label>
                             ))}
                         </div>
-
-                        {/* Self-Shipping Instructions (if applicable) */}
+                        {selectedReason === "others" && (
+                            <textarea
+                                className="w-full p-2 border border-gray-300 rounded-md mb-6"
+                                placeholder="Please specify the reason"
+                                value={customReason}
+                                onChange={(e) => setCustomReason(e.target.value)}
+                                rows={3}
+                            />
+                        )}
                         {selectedReason && selectedItem?.price_data.product_data.metadata?.returnType === "self-shipping" && (
                             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
                                 <h3 className="font-semibold text-yellow-800 mb-3 text-center">Self-Shipping Instructions</h3>
@@ -629,14 +693,12 @@ const OrderDetailPage = () => {
                                 </div>
                             </div>
                         )}
-
-                        {/* Submit Button */}
                         <button
-                            className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isSubmitting
+                            className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isSubmitting && (selectedReason !== "others" || customReason.trim())
                                 ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
                                 : "bg-gray-300 cursor-not-allowed"
                                 }`}
-                            disabled={!selectedReason || isSubmitting}
+                            disabled={!selectedReason || isSubmitting || (selectedReason === "others" && !customReason.trim())}
                             onClick={handleSubmit}
                         >
                             {isSubmitting ? (
@@ -648,6 +710,62 @@ const OrderDetailPage = () => {
                                 "Submit Return/Replacement Request"
                             )}
                         </button>
+                    </div>
+                </div>
+            )}
+            {printModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) closePrintModal();
+                    }}
+                >
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+                        <button
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                            onClick={closePrintModal}
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <div className="text-center mb-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">Shipping Label</h2>
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-2 text-left">
+                                <p><strong>Return ID:</strong> {selectedReturn?.id}</p>
+                                <p><strong>Order ID:</strong> {orderId}</p>
+                                <p><strong>Product:</strong> {selectedReturn?.productDetails?.name}</p>
+                                <p><strong>Quantity:</strong> {selectedReturn?.quantity}</p>
+                                <div>
+                                    <strong>Send To (Office Address):</strong>
+                                    <p>{selfShippingDetails.address.company}</p>
+                                    <p>{selfShippingDetails.address.street}</p>
+                                    <p>{selfShippingDetails.address.city}, {selfShippingDetails.address.state} - {selfShippingDetails.address.pincode}</p>
+                                    <p>{selfShippingDetails.address.country}</p>
+                                    <p>Phone: {selfShippingDetails.address.phone}</p>
+                                </div>
+                                <div>
+                                    <strong>From (Your Address):</strong>
+                                    <p>{addressData.fullName}</p>
+                                    <p>{addressData.addressLine1}</p>
+                                    <p>{addressData.city}, {addressData.state} - {addressData.pincode}</p>
+                                    <p>Landmark: {addressData.landmark}</p>
+                                    <p>Phone: {addressData.mobile}</p>
+                                </div>
+                            </div>
+                            <button
+                                className="mt-4 w-full py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02] transition-all duration-200 shadow-lg"
+                                onClick={generatePDF}
+                            >
+                                Download Label as PDF
+                            </button>
+                            <button
+                                className="mt-2 w-full py-3 rounded-xl text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition-all duration-200"
+                                onClick={closePrintModal}
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { User, X, Heart, ShoppingCart, ChevronDown } from "lucide-react"
+import { User, X, Heart, ShoppingCart, ChevronDown, Repeat } from "lucide-react"
 
 export default function MobileMenu({
   isOpen,
@@ -91,6 +91,7 @@ export default function MobileMenu({
                     >
                       My Profile
                     </Link>
+
                     <Link
                       href="/orders"
                       className="py-2 px-3 text-sm text-center border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
@@ -98,6 +99,7 @@ export default function MobileMenu({
                     >
                       My Orders
                     </Link>
+
                   </div>
                 </div>
               )}
@@ -105,6 +107,14 @@ export default function MobileMenu({
 
             {/* Quick links */}
             <div className="p-4 space-y-2 border-b border-gray-200">
+              <Link
+                href="/return-replacement"
+                className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                onClick={closeMobileMenu}
+              >
+                <Repeat size={18} />
+                <span className="text-sm">Replacement Requests</span>
+              </Link>
               <Link
                 href="/cart"
                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-md transition-colors"
