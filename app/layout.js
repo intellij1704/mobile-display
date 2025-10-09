@@ -29,6 +29,7 @@ export const metadata = {
   description: "Shop the best products from top brands on our platform.",
   keywords: "e-commerce, shopping, best-selling products, deals, offers",
   author: "Intellij Technologies",
+
   icons: {
     icon: "/favicon.png", // ✅ PNG favicon
   },
@@ -59,6 +60,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={jost.variable}>
+      <head>
+        <meta name="theme-color" content="#DC2626" />
+
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="#DC2626" />
+      </head>
       <body className="font-jost antialiased">
         <ClientProviders>
           {" "}

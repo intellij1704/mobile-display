@@ -66,7 +66,7 @@ export default function Accessories() {
   );
 
   const handleCategoryClick = (category) => {
-    router.push(`/choose-brand?categoryId=${category.id}`);
+    router.push(`/product?categoryId=${category.id}`);
   };
 
   return (

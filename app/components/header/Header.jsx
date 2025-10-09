@@ -6,7 +6,7 @@ import Link from "next/link"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { toast } from "react-hot-toast"
-import { AuthContextProvider, useAuth } from "@/context/AuthContext"
+import { AuthContextProvider } from "@/context/AuthContext"
 import HeaderClientButtons from "./header-client-buttons"
 import UserDropdown from "./user-dropdown"
 import MobileMenu from "./mobile-menu"
@@ -34,7 +34,6 @@ export default function Header() {
 
   const [showTopBarMobile, setShowTopBarMobile] = useState(true)
   const topBarRef = useRef(null)
-  const [topBarHeight, setTopBarHeight] = useState(0)
 
   const [isSticky, setIsSticky] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
@@ -147,10 +146,8 @@ export default function Header() {
 
   const { data } = useUser({ uid: user?.uid })
 
-
   const cartCount = data?.carts?.length || 0
   const wishlistCount = data?.favorites?.length || 0
-
 
   if (error) {
     toast.error("Failed to load categories")
@@ -162,19 +159,6 @@ export default function Header() {
     computeIsMobile()
     window.addEventListener("resize", computeIsMobile)
     return () => window.removeEventListener("resize", computeIsMobile)
-  }, [])
-
-  // Measure top bar height
-  useLayoutEffect(() => {
-    const measure = () => {
-      if (topBarRef.current) {
-        const rect = topBarRef.current.getBoundingClientRect()
-        setTopBarHeight(rect.height || 0)
-      }
-    }
-    measure()
-    window.addEventListener("resize", measure)
-    return () => window.removeEventListener("resize", measure)
   }, [])
 
   // Measure header height for desktop sticky trigger
@@ -189,8 +173,6 @@ export default function Header() {
     return () => window.removeEventListener("resize", measure)
   }, [isMobile])
 
-
-
   const handleCartClick = (e) => {
     e.preventDefault()
     setIsCartDrawerOpen(true)
@@ -198,42 +180,52 @@ export default function Header() {
 
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false)
 
-
-
-  // Mobile top bar hide/show on scroll
+  // --- CORRECTED: Mobile top bar hide/show on scroll ---
   useEffect(() => {
-    const threshold = 12
+    // If not mobile, ensure the bar is visible and do nothing else
+    if (!isMobile) {
+      setShowTopBarMobile(true)
+      return
+    }
 
-    const onScroll = () => {
-      if (!isMobile) return
+    const threshold = 12 // Scroll distance to trigger hide/show
 
-      const currentY = window.scrollY || 0
-
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
       if (!tickingRef.current) {
         window.requestAnimationFrame(() => {
-          if (currentY <= 0) {
-            if (!showTopBarMobile) setShowTopBarMobile(true)
-          } else {
-            const lastY = lastScrollYRef.current
-            const delta = currentY - lastY
+          const lastScrollY = lastScrollYRef.current
+          const delta = currentScrollY - lastScrollY
 
-            if (delta > threshold && showTopBarMobile) {
-              setShowTopBarMobile(false)
-            } else if (delta < -threshold && !showTopBarMobile) {
-              setShowTopBarMobile(true)
-            }
+          // At the very top of the page, always show the bar
+          if (currentScrollY <= threshold) {
+            setShowTopBarMobile(true)
+          }
+          // Scrolling down, hide the bar
+          else if (delta > threshold) {
+            setShowTopBarMobile(false)
+          }
+          // Scrolling up, show the bar
+          else if (delta < -threshold) {
+            setShowTopBarMobile(true)
           }
 
-          lastScrollYRef.current = currentY
+          lastScrollYRef.current = currentScrollY
           tickingRef.current = false
         })
         tickingRef.current = true
       }
     }
 
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [isMobile, showTopBarMobile])
+    // Initialize scroll position
+    lastScrollYRef.current = window.scrollY
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+    // Cleanup listener
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [isMobile]) // Only re-run this effect if the view changes between mobile/desktop
 
   // Desktop sticky on scroll
   useEffect(() => {
@@ -261,47 +253,111 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", onDocClick)
   }, [isMobileMenuOpen])
 
+  // Dynamic transition for top bar visibility
+  useEffect(() => {
+    const el = topBarRef.current;
+    if (!el) return;
+
+    const transition = ' padding-top 0.35s ease-out, padding-bottom 0.35s ease-out, opacity 0.1s ease-out, transform 0.35s ease-out';
+    el.style.transition = transition;
+
+    const normalPadding = '1.25rem'; // Increased from 1rem to 1.25rem (20px)
+    const stickyPadding = '1rem'; // Increased from 15px to 1rem (16px), but adjust if needed
+
+    const targetPaddingTop = isMobile ? normalPadding : (isSticky ? stickyPadding : normalPadding);
+    const targetPaddingBottom = targetPaddingTop;
+
+    if (!isMobile) {
+      el.style.maxHeight = '';
+      el.style.paddingTop = targetPaddingTop;
+      el.style.paddingBottom = targetPaddingBottom;
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+      el.style.overflow = '';
+      return
+    }
+
+    el.style.overflow = 'hidden';
+
+    if (showTopBarMobile) {
+      // Save originals for restore
+      const originalVisibility = el.style.visibility;
+      const originalMaxHeight = el.style.maxHeight;
+      const originalPaddingTop = el.style.paddingTop;
+      const originalPaddingBottom = el.style.paddingBottom;
+
+      // Temporarily set to measure full height
+      el.style.visibility = 'hidden';
+      el.style.maxHeight = 'none';
+      el.style.paddingTop = targetPaddingTop;
+      el.style.paddingBottom = targetPaddingBottom;
+
+      const fullHeight = el.scrollHeight;
+
+      // Restore starting state
+      el.style.visibility = originalVisibility;
+      el.style.maxHeight = originalMaxHeight;
+      el.style.paddingTop = originalPaddingTop;
+      el.style.paddingBottom = originalPaddingBottom;
+
+      // Start from hidden
+      el.style.maxHeight = '0px';
+      el.style.paddingTop = '0px';
+      el.style.paddingBottom = '0px';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-100%)';
+
+      // Force reflow
+      void el.offsetHeight;
+
+      // Transition to shown
+      el.style.maxHeight = `${fullHeight + 20}px`; // Add a bit extra to account for any miscalculations
+      el.style.paddingTop = targetPaddingTop;
+      el.style.paddingBottom = targetPaddingBottom;
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    } else {
+      // Start from shown (assume current is full)
+      el.style.maxHeight = `${el.scrollHeight}px`;
+      el.style.paddingTop = targetPaddingTop;
+      el.style.paddingBottom = targetPaddingBottom;
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+
+      // Force reflow
+      void el.offsetHeight;
+
+      // Transition to hidden
+      el.style.maxHeight = '0px';
+      el.style.paddingTop = '0px';
+      el.style.paddingBottom = '0px';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-100%)';
+    }
+  }, [showTopBarMobile, isMobile, isSticky]);
+
   return (
     <>
-      <style jsx global>{`
-        @keyframes slideDown {
-          from {
-            transform: translateY(-100%);
-          }
-          to {
-            transform: translateY(0);
-          }
-        }
-        .animate-slideDown {
-          animation: slideDown 0.5s ease forwards;
-        }
-      `}</style>
+
       <header
         ref={headerRef}
-        className={`bg-white border-b border-gray-200 z-[99]  ${isMobile
-          ? "sticky top-0"
-          : isSticky
-            ? "fixed top-0 left-0 w-full shadow-[0_4px_6px_rgba(0,0,0,0.1)] animate-slideDown"
-            : "relative"
-          }`}
+        className={
+          `bg-white border-b border-gray-200 z-[99]  ${isMobile
+            ? "sticky top-0"
+            : isSticky
+              ? "fixed top-0 left-0 w-full shadow-[0_4px_6px_rgba(0,0,0,0.1)] animate-slideDown"
+              : "relative"
+          }`
+        }
       >
         {/* Top Bar */}
         <div
           ref={topBarRef}
           className={[
-            "w-full mx-auto px-4 md:px-6 lg:px-8 xl:px-28 items-center justify-between",
-            isMobile
-              ? showTopBarMobile
-                ? "flex py-4 opacity-100 translate-y-0"
-                : "flex py-0 opacity-0 -translate-y-2"
-              : "flex py-4 opacity-100 translate-y-0",
-            isSticky ? "py-[15px]" : "",
+            "w-full mx-auto px-4 py-4 md:py-0 md:px-6 lg:px-8 xl:px-28 items-center justify-between",
+            !isMobile ? "flex" : "flex",
+            isSticky ? "" : "", // Removed py-[15px], handled in style
           ].join(" ")}
-          style={{
-            height: isMobile ? (showTopBarMobile ? topBarHeight : 0) : "auto",
-            overflow: isMobile ? "hidden" : undefined,
-            transition: "all 0.3s ease-out",
-          }}
         >
           {/* Logo */}
           <div className="flex-shrink-0">
@@ -394,10 +450,10 @@ export default function Header() {
 
         {/* Mobile Search */}
         {isMobile && (
-          <div className={`px-3 py-2 border-b border-gray-200 bg-white `} ref={mobileSearchRef}>
+          <div className={`px-3 py-2 border-b border-gray-200 bg-white ${!showTopBarMobile ? 'pt-4' : ''}`} ref={mobileSearchRef}>
             <form
               onSubmit={handleSearch}
-              className="flex w-full items-center gap-2   rounded-full border border-gray-300 transition-all px-2 py-1"
+              className="flex w-full items-center gap-2 rounded-full border border-gray-300 transition-all px-2 py-1"
             >
               <CategoryDropdown
                 selectedCategory={selectedCategory}
@@ -440,9 +496,20 @@ export default function Header() {
             )}
           </div>
         )}
+        <style jsx global>{`
+        @keyframes slideDown {
+          from {
+            transform: translateY(-100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        .animate-slideDown {
+          animation: slideDown 0.5s ease forwards;
+        }
+      `}</style>
       </header>
-
-
 
       <AuthContextProvider>
         {/* Cart Drawer */}
