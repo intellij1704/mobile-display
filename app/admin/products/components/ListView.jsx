@@ -11,6 +11,7 @@ import { db } from "@/lib/firebase";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { CircularProgress } from "@mui/material";
 
 export default function ProductListView() {
     const router = useRouter();
@@ -339,7 +340,7 @@ export default function ProductListView() {
     // Calculate display products
     const displayProducts = filteredAndSortedProducts;
 
-        console.log(displayProducts)
+    console.log(displayProducts)
 
 
     return (
@@ -466,8 +467,9 @@ export default function ProductListView() {
                             {isLoading ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-8 text-center">
-                                        <div className="flex justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                        <div className="h-screen w-full flex flex-col justify-center items-center bg-gray-100">
+                                            <CircularProgress size={50} thickness={4} color="primary" />
+                                            <p className="mt-4 text-gray-600 font-medium">Please Wait...</p>
                                         </div>
                                     </td>
                                 </tr>

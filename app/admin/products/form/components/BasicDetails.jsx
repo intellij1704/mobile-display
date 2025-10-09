@@ -218,12 +218,22 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
         )}
       </div>
 
+        <SelectField
+        label="Category"
+        value={data?.categoryId ?? ""}
+        onChange={(e) => handleData("categoryId", e.target.value)}
+        options={categories}
+        isRequired={true}
+        error={variationValidationErrors?.categoryId}
+      />
+
+
       <SelectField
         label="Brand"
         value={selectedBrand}
         onChange={(e) => setSelectedBrand(e.target.value)}
         options={brands}
-        isRequired={true}
+        isRequired={false}
         error={variationValidationErrors?.brandId}
       />
 
@@ -232,7 +242,7 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
         value={selectedSeries}
         onChange={(e) => setSelectedSeries(e.target.value)}
         options={series}
-        isRequired={true}
+        isRequired={false}
         disabled={!selectedBrand}
         error={variationValidationErrors?.seriesId}
       />
@@ -242,20 +252,12 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
         value={data?.modelId ?? ""}
         onChange={(e) => handleData("modelId", e.target.value)}
         options={models}
-        isRequired={true}
+        isRequired={false}
         disabled={!selectedSeries}
         error={variationValidationErrors?.modelId}
       />
 
-      <SelectField
-        label="Category"
-        value={data?.categoryId ?? ""}
-        onChange={(e) => handleData("categoryId", e.target.value)}
-        options={categories}
-        isRequired={true}
-        error={variationValidationErrors?.categoryId}
-      />
-
+    
       <div className="flex flex-col gap-1">
         <label className="text-gray-500 text-sm font-medium">Variable Product</label>
         <select
