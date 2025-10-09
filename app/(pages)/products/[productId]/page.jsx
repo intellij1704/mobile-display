@@ -116,20 +116,20 @@ export default async function Page({ params, searchParams }) {
         timestampUpdate: rawProduct.timestampUpdate?.toDate().toISOString(),
     };
 
-    // For variable products, select default variation with lowest price if no color/quality provided
-    if (product.isVariable && (!color || !quality) && product.variations?.length > 0) {
-        let minPrice = Infinity;
-        let defaultColor, defaultQuality;
-        product.variations.forEach(v => {
-            const p = parseFloat(v.salePrice || v.price);
-            if (p < minPrice) {
-                minPrice = p;
-                defaultColor = v.attributes.Color;
-                defaultQuality = v.attributes.Quality;
-            }
-        });
-        color = defaultColor;
-        quality = defaultQuality;
+    // Compute attributes
+    const colors = product?.attributes?.find(attr => attr.name === "Color")?.values || [];
+    const qualities = product?.attributes?.find(attr => attr.name === "Quality")?.values || [];
+    const hasColorOptions = colors.length > 0;
+    const hasQualityOptions = qualities.length > 0;
+
+    // For variable products, auto-select if only one option for attribute
+    if (product.isVariable && product.variations?.length > 0) {
+        if (hasColorOptions && colors.length === 1 && !color) {
+            color = colors[0];
+        }
+        if (hasQualityOptions && qualities.length === 1 && !quality) {
+            quality = qualities[0];
+        }
     }
 
     // Compute effective values for schema if variable

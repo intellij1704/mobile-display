@@ -84,7 +84,7 @@ export default function ColorSelector({ colors, selectedColor, productId, curren
             </form>
             {selectedColor && (
                 <p className="mt-2 text-sm text-gray-700 flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: selectedColor }}></span>
+                    {/* <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: selectedColor }}></span> */}
                     Selected color: <span className="font-semibold">{formatColorName(selectedColor)}</span>
                 </p>
             )}

@@ -16,6 +16,9 @@ function FavoriteButton({ productId }) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+
+  console.log(data)
+
   const handleClick = async () => {
     setIsLoading(true);
     try {
@@ -26,6 +29,7 @@ function FavoriteButton({ productId }) {
 
       if (data?.favorites?.includes(productId)) {
         const newList = data?.favorites?.filter((item) => item !== productId);
+     
         await updateFavorites({ list: newList, uid: user?.uid });
         toast.success("Removed from wishlist");
       } else {

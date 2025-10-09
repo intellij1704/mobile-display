@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function QualitySelector({ qualities, selectedQuality, productId }) {
+export default function QualitySelector({ qualities, selectedQuality, productId, currentColor }) {
     const router = useRouter();
 
     const handleQualityChange = (quality) => {
@@ -13,7 +13,11 @@ export default function QualitySelector({ qualities, selectedQuality, productId 
         } else {
             url.searchParams.delete("quality");
         }
-        router.push(url.pathname + url.search);
+        // Preserve color if provided
+        if (currentColor) {
+            url.searchParams.set("color", currentColor);
+        }
+        router.push(url.pathname + "?" + url.searchParams.toString(), { scroll: false });
     };
 
     useEffect(() => {
@@ -33,7 +37,7 @@ export default function QualitySelector({ qualities, selectedQuality, productId 
                 form.removeEventListener("change", handleInputChange);
             }
         };
-    }, [productId]);
+    }, [productId, handleQualityChange]);
 
     const formatQualityName = (quality) => {
         if (!quality) return "";
@@ -60,7 +64,8 @@ export default function QualitySelector({ qualities, selectedQuality, productId 
                             type="radio"
                             name="quality"
                             value={quality}
-                            defaultChecked={selectedQuality === quality}
+                            checked={selectedQuality === quality}
+                            onChange={(e) => handleQualityChange(e.target.value)}
                             className="sr-only"
                             aria-label={`Select ${formatQualityName(quality)}`}
                         />

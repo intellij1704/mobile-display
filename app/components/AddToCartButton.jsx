@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import ReturnTypeSelector from "./ReturnTypeSelector"
 
 export default function AddToCartButton({
+  product,
   productId,
   type = "large",
   selectedColor,
@@ -44,6 +45,16 @@ export default function AddToCartButton({
     if (hasQualityOptions && !selectedQuality && !isAdded) {
       toast.error("Please select a quality!")
       return false
+    }
+    if (product?.isVariable && !isAdded) {
+      const selVar = product.variations.find(v => 
+        ( !isVariable || v.attributes.Color === selectedColor ) &&
+        ( !hasQualityOptions || v.attributes.Quality === selectedQuality )
+      )
+      if (!selVar) {
+        toast.error("This combination is not available.")
+        return false
+      }
     }
     return true
   }

@@ -46,14 +46,31 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
   const discount =
     product?.price && product?.salePrice ? Math.round(((product.price - product.salePrice) / product.price) * 100) : 0
 
+  const colors = product?.attributes?.find(attr => attr.name === "Color")?.values || []
+  const qualities = product?.attributes?.find(attr => attr.name === "Quality")?.values || []
+  const hasColorOptions = colors.length > 0
+  const hasQualityOptions = qualities.length > 0
+  const isActuallyVariable = product?.isVariable && product.variations?.length > 0
+
   const validateSelection = () => {
-    if (product?.isVariable && product?.colors?.length > 0 && !selectedColor) {
+    if (isActuallyVariable && hasColorOptions && !selectedColor) {
       toast.error("Please select a color")
       return false
     }
-    if (product?.hasQualityOptions && product?.qualities?.length > 0 && !selectedQuality) {
+    if (isActuallyVariable && hasQualityOptions && !selectedQuality) {
       toast.error("Please select a quality")
       return false
+    }
+    if (isActuallyVariable) {
+      const selectedVar = product.variations.find(v => {
+        const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
+        const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
+        return colorMatch && qualityMatch
+      })
+      if (!selectedVar) {
+        toast.error("This combination is not available.")
+        return false
+      }
     }
     return true
   }
@@ -75,8 +92,8 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
           {
             product,
             quantity: 1,
-            selectedColor: selectedColor || null, // Ensure null if not selected (though validation prevents)
-            selectedQuality: selectedQuality || null, // Ensure null if not selected
+            selectedColor: selectedColor || null,
+            selectedQuality: selectedQuality || null,
             returnType: choice.id,
           },
         ],
@@ -160,12 +177,13 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
         <div className="flex w-full md:w-auto gap-3">
           <AuthContextProvider>
             <AddToCartButton
+              product={product}
               productId={product?.id}
               type="large"
               selectedColor={selectedColor}
               selectedQuality={selectedQuality}
-              isVariable={product?.isVariable && product?.colors?.length > 0}
-              hasQualityOptions={product?.hasQualityOptions && product?.qualities?.length > 0}
+              isVariable={isActuallyVariable && hasColorOptions}
+              hasQualityOptions={hasQualityOptions}
               className="flex-1 bg-black text-white py-3 rounded-lg text-center"
               productPrice={product?.salePrice || product?.price}
             />

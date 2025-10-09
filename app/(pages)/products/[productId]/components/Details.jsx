@@ -5,7 +5,7 @@ import MyRating from "@/app/components/MyRating";
 import { AuthContextProvider } from "@/context/AuthContext";
 import { getProductReviewCounts } from "@/lib/firestore/products/count/read";
 import { ShoppingCart } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import OffersSection from "./OffersSection"; // New component for offers
 import DeliveryChecker from "./DeliveryChecker";
 import { addDays, format } from "date-fns";
@@ -14,21 +14,58 @@ import QualitySelector from "./QualitySelector";
 import ActionButtons from "./ActionButtons";
 
 async function Details({ product, selectedColor, selectedQuality }) {
-  // For variable products, find selected variation
-  const selectedVariation = product?.isVariable
-    ? product.variations?.find(v => 
-        v.attributes.Color === selectedColor && v.attributes.Quality === selectedQuality
-      )
-    : null;
+  // Compute colors and qualities from attributes
+  const colors = product?.attributes?.find(a => a.name === "Color")?.values || [];
+  const qualities = product?.attributes?.find(a => a.name === "Quality")?.values || [];
+  const hasColorOptions = colors.length > 0;
+  const hasQualityOptions = qualities.length > 0;
+  const isActuallyVariable = product?.isVariable && product.variations?.length > 0;
 
-  const effectivePrice = product?.isVariable ? (selectedVariation?.salePrice || selectedVariation?.price) : (product?.salePrice || product?.price);
-  const effectiveOriginalPrice = product?.isVariable ? selectedVariation?.price : product?.price;
-  const discount = effectiveOriginalPrice && effectivePrice && effectiveOriginalPrice > effectivePrice
-    ? Math.round(((effectiveOriginalPrice - effectivePrice) / effectiveOriginalPrice) * 100)
-    : 0;
+  const selectedVariation = useMemo(() => {
+    // For non-variable products, create a mock variation from the base product
+    if (!isActuallyVariable) {
+      return {
+        price: product.price,
+        salePrice: product.salePrice,
+        attributes: {},
+        imageURLs: [],
+        stock: product.stock,
+      }
+    }
 
-  const effectiveStock = product?.isVariable ? parseInt(selectedVariation?.stock || 0) : (product?.stock || 0);
-  const isOutOfStock = product?.isVariable ? (!selectedVariation || effectiveStock <= 0) : (product.stock <= (product.orders ?? 0));
+    // Find the variation that matches the selected attributes
+    return product.variations.find(v => {
+      const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
+      const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
+      return colorMatch && qualityMatch
+    })
+  }, [selectedColor, selectedQuality, product, hasColorOptions, hasQualityOptions, isActuallyVariable])
+
+  // Compute the lowest variation for initial display
+  const lowestVariation = useMemo(() => {
+    if (!isActuallyVariable) {
+      return {
+        price: product.price,
+        salePrice: product.salePrice,
+        attributes: {},
+        imageURLs: [],
+        stock: product.stock,
+      }
+    }
+    return product.variations.reduce((lowest, current) => {
+      const lowestP = parseFloat(lowest.salePrice || lowest.price)
+      const currentP = parseFloat(current.salePrice || current.price)
+      return currentP < lowestP ? current : lowest
+    }, product.variations[0])
+  }, [product, isActuallyVariable])
+
+  const displayVariation = selectedVariation || lowestVariation;
+
+  const currentPrice = parseFloat(displayVariation?.salePrice || displayVariation?.price) || 0
+  const originalPrice = displayVariation?.salePrice ? parseFloat(displayVariation.price) : null
+  const discountPercentage = originalPrice && currentPrice < originalPrice
+    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+    : 0
 
   const whyBuyUs = [
     {
@@ -60,11 +97,6 @@ async function Details({ product, selectedColor, selectedQuality }) {
 
   const estimatedDate = getEstimatedDelivery(3);
 
-  // Compute colors and qualities from attributes
-  const colors = product?.attributes?.find(a => a.name === "Color")?.values || [];
-  const qualities = product?.attributes?.find(a => a.name === "Quality")?.values || [];
-  const hasQualityOptions = qualities.length > 0;
-
   return (
     <div className="w-full ">
       {/* Product Title */}
@@ -87,16 +119,16 @@ async function Details({ product, selectedColor, selectedQuality }) {
       {/* Price Section with Enhanced Discount Display */}
       <div className="flex items-center gap-3 mt-4">
         <h2 className="text-2xl font-bold text-gray-900">
-          ₹{effectivePrice || "N/A"}
+          ₹{currentPrice || "N/A"}
         </h2>
-        {effectiveOriginalPrice && effectivePrice && effectiveOriginalPrice > effectivePrice && (
+        {originalPrice && currentPrice < originalPrice && (
           <>
             <span className="text-gray-500 line-through text-md">
-              ₹{effectiveOriginalPrice}
+              ₹{originalPrice}
             </span>
             <div className="flex flex-col items-start">
               <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-lg">
-                {discount}% OFF
+                {discountPercentage}% OFF
               </span>
             </div>
           </>
@@ -116,7 +148,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
       </div>
 
       {/* Color Selection */}
-      {product?.isVariable && colors.length > 0 && (
+      {isActuallyVariable && hasColorOptions && (
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-4">Select Color</h3>
           <ColorSelector
@@ -129,7 +161,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
       )}
 
       {/* Quality Selection */}
-      {product?.isVariable && hasQualityOptions && (
+      {isActuallyVariable && hasQualityOptions && (
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-4">Select Quality</h3>
           <QualitySelector
@@ -151,18 +183,8 @@ async function Details({ product, selectedColor, selectedQuality }) {
           product={product}
           selectedColor={selectedColor}
           selectedQuality={selectedQuality}
-          isDisabled={isOutOfStock}
         />
       </AuthContextProvider>
-
-      {/* Stock Info */}
-      {isOutOfStock && (
-        <div className="mt-3">
-          <h3 className="text-red-500 bg-red-50 py-1 px-2 rounded-lg text-sm">
-            Out of Stock
-          </h3>
-        </div>
-      )}
 
       {/* Estimated Delivery */}
       <div className="mt-5 text-sm text-gray-700">

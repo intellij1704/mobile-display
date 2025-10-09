@@ -21,9 +21,9 @@ export const createUser = async ({ uid, displayName, mobileNo, email, gender, co
 export const updateFavorites = async ({ uid, list }) => {
   await setDoc(
     doc(db, `users/${uid}`),
-    {
+    JSON.parse(JSON.stringify({
       favorites: list,
-    },
+    })),
     {
       merge: true,
     }
