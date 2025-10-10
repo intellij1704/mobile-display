@@ -1,12 +1,22 @@
-import { Mail, MapPin, Phone, Facebook, Instagram, Linkedin, Twitter } from "lucide-react";
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import {
+    Facebook,
+    Instagram,
+    LinkedIn,
+    WhatsApp,
+    Mail,
+    Phone,
+    LocationOn,
+} from "@mui/icons-material";
 
 const companyLinks = [
     { label: "Home Page", href: "/" },
-    { label: "Collection", href: "" },
+    { label: "Collection", href: "/collection" },
     { label: "Categories", href: "/categories" },
-    { label: "About us", href: "/about" },
+    { label: "About Us", href: "/about" },
 ];
 
 const featureLinks = [
@@ -16,64 +26,96 @@ const featureLinks = [
 ];
 
 const socialLinks = [
-    { icon: <Twitter className="w-5 h-5" />, href: "https://twitter.com" },
-    { icon: <Facebook className="w-5 h-5" />, href: "https://facebook.com" },
-    { icon: <Instagram className="w-5 h-5" />, href: "https://instagram.com" },
-    { icon: <Linkedin className="w-5 h-5" />, href: "https://linkedin.com" },
+    { icon: <Facebook fontSize="small" />, href: "https://facebook.com" },
+    { icon: <Instagram fontSize="small" />, href: "https://instagram.com" },
+
+    { icon: <LinkedIn fontSize="small" />, href: "https://linkedin.com" },
+    { icon: <WhatsApp fontSize="small" />, href: "https://wa.me/1234567890" },
 ];
 
 const Footer = () => {
     return (
-        <footer className="bg-black text-white px-6 md:px-12 py-12">
+        <footer className="bg-gray-900 text-white px-6 md:px-12 py-12">
             <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
                 {/* Logo & Description */}
                 <div>
-                    <Image src="/footer-logo.svg" alt="Logo" width={120} height={60} />
-                    <p className="text-sm text-gray-400 mt-4">
-                        This is your one-stop destination for high-quality mobile phone spare parts. <br />
-                        We offer genuine and affordable components to keep your devices running smoothly.
+                    <Image src="/footer-logo.svg" alt="Logo" width={130} height={60} />
+                    <p className="text-sm text-gray-400 mt-4 leading-relaxed">
+                        Your trusted source for premium mobile phone spare parts and
+                        accessories. We provide genuine, affordable, and high-quality
+                        components to keep your devices running smoothly.
                     </p>
                 </div>
 
                 {/* Company Links */}
                 <div>
-                    <h4 className="font-semibold mb-3">Company</h4>
+                    <h4 className="font-semibold mb-3 text-lg">Company</h4>
                     <ul className="space-y-2 text-sm text-gray-300">
-                        {companyLinks.map((link, index) => (
-                            <li key={index}>
-                                <Link href={link.href} className="hover:underline">{link.label}</Link>
+                        {companyLinks.map((link, i) => (
+                            <li key={i}>
+                                <Link
+                                    href={link.href}
+                                    className="hover:text-white transition-colors"
+                                >
+                                    {link.label}
+                                </Link>
                             </li>
                         ))}
                     </ul>
                 </div>
 
-                {/* Feature Links */}
+                {/* Features */}
                 <div>
-                    <h4 className="font-semibold mb-3">Features</h4>
+                    <h4 className="font-semibold mb-3 text-lg">Features</h4>
                     <ul className="space-y-2 text-sm text-gray-300">
-                        {featureLinks.map((link, index) => (
-                            <li key={index}>
-                                <Link href={link.href} className="hover:underline">{link.label}</Link>
+                        {featureLinks.map((link, i) => (
+                            <li key={i}>
+                                <Link
+                                    href={link.href}
+                                    className="hover:text-white transition-colors"
+                                >
+                                    {link.label}
+                                </Link>
                             </li>
                         ))}
                     </ul>
                 </div>
 
-                {/* Location Info */}
+                {/* Contact / Location */}
                 <div>
-                    <h4 className="font-semibold mb-3">Locations</h4>
-                    <p className="text-sm text-gray-300 mb-2">Middlest 2 East 42nd Strearket place<br />New York, NY 10017</p>
-                    <p className="text-sm text-gray-300 mb-2">+001 2454 456</p>
-                    <p className="text-sm text-gray-300">logo@xyzasd.com</p>
+                    <h4 className="font-semibold mb-3 text-lg">Contact</h4>
+                    <ul className="text-sm text-gray-300 space-y-3">
+                        <li className="flex items-start gap-2">
+                            <LocationOn fontSize="small" className="text-red-500 mt-0.5" />
+                            <span>
+                                Middle East, 2nd East 42nd Street Market Place,
+                                <br /> New York, NY 10017
+                            </span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <Phone fontSize="small" className="text-red-500" />
+                            <span>+001 2454 456</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <Mail fontSize="small" className="text-red-500" />
+                            <span>support@mobiledisplay.com</span>
+                        </li>
+                    </ul>
                 </div>
 
-                {/* Social Icons */}
+                {/* Social Links */}
                 <div>
-                    <h4 className="font-semibold mb-3">SOCIAL</h4>
+                    <h4 className="font-semibold mb-3 text-lg">Follow Us</h4>
                     <div className="flex gap-4">
-                        {socialLinks.map((link, index) => (
-                            <Link key={index} href={link.href} target="_blank">
-                                <span className="text-gray-300 hover:text-white">{link.icon}</span>
+                        {socialLinks.map((link, i) => (
+                            <Link
+                                key={i}
+                                href={link.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 rounded-full bg-gray-800 hover:bg-red-600 text-gray-300 hover:text-white transition-all"
+                            >
+                                {link.icon}
                             </Link>
                         ))}
                     </div>
@@ -81,18 +123,13 @@ const Footer = () => {
             </div>
 
             {/* Footer Bottom */}
-            <div className="border-t border-gray-500 mt-10 pt-6 text-center text-sm text-gray-200">
-                Copyright © 2025{" "}
-                <a
-                    href="#"
-                    className="text-[#FF0000] hover:text-red-500 font-medium transition-colors duration-200"
-                >
-                    Mobile Display
-                </a>
+            <div className="border-t border-gray-700 mt-10 pt-6 text-center text-sm text-gray-400">
+                © {new Date().getFullYear()}{" "}
+                <span className="text-red-500 font-medium">Mobile Display</span>. All
+                rights reserved.
             </div>
         </footer>
     );
 };
 
 export default Footer;
-

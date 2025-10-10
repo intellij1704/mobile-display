@@ -17,7 +17,6 @@ function FavoriteButton({ productId }) {
   const router = useRouter();
 
 
-  console.log(data)
 
   const handleClick = async () => {
     setIsLoading(true);

@@ -21,7 +21,6 @@ ChartJS.register(
 );
 
 export default function OrdersChart({ items }) {
-  console.log(items);
 
   const data = {
     labels: items?.map((item) => item.date), // ✅ use correct field

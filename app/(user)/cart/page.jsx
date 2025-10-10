@@ -176,11 +176,11 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
 
   // Find variation if product is variable
   const variation = useMemo(() => {
-    if (product?.isVariable && product?.variations && item?.selectedColor && item?.selectedQuality) {
+    if (product?.isVariable && product?.variations && item?.selectedColor) {
       return product.variations.find(
         (v) =>
           v.attributes?.Color?.toLowerCase() === item.selectedColor?.toLowerCase() &&
-          v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase()
+          (!item.selectedQuality || v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase())
       )
     }
     return null

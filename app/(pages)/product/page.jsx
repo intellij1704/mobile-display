@@ -230,9 +230,6 @@ const ProductsPageContent = () => {
         }
     }, [hasMore, pageSize]) // Removed isLoading from deps, use ref instead
 
-    console.log("[v0] Series data:", seriesList)
-    console.log("[v0] Models data:", modelsList)
-
     const searchParams = useSearchParams()
     const router = useRouter()
     const pathname = usePathname()

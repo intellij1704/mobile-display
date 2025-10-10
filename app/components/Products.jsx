@@ -6,7 +6,6 @@ import AddToCartButton from "./AddToCartButton";
 import RatingReview from "./RatingReview";
 
 export function ProductCard({ product }) {
-  console.log("Final Products", product);
 
   // Determine prices based on whether it's a variable product
   let displayPrice = 0;

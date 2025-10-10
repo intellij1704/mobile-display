@@ -180,28 +180,29 @@ export default function CartDrawer({ isOpen, onClose }) {
 const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   const [isRemoving, setIsRemoving] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
-  const { data: product } = useProduct({ productId: item?.id })
+  const { data: product, isLoading: productLoading } = useProduct({ productId: item?.id })
+
 
   // Find variation if product is variable
   const variation = useMemo(() => {
-    if (product?.isVariable && product?.variations && item?.selectedColor && item?.selectedQuality) {
+    if (product?.isVariable && product?.variations && item?.selectedColor) {
       return product.variations.find(
         (v) =>
           v.attributes?.Color?.toLowerCase() === item.selectedColor?.toLowerCase() &&
-          v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase()
+          (!item.selectedQuality || v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase())
       )
     }
     return null
   }, [product, item.selectedColor, item.selectedQuality])
 
-  // Pricing - Prioritize variation, then product, then stored item values
+  // Pricing - Prioritize stored item values, then variation, then product
   const listPrice = useMemo(() => {
-    return parseFloat(variation?.price || product?.price || item?.price || 0)
-  }, [variation, product, item])
+    return parseFloat(item?.price || variation?.price || product?.price || 0)
+  }, [item, variation, product])
 
   const salePrice = useMemo(() => {
-    return parseFloat(variation?.salePrice || product?.salePrice || item?.salePrice || 0)
-  }, [variation, product, item])
+    return parseFloat(item?.salePrice || variation?.salePrice || product?.salePrice || 0)
+  }, [item, variation, product])
 
   const hasSale = useMemo(() => {
     return salePrice > 0 && salePrice < listPrice
@@ -241,8 +242,10 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   }, [item?.returnType, item?.returnFee, effectivePrice, quantity])
 
   useEffect(() => {
-    onSubtotalUpdate(uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee)
-  }, [uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee, onSubtotalUpdate])
+    if (!productLoading && product) {
+      onSubtotalUpdate(uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee)
+    }
+  }, [uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee, onSubtotalUpdate, productLoading, product])
 
   const handleRemove = useCallback(async () => {
     if (!confirm("Remove this item from cart?")) return
@@ -300,6 +303,19 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
     },
     [data?.carts, item, user?.uid, effectivePrice]
   )
+
+  if (productLoading) {
+    return (
+      <div className="flex gap-3 p-3 bg-gray-50 rounded-lg animate-pulse">
+        <div className="w-16 h-16 bg-gray-200 rounded" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-gray-200 w-3/4" />
+          <div className="h-3 bg-gray-200 w-1/2" />
+          <div className="h-3 bg-gray-200 w-1/2" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex gap-3 p-3 bg-gray-50 rounded-lg">

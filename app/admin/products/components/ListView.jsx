@@ -172,10 +172,6 @@ export default function ProductListView() {
                         aValue = getMinEffectivePrice(a);
                         bValue = getMinEffectivePrice(b);
                         break;
-                    case 'stock':
-                        aValue = getTotalStock(a);
-                        bValue = getTotalStock(b);
-                        break;
                     case 'orders':
                         aValue = a.orders || 0;
                         bValue = b.orders || 0;
@@ -440,16 +436,6 @@ export default function ProductListView() {
                                     </button>
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <button onClick={() => handleSort('stock')} className="flex items-center gap-1">
-                                        Stock
-                                        {sortConfig.key === 'stock' && (
-                                            sortConfig.direction === 'asc' ?
-                                                <ArrowUp className="h-3 w-3" /> :
-                                                <ArrowDown className="h-3 w-3" />
-                                        )}
-                                    </button>
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <button onClick={() => handleSort('orders')} className="flex items-center gap-1">
                                         Total Orders
                                         {sortConfig.key === 'orders' && (
@@ -459,14 +445,13 @@ export default function ProductListView() {
                                         )}
                                     </button>
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center">
+                                    <td colSpan={5} className="px-6 py-8 text-center">
                                         <div className="h-screen w-full flex flex-col justify-center items-center bg-gray-100">
                                             <CircularProgress size={50} thickness={4} color="primary" />
                                             <p className="mt-4 text-gray-600 font-medium">Please Wait...</p>
@@ -486,7 +471,7 @@ export default function ProductListView() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                                         {searchQuery ? "No matching products found" : "No products available"}
                                     </td>
                                 </tr>
@@ -551,9 +536,6 @@ function ProductRow({ item, index, router, getPriceDisplay, getTotalStock }) {
         }
     };
 
-    const totalStock = getTotalStock(item);
-    const stockStatus = totalStock - (item.orders || 0);
-
     return (
         <tr className="hover:bg-gray-50 transition-colors">
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -585,17 +567,8 @@ function ProductRow({ item, index, router, getPriceDisplay, getTotalStock }) {
             <td className="px-6 py-4 whitespace-nowrap">
                 {getPriceDisplay(item)}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {totalStock.toLocaleString()}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
                 {item.orders?.toLocaleString() || 0}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${stockStatus > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {stockStatus > 0 ? 'In Stock' : 'Out of Stock'}
-                </span>
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex justify-end gap-2">

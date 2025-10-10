@@ -16,7 +16,6 @@ import { updateAddresses } from "@/lib/firestore/user/write"
 import CouponsDrawer from "./CouponsDrawer"
 import AddressSection from "./AddressSection"
 import FeesLines from "./FeesLines"
-import ProductRow from "./ProductRow"
 import PaymentMode from "./PaymentMode"
 
 // ---------- UI Helpers ----------
@@ -246,7 +245,7 @@ function ContactAndAddress({ userData, user, productList }) {
             const selectedQuality = item.selectedQuality
             const matchingVariation = product.variations.find(v => {
                 const attrs = v.attributes || {}
-                return attrs.Color === selectedColor && attrs.Quality === selectedQuality
+                return attrs.Color === selectedColor && (!selectedQuality || attrs.Quality === selectedQuality)
             })
             if (matchingVariation) {
                 return parseFloat(matchingVariation.salePrice || matchingVariation.price) || 0
@@ -572,6 +571,7 @@ function ContactAndAddress({ userData, user, productList }) {
                                             item={item}
                                             estimatedDelivery={estimatedDelivery}
                                             getCategoryName={getCategoryName}
+                                            getItemPrice={getItemPrice}
                                         />
                                     ))}
                                 </div>
@@ -796,11 +796,47 @@ function CouponsBox({ appliedCoupons, appliedOffers, couponError, onRemove, onOp
     )
 }
 
+function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) {
+    const product = item.product;
+    const quantity = item.quantity || 1;
+    const selectedColor = item.selectedColor;
+    const selectedQuality = item.selectedQuality;
+    const returnType = item.returnType;
+    const categoryName = getCategoryName(product.categoryId);
+    const price = getItemPrice(item) * quantity;
+
+    let variantInfo = '';
+    if (selectedColor) variantInfo += ` - ${selectedColor}`;
+    if (selectedQuality) variantInfo += ` - ${selectedQuality}`;
+
+    return (
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex justify-between items-start">
+                <div className="flex items-start gap-3">
+                    <img 
+                        src={product.featureImageURL || "/placeholder.svg"} 
+                        alt={product.title} 
+                        className="w-16 h-16 object-cover rounded-md" 
+                    />
+                    <div>
+                        <h3 className="font-medium text-gray-900">{product.title}{variantInfo}</h3>
+                        <p className="text-sm text-gray-500">Qty: {quantity}</p>
+                        <p className="text-sm text-gray-500">Category: {categoryName}</p>
+                        <p className="text-sm text-gray-500">Return Type: {returnType}</p>
+                    </div>
+                </div>
+                <span className="font-medium text-gray-900">₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <p className="mt-2 text-sm text-gray-600">Estimated Delivery: {estimatedDelivery}</p>
+        </div>
+    );
+}
 
 // ---------- Main Component ----------
 export default function Checkout({ productList }) {
     const { user } = useAuth()
     const { data: userData } = useUser({ uid: user?.uid })
+
 
     return <ContactAndAddress userData={userData} user={user} productList={productList} />
 }

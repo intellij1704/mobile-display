@@ -11,7 +11,6 @@ import toast from "react-hot-toast"
 export default function SeriesListView() {
   const { data: series, error, isLoading } = useSeries()
 
-  console.log(series)
 
   if (isLoading) {
     return (
