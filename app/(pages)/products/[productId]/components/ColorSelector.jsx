@@ -1,93 +1,127 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
+import { Check } from "lucide-react";
 
-export default function ColorSelector({ colors, selectedColor, productId, currentQuality }) {
-    const router = useRouter();
-    const searchParams = useSearchParams();
+export default function ColorSelector({
+  colors = [],
+  selectedColor: serverColor,
+  productId,
+  currentQuality,
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-    // Helper to update URL with new color, preserving other params like quality
-    const handleColorChange = useCallback((color) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (color) {
-            params.set("color", color);
-        } else {
-            params.delete("color");
-        }
-        // Preserve quality if provided
-        if (currentQuality) {
-            params.set("quality", currentQuality);
-        } else if (!color && !currentQuality) {
-            params.delete("quality"); // Optional: clear quality if no color selected
-        }
+  // ✅ Local instant selection for smooth UX
+  const [selectedColor, setSelectedColor] = useState(serverColor);
+
+  useEffect(() => {
+    setSelectedColor(serverColor);
+  }, [serverColor]);
+
+  // ✅ Debounced URL update for smoother performance
+  const handleColorChange = useCallback(
+    (color) => {
+      setSelectedColor(color); // instant visual update
+
+      const params = new URLSearchParams(searchParams.toString());
+      if (color) {
+        params.set("color", color);
+      } else {
+        params.delete("color");
+      }
+
+      if (currentQuality) {
+        params.set("quality", currentQuality);
+      }
+
+      // Small delay for smoother transition (debounce)
+      setTimeout(() => {
         const newUrl = `${window.location.pathname}?${params.toString()}`;
-        router.push(newUrl, { scroll: false }); // Prevent scroll to top for smoother UX
-    }, [router, searchParams, currentQuality]);
+        router.push(newUrl, { scroll: false });
+      }, 100);
+    },
+    [router, searchParams, currentQuality]
+  );
 
-    // Auto-submit when radio input changes
-    useEffect(() => {
-        const handleInputChange = (e) => {
-            if (e.target.name === "color") {
-                handleColorChange(e.target.value);
-            }
-        };
+  // ✅ Helper for display
+  const formatColorName = (color) =>
+    color ? color.charAt(0).toUpperCase() + color.slice(1).toLowerCase() : "";
 
-        // Use event delegation on document to handle dynamic forms
-        document.addEventListener("change", handleInputChange);
+  return (
+    <div className="space-y-3 transition-all duration-300">
+      <form
+        id={`color-selector-${productId}`}
+        className="flex flex-wrap gap-3 items-center"
+      >
+        {colors.map((color) => {
+          const isSelected = selectedColor === color;
+          const colorStyle =
+            color.toLowerCase() === "black"
+              ? "#000"
+              : color.toLowerCase() === "white"
+              ? "#fff"
+              : color;
 
-        return () => {
-            document.removeEventListener("change", handleInputChange);
-        };
-    }, [handleColorChange]);
+          return (
+            <label
+              key={color}
+              className="relative cursor-pointer transform transition-transform duration-150 hover:scale-105 active:scale-95"
+              title={formatColorName(color)}
+            >
+              <input
+                type="radio"
+                name="color"
+                value={color}
+                checked={isSelected}
+                onChange={(e) => handleColorChange(e.target.value)}
+                className="sr-only peer"
+                aria-label={`Select ${formatColorName(color)} color`}
+              />
 
-    // Format color name for display (capitalize first letter)
-    const formatColorName = (color) => {
-        if (!color) return "";
-        return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
-    };
+              {/* Color circle */}
+              <span
+                className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-in-out ${
+                  isSelected
+                    ? "border-black ring-2 ring-black/30 shadow-md scale-105"
+                    : "border-gray-300 hover:border-gray-500"
+                }`}
+                style={{ backgroundColor: colorStyle }}
+              >
+                {isSelected && (
+                  <Check
+                    size={18}
+                    strokeWidth={3}
+                    className={`transition-opacity duration-200 ${
+                      color.toLowerCase() === "black"
+                        ? "text-white"
+                        : "text-black"
+                    } opacity-100`}
+                  />
+                )}
+              </span>
 
-    return (
-        <div className="space-y-2">
-            <form id={`color-selector-${productId}`} className="flex gap-3 flex-wrap">
-                {colors.map((color) => (
-                    <label
-                        key={color}
-                        className="flex items-center cursor-pointer relative"
-                        title={formatColorName(color)}
-                    >
-                        <input
-                            type="radio"
-                            name="color"
-                            value={color}
-                            checked={selectedColor === color}
-                            onChange={(e) => handleColorChange(e.target.value)}
-                            className="sr-only peer"
-                            aria-label={`Select ${formatColorName(color)} color`}
-                        />
-                        <span
-                            className={`h-8 w-8 rounded-full border-2 transition-all duration-200 peer-checked:border-black peer-checked:ring-2 peer-checked:ring-black/30 peer-checked:shadow-md flex items-center justify-center ${
-                                selectedColor === color ? "border-black ring-2 ring-black/30 shadow-md" : "border-gray-400 hover:border-gray-600"
-                            }`}
-                            style={{ 
-                                backgroundColor: color.toLowerCase() === 'black' ? '#000' : color.toLowerCase() === 'white' ? '#fff' : color 
-                            }}
-                        >
-                            {color.toLowerCase() === 'black' || color.toLowerCase() === 'white' ? (
-                                <span className={`text-xs font-semibold ${color.toLowerCase() === 'black' ? 'text-white' : 'text-black'}`}>
-                                    {color.charAt(0)}
-                                </span>
-                            ) : null}
-                        </span>
-                    </label>
-                ))}
-            </form>
-            {selectedColor && (
-                <p className="mt-2 text-sm text-gray-700 flex items-center gap-1">
-                    {/* <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: selectedColor }}></span> */}
-                    Selected color: <span className="font-semibold">{formatColorName(selectedColor)}</span>
-                </p>
-            )}
-        </div>
-    );
+              <span
+                className={`block text-xs text-center mt-1 transition-colors duration-200 ${
+                  isSelected ? "font-semibold text-black" : "text-gray-600"
+                }`}
+              >
+                {formatColorName(color)}
+              </span>
+            </label>
+          );
+        })}
+      </form>
+
+      {selectedColor && (
+        <p className="text-sm text-gray-700 transition-opacity duration-300 ease-in-out">
+          Selected color:{" "}
+          <span className="font-semibold">
+            {formatColorName(selectedColor)}
+          </span>
+        </p>
+      )}
+    </div>
+  );
 }

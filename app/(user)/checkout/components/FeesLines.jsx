@@ -50,18 +50,39 @@ function FeesLines({
                 ) : null}
             </div>
 
-            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <label className="flex items-center justify-between cursor-pointer select-none">
-                    <span className="text-sm font-medium text-gray-800">Air Express Delivery</span>
-                    <input
-                        type="checkbox"
-                        checked={deliveryType === "express"}
-                        onChange={(e) => onToggleExpress(e.target.checked)}
-                        className="h-4 w-4 accent-gray-900"
-                    />
-                </label>
-                <p className="mt-1 text-xs text-gray-500">Faster delivery in 1-2 business days. Standard: 4-7 days.</p>
-            </div>
+          <div
+  className={`mt-3 rounded-lg border p-3 cursor-pointer select-none transition-all duration-200
+    ${deliveryType === "express" ? "bg-red-50 border-red-500" : "bg-red-50 border-red-200"}`}
+  onClick={() => onToggleExpress(deliveryType !== "express")}
+>
+  <div className="flex items-center justify-between">
+    <span className={`text-sm font-medium ${deliveryType === "express" ? "text-gray-900" : "text-gray-800"}`}>
+      Air Express Delivery
+    </span>
+    
+    {/* Custom checkbox */}
+    <div
+      className={`w-5 h-5 flex items-center justify-center rounded border transition-colors duration-200
+        ${deliveryType === "express" ? "border-red-500 bg-red-100" : "border-red-300 bg-red-50"}`}
+    >
+      {deliveryType === "express" && (
+        <svg
+          className="w-3 h-3 text-red-500"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+    </div>
+  </div>
+
+  <p className={`mt-1 text-xs ${deliveryType === "express" ? "text-gray-700" : "text-gray-500"}`}>
+    Faster delivery in 1-2 business days. Standard: 4-7 days.
+  </p>
+</div>
 
             {deliveryType === "express" ? <Line label="Air Express Shipping" value={airExpressFee} muted /> : null}
 

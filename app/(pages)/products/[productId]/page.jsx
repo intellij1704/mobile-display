@@ -230,7 +230,7 @@ export default async function Page({ params, searchParams }) {
 
             {/* Related Products */}
             <section className="mt-10">
-                <RelatedProducts categoryId={product.categoryId} />
+                <RelatedProducts categoryId={product.categoryId} productId={product.id} />
             </section>
         </main>
     );

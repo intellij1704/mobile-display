@@ -26,7 +26,8 @@ const PrevArrow = ({ onClick }) => (
   </div>
 );
 
-function RelatedProducts({ categoryId }) {
+function RelatedProducts({ categoryId, productId }) {
+  console.log(productId)
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -37,8 +38,10 @@ function RelatedProducts({ categoryId }) {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const data = await getProductsByCategory({ categoryId });
-        setProducts(data || []);
+        let data = await getProductsByCategory({ categoryId });
+        // Exclude the current product
+        data = (data || []).filter((p) => p.id !== productId);
+        setProducts(data);
       } catch (error) {
         console.error("Error fetching related products:", error);
       } finally {
@@ -47,7 +50,7 @@ function RelatedProducts({ categoryId }) {
     };
 
     fetchProducts();
-  }, [categoryId]);
+  }, [categoryId, productId]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
@@ -85,10 +88,7 @@ function RelatedProducts({ categoryId }) {
     );
   }
 
-  // Determine if slider is needed
-  const showSlider = isMobile
-    ? products.length > 2
-    : products.length > 5; // desktop always grid up to 5
+  const showSlider = isMobile ? products.length > 2 : products.length > 5;
 
   const sliderSettings = {
     infinite: false,

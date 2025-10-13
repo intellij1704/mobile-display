@@ -54,9 +54,9 @@ function Photos({ product, selectedColor, selectedQuality }) {
 
     // Find selected variation if variable
     const selectedVariation = product?.isVariable && selectedColor && selectedQuality
-        ? product.variations?.find(v => 
+        ? product.variations?.find(v =>
             v.attributes.Color === selectedColor && v.attributes.Quality === selectedQuality
-          )
+        )
         : null;
 
     // Determine images to display: prefer variation images, fallback to color variantImages or default
@@ -96,17 +96,20 @@ function Photos({ product, selectedColor, selectedQuality }) {
 
     // Thumbnail slider settings
     const thumbnailSliderSettings = {
-        dots: false,
-        infinite: true,
-        speed: 500,
-        slidesToShow: Math.min(displayImages.length, 6),
+        slidesToShow: Math.min(displayImages.length, 5),
         slidesToScroll: 1,
+        infinite: false,
         arrows: false,
-        focusOnSelect: false,
-        swipe: false,
+        centerMode: false,
+        variableWidth: false,
+        adaptiveHeight: false,
         responsive: [
-            { breakpoint: 768, settings: { slidesToShow: Math.min(displayImages.length, 3) } },
-            { breakpoint: 480, settings: { slidesToShow: Math.min(displayImages.length, 2) } },
+            {
+                breakpoint: 768,
+                settings: {
+                    slidesToShow: Math.min(displayImages.length, 3),
+                },
+            },
         ],
     };
 
@@ -270,34 +273,46 @@ function Photos({ product, selectedColor, selectedQuality }) {
                 </div>
 
                 {/* Thumbnail Navigation */}
+                {/* Thumbnail Navigation */}
                 {displayImages.length > 1 && (
-                    <div className="w-full relative hidden md:block">
-                        <Slider ref={thumbnailSliderRef} {...thumbnailSliderSettings}>
-                            {displayImages.map((img, index) => (
-                                <div key={index} className="px-1">
-                                    <button
-                                        className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all duration-200 h-20 w-full ${currentSlide === index ? "border-black" : "border-gray-200 opacity-70"}`}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleThumbnailClick(index);
-                                        }}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        aria-label={`Go to image ${index + 1}`}
-                                    >
-                                        <div className="relative w-full h-full">
-                                            <Image
-                                                src={img || "/placeholder.svg"}
-                                                alt={`Thumbnail ${index + 1}`}
-                                                fill
-                                                className="object-cover"
-                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                            />
+                    <div className="w-full relative hidden md:block mt-3">
+                        <div className="flex justify-center">
+                            <div className="w-auto max-w-full">
+                                <Slider
+                                    ref={thumbnailSliderRef}
+                                    {...thumbnailSliderSettings}
+                                    className="flex justify-center"
+                                >
+                                    {displayImages.map((img, index) => (
+                                        <div key={index} className="px-1 flex justify-center">
+                                            <button
+                                                className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all duration-200 h-20 w-20 flex-shrink-0 ${currentSlide === index
+                                                    ? "border-black"
+                                                    : "border-gray-200 opacity-70"
+                                                    }`}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleThumbnailClick(index);
+                                                }}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                aria-label={`Go to image ${index + 1}`}
+                                            >
+                                                <div className="relative w-full h-full">
+                                                    <Image
+                                                        src={img || "/placeholder.svg"}
+                                                        alt={`Thumbnail ${index + 1}`}
+                                                        fill
+                                                        className="object-cover"
+                                                        sizes="80px"
+                                                    />
+                                                </div>
+                                            </button>
                                         </div>
-                                    </button>
-                                </div>
-                            ))}
-                        </Slider>
+                                    ))}
+                                </Slider>
+                            </div>
+                        </div>
                     </div>
                 )}
 
