@@ -6,7 +6,6 @@ import {
   getProducts
 } from "@/lib/firestore/products/read_server";
 import Collections from "./components/Collections";
-import { getCollections } from "@/lib/firestore/collections/read_server";
 import Categories from "./components/Categories";
 import { getCategories } from "@/lib/firestore/categories/read_server";
 import CustomerReviews from "./components/CustomerReviews";
@@ -24,14 +23,12 @@ import { serializeFirestoreData } from "@/utils/serializeFirestoreData";
 import BestsellerCategories from "./components/BestsellerCategories";
 
 export default async function Home() {
-  const [collections, categories, products, brands] = await Promise.all([
-    getCollections(),
+  const [ categories, products, brands] = await Promise.all([
     getCategories(),
     getProducts(),
     getBrands()
   ]);
 
-  const serializedCollections = collections.map(serializeFirestoreData);
   const serializedCategories = categories.map(serializeFirestoreData);
   const serializedProducts = products.map(serializeFirestoreData);
   const serializedBrands = brands.map(serializeFirestoreData);
@@ -55,7 +52,7 @@ export default async function Home() {
       <Header />
       <CategoriesNav />
       <FeaturedProductSlider />
-      <Collections collections={serializedCollections} />
+      <Collections  />
       <WhyUsSection />
       <Accessories />
 

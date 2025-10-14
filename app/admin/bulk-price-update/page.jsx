@@ -1,17 +1,18 @@
 "use client";
 
-import { useProducts, searchProducts } from "@/lib/firestore/products/read";
+import { searchProducts } from "@/lib/firestore/products/read";
 import { updateProduct } from "@/lib/firestore/products/write";
 import { Search, ChevronLeft, ChevronRight, Download, FileText, File } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, limit, startAfter } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { CircularProgress } from "@mui/material";
+import { useCategories } from "@/lib/firestore/categories/read";
 
 export default function ProductListView() {
     const router = useRouter();
@@ -24,28 +25,84 @@ export default function ProductListView() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [totalProducts, setTotalProducts] = useState(0);
     const [searchedProducts, setSearchedProducts] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [paginatedProducts, setPaginatedProducts] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [lastSnapDoc, setLastSnapDoc] = useState(null);
+
+    const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useCategories();
+
+    console.log(categories);
 
     useEffect(() => {
         const fetchTotal = async () => {
-            const snap = await getDocs(collection(db, "products"));
+            const ref = collection(db, "products");
+            let q = query(ref);
+            if (selectedCategory !== "all") {
+                q = query(ref, where("categoryId", "==", selectedCategory));
+            }
+            const snap = await getDocs(q);
             setTotalProducts(snap.size);
         };
         fetchTotal();
-    }, []);
+    }, [selectedCategory]);
 
     useEffect(() => {
         if (searchQuery) {
-            searchProducts(searchQuery).then(setSearchedProducts);
+            searchProducts(searchQuery).then((products) => {
+                if (selectedCategory !== "all") {
+                    products = products.filter((p) => p.categoryId === selectedCategory);
+                }
+                setSearchedProducts(products);
+            });
         } else {
             setSearchedProducts([]);
         }
-    }, [searchQuery]);
+    }, [searchQuery, selectedCategory]);
+
+    useEffect(() => {
+        setLastSnapDocList([]);
+    }, [selectedCategory, pageLimit]);
+
+    useEffect(() => {
+        const fetchPaginated = async () => {
+            setIsLoading(true);
+            try {
+                const ref = collection(db, "products");
+                let q = query(ref, orderBy("timestampCreate", "desc"), limit(pageLimit));
+                if (selectedCategory !== "all") {
+                    q = query(q, where("categoryId", "==", selectedCategory));
+                }
+                if (lastSnapDocList.length > 0) {
+                    q = query(q, startAfter(lastSnapDocList[lastSnapDocList.length - 1]));
+                }
+                const snapshot = await getDocs(q);
+                const products = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    attributes: doc.data().attributes || [],
+                    variations: doc.data().variations || [],
+                }));
+                setPaginatedProducts(products);
+                setLastSnapDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+            } catch (error) {
+                console.error(error);
+                toast.error("Failed to load products");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchPaginated();
+    }, [lastSnapDocList, pageLimit, selectedCategory]);
 
     const fetchAllProductsInternal = useCallback(async () => {
         setIsLoadingAll(true);
         try {
             const ref = collection(db, "products");
-            const q = query(ref);
+            let q = query(ref);
+            if (selectedCategory !== "all") {
+                q = query(ref, where("categoryId", "==", selectedCategory));
+            }
             const snapshot = await getDocs(q);
             const products = snapshot.docs.map((doc) => ({
                 id: doc.id,
@@ -61,16 +118,7 @@ export default function ProductListView() {
         } finally {
             setIsLoadingAll(false);
         }
-    }, []);
-
-    const {
-        data: paginatedProducts = [],
-        isLoading,
-        lastSnapDoc,
-    } = useProducts({
-        pageLimit,
-        lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
-    });
+    }, [selectedCategory]);
 
     const filteredProducts = useMemo(() => {
         let result = [...paginatedProducts];
@@ -223,9 +271,23 @@ export default function ProductListView() {
 
     return (
         <div className="flex flex-col gap-6 p-6 bg-white rounded-xl shadow-md">
+            <h1 className="text-2xl font-bold text-gray-800">Update Bulk Product Prices</h1>
             <div className="flex flex-col md:flex-row justify-between gap-4 items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Update Bulk Product Prices</h1>
-
+                <div className="flex items-center flex-col md:flex-row gap-4">
+                    <label className="text-sm font-medium text-gray-700">Filter by Category:</label>
+                    <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="all">All</option>
+                        {categories?.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                                {cat.name.charAt(0).toUpperCase() + cat.name.slice(1).replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                     <div className="relative w-full md:w-64">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />

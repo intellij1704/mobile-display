@@ -50,7 +50,7 @@ export default function Signup() {
                 photoURL: user?.photoURL,
             })
             toast.success("Signup Successfully")
-            router.push('/account')
+            router.push('/login')
         } catch (error) {
             toast.error(error?.message);
         }

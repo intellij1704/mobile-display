@@ -1,12 +1,13 @@
+// Path: src/pages/category-price-update.js (Rewritten Page Component)
 "use client";
 import { useCategories } from "@/lib/firestore/categories/read";
 import { bulkUpdatePricesByCategory } from "@/lib/firestore/products/write";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import ListView from "./components/ListView";
 
 const Page = () => {
-  const { data: categories, isLoading: categoriesLoading, error: categoriesError } =
-    useCategories();
+  const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useCategories();
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [percentage, setPercentage] = useState("");
@@ -44,7 +45,7 @@ const Page = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-start p-4">
       <div className="bg-white shadow-lg rounded-lg p-8 max-w-md w-full">
         <h2 className="text-2xl font-bold mb-6 text-center">
           Bulk Price Update by Category
@@ -117,6 +118,11 @@ const Page = () => {
 
         {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
         {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
+      </div>
+
+      {/* List View Component Below the Form */}
+      <div className="max-w-4xl w-full mt-8">
+        <ListView />
       </div>
     </div>
   );

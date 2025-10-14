@@ -7,3 +7,10 @@ export const updateOrderStatus = async ({ id, status }) => {
         timestampStatusUpdate: Timestamp.now(),
     });
 };
+
+export const updateOrderAddress = async ({ id, address }) => {
+    await updateDoc(doc(db, `orders/${id}`), {
+        "checkout.metadata.address": JSON.stringify(address),
+        timestampStatusUpdate: Timestamp.now(),
+    });
+}

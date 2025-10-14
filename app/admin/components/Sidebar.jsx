@@ -52,7 +52,6 @@ const menuList = [
     { name: "Category Pricing Update", link: "/admin/category-price-update", icon: <Tags className="h-5 w-5" /> },
     { name: "Shop Owner Requests", link: "/admin/shop-owners", icon: <UserCheck className="h-5 w-5" /> },
     { name: "Reviews", link: "/admin/reviews", icon: <Star className="h-5 w-5" /> },
-    { name: "Collections", link: "/admin/collections", icon: <LibraryBig className="h-5 w-5" /> },
     { name: "Admins", link: "/admin/admins", icon: <ShieldCheck className="h-5 w-5" /> },
     { name: "Banner", link: "/admin/banner", icon: <FileUp className="h-5 w-5" /> },
     { name: "Blog", link: "/admin/blog", icon: <Newspaper className="h-5 w-5" /> },

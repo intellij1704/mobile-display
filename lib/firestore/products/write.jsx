@@ -1,5 +1,6 @@
+// Path: src/lib/firestore/products/write.js
 import { db, storage } from "@/lib/firebase";
-import { collection, deleteDoc, doc, getDocs, query, setDoc, Timestamp, where, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, Timestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 // ✅ Create Product
@@ -141,10 +142,10 @@ export const deleteProduct = async ({ id }) => {
   await deleteDoc(doc(db, `products/${id}`));
 };
 
-// Bulk update price By category (Percentage Increase)
+// Bulk update price By category (Percentage Change)
 export const bulkUpdatePricesByCategory = async ({ categoryId, percentage }) => {
   if (!categoryId) throw new Error("Category ID is required");
-  if (isNaN(percentage)) throw new Error("Valid non-negative percentage is required");
+  if (isNaN(percentage)) throw new Error("Valid percentage is required");
 
   const multiplier = 1 + (percentage / 100);
 
@@ -185,4 +186,34 @@ export const bulkUpdatePricesByCategory = async ({ categoryId, percentage }) => 
 
   await batch.commit();
   console.log(`Updated prices for ${snapshot.docs.length} products in category ${categoryId}.`);
+
+  // Store update history
+  const historyRef = doc(collection(db, "price_update_history"));
+  await setDoc(historyRef, {
+    categoryId,
+    percentage,
+    timestamp: Timestamp.now(),
+    revised: false,
+  });
+};
+
+// Revise Price Update (Reverse the percentage change)
+export const revisePriceUpdate = async ({ historyId }) => {
+  if (!historyId) throw new Error("History ID is required");
+
+  const historyRef = doc(db, "price_update_history", historyId);
+  const historyDoc = await getDoc(historyRef);
+
+  if (!historyDoc.exists()) throw new Error("History not found");
+  const historyData = historyDoc.data();
+  if (historyData.revised) throw new Error("This update has already been revised");
+
+  // Apply negative percentage to reverse
+  await bulkUpdatePricesByCategory({
+    categoryId: historyData.categoryId,
+    percentage: -historyData.percentage,
+  });
+
+  // Mark as revised (but do not create new history for revise)
+  await updateDoc(historyRef, { revised: true });
 };

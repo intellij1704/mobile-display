@@ -21,14 +21,61 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
   const [showSelector, setShowSelector] = useState(false)
   const [pendingBuy, setPendingBuy] = useState(false)
 
+  // Compute colors and qualities from attributes
+  const colors = product?.attributes?.find(a => a.name === "Color")?.values || [];
+  const qualities = product?.attributes?.find(a => a.name === "Quality")?.values || [];
+  const hasColorOptions = colors.length > 0;
+  const hasQualityOptions = qualities.length > 0;
+  const isActuallyVariable = product?.isVariable && product.variations?.length > 0;
+
+  const selectedVariation = useMemo(() => {
+    // For non-variable products, create a mock variation from the base product
+    if (!isActuallyVariable) {
+      return {
+        price: product.price,
+        salePrice: product.salePrice,
+        attributes: {},
+        imageURLs: [],
+        stock: product.stock,
+      }
+    }
+
+    // Find the variation that matches the selected attributes
+    return product.variations.find(v => {
+      const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
+      const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
+      return colorMatch && qualityMatch
+    })
+  }, [selectedColor, selectedQuality, product, hasColorOptions, hasQualityOptions, isActuallyVariable])
+
+  // Compute the lowest variation for initial display
+  const lowestVariation = useMemo(() => {
+    if (!isActuallyVariable) {
+      return {
+        price: product.price,
+        salePrice: product.salePrice,
+        attributes: {},
+        imageURLs: [],
+        stock: product.stock,
+      }
+    }
+    return product.variations.reduce((lowest, current) => {
+      const lowestP = parseFloat(lowest.salePrice || lowest.price)
+      const currentP = parseFloat(current.salePrice || current.price)
+      return currentP < lowestP ? current : lowest
+    }, product.variations[0])
+  }, [product, isActuallyVariable])
+
+  const displayVariation = selectedVariation || lowestVariation;
+
+  const mrp = parseFloat(displayVariation?.price) || 0
+  const salePrice = displayVariation?.salePrice ? parseFloat(displayVariation.salePrice) : null
+  const hasSale = !!salePrice
+  const basePrice = salePrice || mrp
+
   const activeOffers = useMemo(() => {
     return data?.filter((offer) => offer.status === "Active" && offer.categories?.includes(product.categoryId)) || []
   }, [data, product?.categoryId])
-
-  const mrp = product?.price || 0
-  const salePrice = product?.salePrice
-  const hasSale = !!salePrice
-  const basePrice = salePrice || mrp
 
   const maxDiscountPerc = activeOffers.reduce((max, offer) => Math.max(max, offer.discountPercentage || 0), 0)
 
@@ -43,14 +90,9 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
   const hasAdditionalOffers = activeOffers.length > 0
   const hasOffers = hasSale || hasAdditionalOffers
 
-  const discount =
-    product?.price && product?.salePrice ? Math.round(((product.price - product.salePrice) / product.price) * 100) : 0
-
-  const colors = product?.attributes?.find(attr => attr.name === "Color")?.values || []
-  const qualities = product?.attributes?.find(attr => attr.name === "Quality")?.values || []
-  const hasColorOptions = colors.length > 0
-  const hasQualityOptions = qualities.length > 0
-  const isActuallyVariable = product?.isVariable && product.variations?.length > 0
+  const discount = mrp && salePrice && mrp > salePrice
+    ? Math.round(((mrp - salePrice) / mrp) * 100)
+    : 0
 
   const validateSelection = () => {
     if (isActuallyVariable && hasColorOptions && !selectedColor) {
@@ -164,10 +206,10 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         {/* Price (mobile only) */}
         <div className="flex items-center gap-3 md:hidden">
-          <h2 className="text-2xl font-bold text-gray-900">₹{product?.salePrice || product?.price}</h2>
-          {product?.price && product?.salePrice && product.price > product.salePrice && (
+          <h2 className="text-2xl font-bold text-gray-900">₹{salePrice || mrp}</h2>
+          {mrp && salePrice && mrp > salePrice && (
             <>
-              <span className="text-gray-500 line-through text-md">₹{product?.price}</span>
+              <span className="text-gray-500 line-through text-md">₹{mrp}</span>
               <span className="text-green-600 text-sm font-semibold">{discount}% Off</span>
             </>
           )}
@@ -184,15 +226,15 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
               selectedQuality={selectedQuality}
               isVariable={isActuallyVariable && hasColorOptions}
               hasQualityOptions={hasQualityOptions}
-              className="flex-1 bg-black text-white py-3 rounded-lg text-center"
-              productPrice={product?.salePrice || product?.price}
+              className="flex-1 bg-black text-white py-5 rounded-lg text-center"
+              productPrice={salePrice || mrp}
             />
           </AuthContextProvider>
 
           <Button
             onClick={handleBuyNowClick}
             disabled={isLoadingBuyNow || isLoadingUser}
-            className="flex-1 w-full text-sm sm:text-base md:py-[0.42rem] py-[0.86rem] px-3 sm:px-6 text-red-500 font-normal border border-red-500 rounded-lg shadow hover:bg-red-500 hover:text-white transition duration-300 disabled:opacity-60 bg-white"
+            className="flex-1 w-full text-sm sm:text-base md:py-5 py-5 px-3 sm:px-6 text-red-500 font-normal border border-red-500 rounded-lg shadow hover:bg-red-500 hover:text-white transition duration-300 disabled:opacity-60 bg-white"
             variant="outline"
           >
             {isLoadingBuyNow ? "Processing..." : "Buy Now"}
@@ -208,7 +250,7 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
           setPendingBuy(false)
         }}
         onConfirm={onConfirmReturnForBuy}
-        productPrice={product?.salePrice || product?.price}
+        productPrice={salePrice || mrp}
       />
     </div>
   )

@@ -10,7 +10,9 @@ import {
   startAfter,
   where,
   getDocs,
+  orderBy,
 } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import useSWRSubscription from "swr/subscription";
 
 // ------------------- GET MULTIPLE PRODUCTS -------------------
@@ -269,3 +271,30 @@ export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, 
     isLoading: data === undefined,
   };
 }
+
+
+export const usePriceUpdateHistory = () => {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const q = query(collection(db, "price_update_history"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      setData(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error, refetch: fetchData };
+};

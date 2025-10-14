@@ -127,7 +127,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
               ₹{originalPrice}
             </span>
             <div className="flex flex-col items-start">
-              <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-lg">
+              <span className="bg-[#BB0300] text-white text-sm font-bold px-3 py-1 rounded-lg">
                 {discountPercentage}% OFF
               </span>
             </div>
@@ -192,9 +192,9 @@ async function Details({ product, selectedColor, selectedQuality }) {
       </div>
 
       {/* Why Buy Us */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 mt-8">
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:gap-6 gap-3 p-4 md:mt-4 mt-2">
         {whyBuyUs.map((item) => (
-          <div key={item.id} className="flex items-center space-x-4 p-4 rounded-xl">
+          <div key={item.id} className="flex items-center space-x-4 py-2 rounded-xl">
             <div className="w-12 h-12">
               <img src={item.icon} alt={item.title} className="w-full h-full object-contain" />
             </div>

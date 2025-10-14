@@ -1,15 +1,25 @@
+// app/orders/[orderId]/page.jsx
 "use client";
 
 import { useOrder } from "@/lib/firestore/orders/read";
-import { Button, CircularProgress, Divider } from "@mui/material";
-import { Card, CardBody, CardHeader } from "@nextui-org/react";
+import { updateOrderAddress } from "@/lib/firestore/orders/write";
+import { X } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import ChangeOrderStatus from "./components/ChangeStatus";
+import EditAddressModal from "./components/EditAddressModal";
 
 function Page() {
     const { orderId } = useParams();
     const { data: order, error, isLoading } = useOrder({ id: orderId });
-    console.log(order)
+
+    const [isEditingAddress, setIsEditingAddress] = useState(false);
+    const [editedAddress, setEditedAddress] = useState({});
+    const [updateError, setUpdateError] = useState(null);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+
     if (!orderId) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -30,7 +40,7 @@ function Page() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
                 <div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center">
-                    <CircularProgress size={60} thickness={4} color="primary" className="mb-4" />
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
                     <h2 className="text-xl font-semibold text-gray-800 mb-2">Fetching Order Details</h2>
                     <p className="text-gray-600">Please wait while we load your order information.</p>
                 </div>
@@ -49,9 +59,9 @@ function Page() {
                     </div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Order Not Found</h2>
                     <p className="text-gray-600 mb-4">Please check the order ID and try again.</p>
-                    <Button variant="contained" onClick={() => window.location.reload()}>
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700" onClick={() => window.location.reload()}>
                         Try Again
-                    </Button>
+                    </button>
                 </div>
             </div>
         );
@@ -67,13 +77,12 @@ function Page() {
     const deliveryFee = checkout?.deliveryFee || 0;
     const returnFee = checkout?.returnFee || 0;
     const totalAmount = checkout?.total || 0;
+    const advance = checkout?.advance || 0;
+    const remaining = checkout?.remaining || 0;
 
     const address = JSON.parse(checkout?.metadata?.address ?? "{}");
     const deliveryType = checkout?.metadata?.deliveryType || "standard";
     const isExpressDelivery = deliveryType === "express";
-
-
-    console.log("Address:", address);
 
     const returnOptionsMap = {
         "easy-return": "Easy Return",
@@ -95,6 +104,32 @@ function Page() {
     };
     const currentStatus = order?.status || "pending";
     const statusStyle = statusColors[currentStatus] || { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" };
+
+    const handleEditAddress = () => {
+        setEditedAddress(address);
+        setIsEditingAddress(true);
+        setUpdateError(null);
+    };
+
+    const handleAddressChange = (e) => {
+        const { name, value } = e.target;
+        setEditedAddress(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleUpdateAddress = async () => {
+        setIsUpdating(true);
+        setUpdateError(null);
+        try {
+            await updateOrderAddress({ id: orderId, address: editedAddress });
+            setIsEditingAddress(false);
+            toast.success("Address updated successfully");
+            // Optionally, refetch order data here if needed
+        } catch (err) {
+            setUpdateError("Failed to update address. Please try again.");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     return (
         <main className="min-h-screen bg-gray-50 rounded-md py-8 px-4 sm:px-6 lg:px-8">
@@ -139,7 +174,6 @@ function Page() {
                                             {isExpressDelivery ? "Express Delivery" : "Standard Delivery"}
                                         </span>
                                     </div>
-
                                 </div>
 
                                 <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
@@ -149,7 +183,9 @@ function Page() {
                                             {order?.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "Pending"}
                                         </span>
                                     </div>
-                                    <ChangeOrderStatus order={order} />
+                                    <div>
+                                        <ChangeOrderStatus order={order} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -217,8 +253,13 @@ function Page() {
                     <div className="space-y-6">
                         {/* Customer Info Card */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="px-6 py-5 border-b border-gray-100">
+                            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                                 <h2 className="text-lg font-semibold text-gray-800">Customer Information</h2>
+                                <button onClick={handleEditAddress} className="text-blue-600 hover:text-blue-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
                             </div>
                             <div className="p-6">
                                 <div className="space-y-4">
@@ -237,10 +278,9 @@ function Page() {
                                             {address?.city && `${address.city}, `}
                                             {address?.state && `${address.state} - `}
                                             {address?.pincode || ""}
-                                           
                                         </p>
                                         <p className="text-gray-900">{address?.country || "N/A"}</p>
-                                        <p className="text-sm font-medium text-gray-500">Landmark:{address?.landmark || "N/A"}</p>
+                                        <p className="text-sm font-medium text-gray-500">Landmark: {address?.landmark || "N/A"}</p>
                                     </div>
 
                                     {address?.note && (
@@ -267,7 +307,7 @@ function Page() {
 
                                     {discount > 0 && (
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Discount  <br /><span className="text-xs text-green-600">(Coupons: {checkout?.appliedCoupons?.join(", ") || "N/A"})</span></span>
+                                            <span className="text-gray-600">Discount <br /><span className="text-xs text-green-600">(Coupons: {checkout?.appliedCoupons?.join(", ") || "N/A"})</span></span>
                                             <span className="text-green-600 font-medium">-₹{discount.toFixed(2)}</span>
                                         </div>
                                     )}
@@ -309,21 +349,40 @@ function Page() {
                                             <span className="text-green-600 font-medium">Free</span>
                                         </div>
                                     ) : null}
-                                
 
-
-                                    <Divider className="my-2" />
+                                    <div className="border-t border-gray-200 my-2"></div>
 
                                     <div className="flex justify-between text-lg pt-2">
                                         <span className="font-semibold text-gray-900">Total</span>
                                         <span className="font-bold text-gray-900">₹{totalAmount.toFixed(2)}</span>
                                     </div>
+
+                                    <div className="border-t border-gray-200 my-2"></div>
+                                    {advance > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">10% advance paid</span>
+                                            <span className="text-green-600">-₹{advance.toFixed(2)}</span>
+                                        </div>
+                                    )}
+
+                                    {remaining > 0 && (
+                                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-orange-800 font-medium">Need to pay on delivery</span>
+                                                <span className="text-orange-800 font-bold">₹{remaining.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <EditAddressModal isUpdating={isUpdating} isEditingAddress={isEditingAddress} setIsEditingAddress={setIsEditingAddress} editedAddress={editedAddress} handleAddressChange={handleAddressChange} handleUpdateAddress={handleUpdateAddress} updateError={updateError} />
+
+
         </main>
     );
 }
