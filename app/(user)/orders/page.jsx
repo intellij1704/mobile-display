@@ -4,85 +4,123 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useOrders } from "@/lib/firestore/orders/read";
-import { updateOrderStatus } from "@/lib/firestore/orders/write";
+import { createCancelRequest } from "@/lib/firestore/orders/write";
 import { CircularProgress } from "@mui/material";
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import ConfirmationDialog from "./components/ConfirmationDialog";
 
 const OrdersPage = () => {
   const { user } = useAuth();
   const { data: orders, error, isLoading } = useOrders({ uid: user?.uid });
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [selectedReason, setSelectedReason] = useState(null);
+  const [customReason, setCustomReason] = useState("");
   const router = useRouter();
 
+  const cancelReasons = [
+    { icon: "🤔", label: "Changed my mind", value: "changed_mind" },
+    { icon: "💰", label: "Found better price elsewhere", value: "better_price" },
+    { icon: "📦", label: "Ordered by mistake", value: "by_mistake" },
+    { icon: "⏰", label: "Delivery taking too long", value: "delay" },
+    { icon: "📝", label: "Others", value: "others" },
+  ];
+
   // Cancel order
-  const handleCancelClick = (orderId) => setOrderToCancel(orderId);
+  const handleCancelClick = (orderId) => {
+    setOrderToCancel(orderId);
+    setSelectedReason(null);
+    setCustomReason("");
+  };
 
   const handleCancelConfirm = async () => {
     if (!orderToCancel) return;
+    if (!selectedReason) {
+      toast.error("Please select a reason.");
+      return;
+    }
+    if (selectedReason === "others" && !customReason.trim()) {
+      toast.error("Please specify the reason.");
+      return;
+    }
 
     const currentOrder = orders?.find((o) => o.id === orderToCancel);
-let canCancel = true;
-let errorMessage = "";
+    let canCancel = true;
+    let errorMessage = "";
 
-if (!currentOrder) {
-  canCancel = false;
-  errorMessage = "Order not found.";
-} else {
-  switch (currentOrder.status) {
-    case "cancelled":
+    if (!currentOrder) {
       canCancel = false;
-      errorMessage = "This order is already cancelled.";
-      break;
-    case "delivered":
+      errorMessage = "Order not found.";
+    } else if (currentOrder.cancelRequestId) {
       canCancel = false;
-      errorMessage = "This order has already been delivered and cannot be cancelled.";
-      break;
-    case "shipped":
-      canCancel = false;
-      errorMessage = "This order has already been shipped and cannot be cancelled.";
-      break;
-    case "outForDelivery":
-      canCancel = false;
-      errorMessage = "This order is out for delivery and cannot be cancelled.";
-      break;
-    default:
-      canCancel = true;
-  }
-}
+      errorMessage = "A cancel request is already pending or processed.";
+    } else {
+      switch (currentOrder.status) {
+        case "cancelled":
+          canCancel = false;
+          errorMessage = "This order is already cancelled.";
+          break;
+        case "delivered":
+          canCancel = false;
+          errorMessage = "This order has already been delivered and cannot be cancelled.";
+          break;
+        case "shipped":
+          canCancel = false;
+          errorMessage = "This order has already been shipped and cannot be cancelled.";
+          break;
+        case "outForDelivery":
+          canCancel = false;
+          errorMessage = "This order is out for delivery and cannot be cancelled.";
+          break;
+        default:
+          canCancel = true;
+      }
+    }
 
-if (!canCancel) {
-  toast.error(errorMessage);
-  setOrderToCancel(null);
-  return;
-}
-
-
+    if (!canCancel) {
+      toast.error(errorMessage);
+      setOrderToCancel(null);
+      return;
+    }
 
     setIsCancelling(true);
     try {
       await toast.promise(
-        updateOrderStatus({ id: orderToCancel, status: "cancelled" }),
+        createCancelRequest({
+          orderId: orderToCancel,
+          userId: user?.uid,
+          reason: selectedReason,
+          reason_remarks: selectedReason === "others" ? customReason : undefined,
+        }),
         {
-          loading: "Cancelling order...",
-          success: "Order cancelled successfully",
-          error: "Failed to cancel order",
+          loading: "Submitting cancel request...",
+          success: "Cancel request submitted successfully",
+          error: "Failed to submit cancel request",
         }
       );
     } finally {
       setIsCancelling(false);
       setOrderToCancel(null);
+      setSelectedReason(null);
+      setCustomReason("");
     }
   };
 
+  const closeModal = () => {
+    setOrderToCancel(null);
+    setSelectedReason(null);
+    setCustomReason("");
+  };
+
   // Status badge
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (order) => {
     const base = "text-xs px-3 py-1.5 rounded-full font-semibold";
-    switch (status) {
+    if (order?.cancelRequestId && order?.status !== "cancelled") {
+      return `${base} bg-orange-100 text-orange-700`;
+    }
+    switch (order?.status) {
       case "delivered":
         return `${base} bg-green-100 text-green-700`;
       case "outForDelivery":
@@ -92,6 +130,15 @@ if (!canCancel) {
       default:
         return `${base} bg-blue-100 text-blue-700`;
     }
+  };
+
+  const getStatusText = (order) => {
+    if (order?.cancelRequestId && order?.status !== "cancelled") {
+      return "Cancel Requested";
+    }
+    return order?.status
+      ? order.status.charAt(0).toUpperCase() + order.status.slice(1)
+      : "Processing";
   };
 
   // Loading UI
@@ -173,9 +220,12 @@ if (!canCancel) {
                 order?.checkout?.total || subtotal + codFee + deliveryFee;
 
               const canCancel =
+                !order?.cancelRequestId &&
                 order?.status !== "cancelled" &&
                 order?.status !== "delivered" &&
                 order?.status !== "outForDelivery";
+
+              const isCancelPending = order?.cancelRequestId && order?.status !== "cancelled";
 
               const orderNumber = orders.length - orderIndex;
 
@@ -196,11 +246,8 @@ if (!canCancel) {
                           • {orderDate?.toLocaleDateString() || "N/A"}
                         </span>
                       </div>
-                      <span className={getStatusBadge(order?.status || "processing")}>
-                        {order?.status
-                          ? order.status.charAt(0).toUpperCase() +
-                            order.status.slice(1)
-                          : "Processing"}
+                      <span className={getStatusBadge(order)}>
+                        {getStatusText(order)}
                       </span>
                     </div>
 
@@ -241,7 +288,7 @@ if (!canCancel) {
                                 </span>
                               </p>
                             )}
-                            {selectedColor && (
+                            {selectedQuality && (
                               <p className="text-sm text-gray-600">
                                 Quality:{" "}
                                 <span className="font-medium">
@@ -259,7 +306,11 @@ if (!canCancel) {
                       <span className="text-md font-semibold text-gray-900">
                         Total: ₹{totalAmount.toFixed(2)}
                       </span>
-                      {canCancel && (
+                      {isCancelPending ? (
+                        <span className="text-sm font-medium text-orange-600">
+                          Cancel Request Submitted - Awaiting Approval
+                        </span>
+                      ) : canCancel ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -270,7 +321,7 @@ if (!canCancel) {
                         >
                           Cancel Order
                         </button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -280,17 +331,86 @@ if (!canCancel) {
         )}
       </div>
 
-      {/* Confirmation dialog */}
-      <ConfirmationDialog
-        isOpen={!!orderToCancel}
-        onClose={() => setOrderToCancel(null)}
-        onConfirm={handleCancelConfirm}
-        title="Confirm Cancellation"
-        message="Are you sure you want to cancel this order? This action cannot be undone."
-        confirmText="Yes, Cancel Order"
-        cancelText="No, Keep Order"
-        isProcessing={isCancelling}
-      />
+      {/* Cancel Modal */}
+      {!!orderToCancel && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+              onClick={closeModal}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Select Reason for Cancellation
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Choose the best option that describes your reason</p>
+            </div>
+            <div className="space-y-3 mb-6">
+              {cancelReasons.map((reason) => (
+                <label
+                  key={reason.value}
+                  className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-blue-50 border border-gray-200 transition-colors"
+                >
+                  <input
+                    type="radio"
+                    name="cancelReason"
+                    value={reason.value}
+                    checked={selectedReason === reason.value}
+                    onChange={(e) => setSelectedReason(e.target.value)}
+                    className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{reason.icon}</span>
+                      <p className="font-semibold text-gray-900">{reason.label}</p>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {selectedReason === "others" && (
+              <textarea
+                className="w-full p-2 border border-gray-300 rounded-md mb-6"
+                placeholder="Please specify the reason"
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                rows={3}
+              />
+            )}
+            <button
+              className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isCancelling && (selectedReason !== "others" || customReason.trim())
+                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
+                : "bg-gray-300 cursor-not-allowed"
+                }`}
+              disabled={!selectedReason || isCancelling || (selectedReason === "others" && !customReason.trim())}
+              onClick={handleCancelConfirm}
+            >
+              {isCancelling ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Submitting...
+                </div>
+              ) : (
+                "Submit Cancel Request"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

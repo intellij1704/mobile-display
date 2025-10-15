@@ -57,6 +57,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     return []
   }, [product?.colors, attributes])
 
+  console.log("Newe",product)
+
   // Compute prices for display
   const { minEffective, displayOriginal, discountPercentage, maxSave } = useMemo(() => {
     let minEff = Number(baseSalePrice || basePrice || 0)

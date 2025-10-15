@@ -1,7 +1,10 @@
-// app/orders/[orderId]/page.jsx
+// app/orders/[orderId]/page.jsx (admin)
+
 "use client";
 
 import { useOrder } from "@/lib/firestore/orders/read";
+import { approveCancelRequest, rejectCancelRequest } from "@/lib/firestore/orders/write"; // Added
+import { useCancelRequest } from "@/lib/firestore/orders/read"; // Added
 import { updateOrderAddress } from "@/lib/firestore/orders/write";
 import { X } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -9,10 +12,13 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import ChangeOrderStatus from "./components/ChangeStatus";
 import EditAddressModal from "./components/EditAddressModal";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 function Page() {
     const { orderId } = useParams();
     const { data: order, error, isLoading } = useOrder({ id: orderId });
+    const { data: cancelRequest } = useCancelRequest({ id: order?.cancelRequestId });
 
     const [isEditingAddress, setIsEditingAddress] = useState(false);
     const [editedAddress, setEditedAddress] = useState({});
@@ -131,6 +137,27 @@ function Page() {
         }
     };
 
+    const handleApproveCancel = async () => {
+        if (!confirm("Are you sure you want to approve this cancel request?")) return;
+        try {
+            await approveCancelRequest({ id: cancelRequest.id, orderId });
+            toast.success("Cancel request approved");
+        } catch (err) {
+            toast.error(err.message || "Failed to approve");
+        }
+    };
+
+    const handleRejectCancel = async () => {
+        if (!confirm("Are you sure you want to reject this cancel request?")) return;
+        try {
+            await rejectCancelRequest({ id: cancelRequest.id });
+            await updateDoc(doc(db, "orders", orderId), { cancelRequestId: null });
+            toast.success("Cancel request rejected");
+        } catch (err) {
+            toast.error(err.message || "Failed to reject");
+        }
+    };
+
     return (
         <main className="min-h-screen bg-gray-50 rounded-md py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
@@ -187,6 +214,49 @@ function Page() {
                                         <ChangeOrderStatus order={order} />
                                     </div>
                                 </div>
+                                {cancelRequest && (
+                                    <div className="mt-6 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                        <h3 className="font-semibold text-yellow-800 mb-2">Cancel Request</h3>
+                                        <p className="text-sm text-yellow-700">
+                                            Requested on: {cancelRequest.timestamp?.toDate()?.toLocaleString() || "N/A"}
+                                        </p>
+
+                                        {/* Map reason key to user-friendly text */}
+                                        <p className="text-sm text-yellow-700">
+                                            Reason: {
+                                                {
+                                                    changed_mind: "Changed my mind",
+                                                    better_price: "Found better price elsewhere",
+                                                    by_mistake: "Ordered by mistake",
+                                                    delay: "Delivery taking too long",
+                                                }[cancelRequest.reason] || "Other reason"
+                                            }
+                                            {cancelRequest.reason_remarks ? ` - ${cancelRequest.reason_remarks}` : ""}
+                                        </p>
+
+                                        <p className="text-sm text-yellow-700">
+                                            Status: {cancelRequest.status.charAt(0).toUpperCase() + cancelRequest.status.slice(1)}
+                                        </p>
+
+                                        {cancelRequest.status === "pending" && (
+                                            <div className="flex gap-3 mt-3">
+                                                <button
+                                                    onClick={handleApproveCancel}
+                                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={handleRejectCancel}
+                                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                                >
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                             </div>
                         </div>
 
@@ -380,7 +450,15 @@ function Page() {
                 </div>
             </div>
 
-            <EditAddressModal isUpdating={isUpdating} isEditingAddress={isEditingAddress} setIsEditingAddress={setIsEditingAddress} editedAddress={editedAddress} handleAddressChange={handleAddressChange} handleUpdateAddress={handleUpdateAddress} updateError={updateError} />
+            <EditAddressModal
+                isUpdating={isUpdating}
+                isEditingAddress={isEditingAddress}
+                setIsEditingAddress={setIsEditingAddress}
+                editedAddress={editedAddress}
+                handleAddressChange={handleAddressChange}
+                handleUpdateAddress={handleUpdateAddress}
+                updateError={updateError}
+            />
 
 
         </main>

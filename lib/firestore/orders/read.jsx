@@ -109,3 +109,27 @@ export function useAllOrders({ pageLimit, lastSnapDoc }) {
     isLoading: data === undefined,
   };
 }
+
+
+export function useCancelRequest({ id }) {
+  const { data, error } = useSWRSubscription(
+    ["cancel_requests", id],
+    ([path, currentId], { next }) => {
+      if (!currentId) return () => {}; // Return no-op unsubscribe
+
+      const ref = doc(db, `${path}/${currentId}`);
+      const unsub = onSnapshot(
+        ref,
+        (snapshot) => next(null, snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
+        (err) => next(err, null)
+      );
+      return () => unsub();
+    }
+  );
+
+  return {
+    data,
+    error,
+    isLoading: data === undefined && !error,
+  };
+}

@@ -8,6 +8,33 @@ import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import useSWRSubscription from "swr/subscription";
+
+function useAllCancelRequests() {
+    const { data, error } = useSWRSubscription(
+        ["cancel_requests"],
+        ([path], { next }) => {
+            const ref = query(
+                collection(db, path),
+                orderBy("timestamp", "desc")
+            );
+            const unsub = onSnapshot(
+                ref,
+                (snapshot) =>
+                    next(
+                        null,
+                        snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() }))
+                    ),
+                (err) => next(err, [])
+            );
+            return () => unsub();
+        }
+    );
+
+    return { data: data || [], error, isLoading: data === undefined };
+}
 
 export default function ListView() {
     const [selectedStatus, setSelectedStatus] = useState("all");
@@ -15,22 +42,33 @@ export default function ListView() {
     const [currentPage, setCurrentPage] = useState(1);
 
     const { data: users = [], error: usersError, isLoading: usersLoading } = useUsers();
-    const { data: allOrders = [], isLoading, error } = useAllOrders({
+    const { data: allOrders = [], isLoading: ordersLoading, error: ordersError } = useAllOrders({
         pageLimit: 1000, // Fetch all orders (adjust if dataset is very large)
         lastSnapDoc: null,
     });
+    const { data: allCancelRequests = [], isLoading: cancelLoading, error: cancelError } = useAllCancelRequests();
 
-    const statuses = ["all", "pending", "shipped", "pickup", "intransit", "outfordelivery", "delivered", "cancelled"];
+    const statuses = ["all", "pending", "shipped", "pickup", "intransit", "outfordelivery", "delivered", "cancelled", "cancelrequested"];
 
+
+    console.log(allOrders)
     // Normalize status for filtering (assuming DB statuses are lowercase)
     const normalizedAllOrders = allOrders.map(order => ({
         ...order,
         status: order.status?.toLowerCase() || "pending"
     }));
 
-    const filteredOrders = selectedStatus === "all"
-        ? normalizedAllOrders
-        : normalizedAllOrders.filter(item => item.status === selectedStatus);
+    const filteredOrders = (() => {
+        if (selectedStatus === "all") return normalizedAllOrders;
+        if (selectedStatus === "cancelrequested") {
+            return normalizedAllOrders.filter(order => {
+                if (order.status === "cancelled") return false;
+                const cancelRequest = allCancelRequests.find(cr => cr.id === order.cancelRequestId);
+                return cancelRequest && cancelRequest.status === "pending";
+            });
+        }
+        return normalizedAllOrders.filter(item => item.status === selectedStatus);
+    })();
 
     // Client-side pagination
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
@@ -42,7 +80,7 @@ export default function ListView() {
         setCurrentPage(1);
     }, [selectedStatus, itemsPerPage]);
 
-    if (isLoading || usersLoading) {
+    if (ordersLoading || usersLoading || cancelLoading) {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center bg-gray-100">
                 <CircularProgress size={50} color="primary" thickness={4} />
@@ -51,8 +89,8 @@ export default function ListView() {
         );
     }
 
-    if (error || usersError) {
-        return <div className="p-4 text-red-600">{error?.message || usersError?.message || "An error occurred"}</div>;
+    if (ordersError || usersError || cancelError) {
+        return <div className="p-4 text-red-600">{ordersError?.message || usersError?.message || cancelError?.message || "An error occurred"}</div>;
     }
 
     const exportToExcel = () => {
@@ -86,6 +124,9 @@ export default function ListView() {
             const deliveryFee = item?.checkout?.deliveryFee || (deliveryFeeItem ? (deliveryFeeItem?.price_data?.unit_amount / 100) * (deliveryFeeItem?.quantity || 1) : 0);
             const totalAmount = item?.checkout?.total || (subtotal + codFee + deliveryFee);
 
+            const cancelRequest = allCancelRequests.find(cr => cr.id === item.cancelRequestId);
+            const displayStatus = item.status === "cancelled" ? "Cancelled" : (cancelRequest && cancelRequest.status === "pending") ? "Cancel Requested" : item.status.charAt(0).toUpperCase() + item.status.slice(1);
+
             return {
                 SN: index + 1,
                 Customer: user?.displayName || "Unknown",
@@ -95,7 +136,7 @@ export default function ListView() {
                 "Total Products": productItems.length,
                 "Order Date": item?.timestampCreate?.toDate()?.toLocaleString() || "N/A",
                 "Payment Mode": item?.paymentMode === "cod" ? "COD" : item?.paymentMode || "N/A",
-                Status: item.status || "Pending",
+                Status: displayStatus,
                 "User Last Order Status": previousOrderStatus,
                 "User Type": isNewCustomer ? "New" : "Existing",
                 "User Flag": user?.flagged ? "Yes" : "No",
@@ -159,6 +200,9 @@ export default function ListView() {
             const deliveryFee = item?.checkout?.deliveryFee || (deliveryFeeItem ? (deliveryFeeItem?.price_data?.unit_amount / 100) * (deliveryFeeItem?.quantity || 1) : 0);
             const totalAmount = item?.checkout?.total || (subtotal + codFee + deliveryFee);
 
+            const cancelRequest = allCancelRequests.find(cr => cr.id === item.cancelRequestId);
+            const displayStatus = item.status === "cancelled" ? "Cancelled" : (cancelRequest && cancelRequest.status === "pending") ? "Cancel Requested" : item.status.charAt(0).toUpperCase() + item.status.slice(1);
+
             return [
                 index + 1,
                 user?.displayName || "Unknown",
@@ -168,7 +212,7 @@ export default function ListView() {
                 productItems.length,
                 item?.timestampCreate?.toDate()?.toLocaleString() || "N/A",
                 item?.paymentMode === "cod" ? "COD" : item?.paymentMode || "N/A",
-                item.status || "Pending",
+                displayStatus,
                 previousOrderStatus,
                 isNewCustomer ? "New" : "Existing",
                 user?.flagged ? "Yes" : "No",
@@ -209,7 +253,7 @@ export default function ListView() {
                     >
                         {statuses.map((status) => (
                             <option key={status} value={status}>
-                                {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1).replace(/([A-Z])/g, ' $1')}
+                                {status === "all" ? "All" : status === "cancelrequested" ? "Cancel Requested" : status.charAt(0).toUpperCase() + status.slice(1).replace(/([A-Z])/g, ' $1')}
                             </option>
                         ))}
                     </select>
@@ -271,6 +315,7 @@ export default function ListView() {
                                     item={item}
                                     users={users}
                                     allOrders={normalizedAllOrders}
+                                    allCancelRequests={allCancelRequests}
                                 />
                             ))
                         ) : (
@@ -357,7 +402,7 @@ function calculateAddressMatch(currentAddressStr, previousAddressStr) {
     return Math.round((matchLevel / 3) * 100);
 }
 
-function Row({ item, index, users, allOrders }) {
+function Row({ item, index, users, allOrders, allCancelRequests }) {
     const lineItems = item?.checkout?.line_items || [];
     const productItems = lineItems.filter(curr => {
         const name = curr?.price_data?.product_data?.name || "";
@@ -389,6 +434,9 @@ function Row({ item, index, users, allOrders }) {
         ?.filter(o => o.id !== item.id)
         ?.sort((a, b) => b.timestampCreate.toMillis() - a.timestampCreate.toMillis())[0]?.status || "pending";
 
+    const cancelRequest = allCancelRequests.find(cr => cr.id === item.cancelRequestId);
+    const displayStatus = item.status === "cancelled" ? "cancelled" : (cancelRequest && cancelRequest.status === "pending") ? "cancelrequested" : item.status;
+
     const statusColors = {
         pending: "bg-yellow-100 text-yellow-700",
         shipped: "bg-blue-100 text-blue-700",
@@ -397,6 +445,7 @@ function Row({ item, index, users, allOrders }) {
         outfordelivery: "bg-indigo-100 text-indigo-700",
         delivered: "bg-green-100 text-green-700",
         cancelled: "bg-red-100 text-red-700",
+        cancelrequested: "bg-orange-100 text-orange-700",
         "N/A": "bg-gray-100 text-gray-700"
     };
 
@@ -442,8 +491,8 @@ function Row({ item, index, users, allOrders }) {
                 </span>
             </td>
             <td className="border border-gray-200 px-3 py-2">
-                <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[item?.status || "pending"]}`}>
-                    {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : "Pending"}
+                <span className={`text-xs px-3 py-1 rounded-full uppercase ${statusColors[displayStatus]}`}>
+                    {displayStatus === "cancelrequested" ? "Cancel Requested" : displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
                 </span>
             </td>
             <td className="border border-gray-200 px-3 py-2">

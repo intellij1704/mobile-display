@@ -1,8 +1,11 @@
+// app/orders/[orderId]/page.jsx
+
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { useOrders } from "@/lib/firestore/orders/read";
 import { useReturnRequests } from "@/lib/firestore/return_requests/read";
+import { useCancelRequest } from "@/lib/firestore/orders/read"; // Added
 import { CircularProgress } from "@mui/material";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
@@ -10,10 +13,14 @@ import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, updateDoc, arrayUnion, query, where, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const OrderDetailPage = () => {
     const { user } = useAuth();
     const { data: orders, error, isLoading } = useOrders({ uid: user?.uid });
+
+    console.log("dkmsdms",orders)
+
     const { orderId } = useParams();
     const router = useRouter();
     const order = orders?.find((o) => o.id === orderId);
@@ -27,10 +34,13 @@ const OrderDetailPage = () => {
     const [selectedReturn, setSelectedReturn] = useState(null);
     const [localReturnRequests, setLocalReturnRequests] = useState([]);
 
-    console.log(orders)
+
 
     // Fetch return requests for this order
     const { data: returnRequests, returnError, returnIsLoading } = useReturnRequests({ orderId });
+
+    // Fetch cancel request if exists
+    const { data: cancelRequest } = useCancelRequest({ id: order?.cancelRequestId });
 
     useEffect(() => {
         if (returnRequests) {
@@ -97,10 +107,6 @@ const OrderDetailPage = () => {
         if (!date) return "N/A";
         return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     };
-
-    const totalProductPrice = lineItems.reduce((sum, item) => {
-        return sum + (item.price_data.unit_amount / 100) * item.quantity;
-    }, 0);
 
     const orderStatuses = [
         { key: "pending", label: "Order Confirmed", date: orderDate },
@@ -234,29 +240,110 @@ const OrderDetailPage = () => {
         }
     };
 
-    const generatePDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text("Shipping Label", 105, 10, { align: 'center' });
-        doc.setFontSize(12);
-        doc.text(`Return ID: ${selectedReturn?.id}`, 10, 30);
-        doc.text(`Order ID: ${orderId}`, 10, 40);
-        doc.text(`Product: ${selectedReturn?.productDetails?.name}`, 10, 50);
-        doc.text(`Quantity: ${selectedReturn?.quantity}`, 10, 60);
-        doc.text("Send To (Office Address):", 10, 80);
-        doc.text(selfShippingDetails.address.company, 10, 90);
-        doc.text(selfShippingDetails.address.street, 10, 100);
-        doc.text(`${selfShippingDetails.address.city}, ${selfShippingDetails.address.state} - ${selfShippingDetails.address.pincode}`, 10, 110);
-        doc.text(selfShippingDetails.address.country, 10, 120);
-        doc.text(`Phone: ${selfShippingDetails.address.phone}`, 10, 130);
-        doc.text("From (Your Address):", 10, 150);
-        doc.text(addressData.fullName, 10, 160);
-        doc.text(addressData.addressLine1, 10, 170);
-        doc.text(`${addressData.city}, ${addressData.state} - ${addressData.pincode}`, 10, 180);
-        doc.text(`Landmark: ${addressData.landmark}`, 10, 190);
-        doc.text(`Phone: ${addressData.mobile}`, 10, 200);
-        doc.save("shipping_label.pdf");
-    };
+const generatePDF = () => {
+  const doc = new jsPDF("p", "mm", "a4");
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const labelWidth = 150;
+  const startX = (pageWidth - labelWidth) / 2;
+  const logoUrl = "/logo.png"; // Update to your logo path
+
+  // Header
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Shipping Label", startX, 25);
+
+  // Add Logo (top right)
+  doc.addImage(logoUrl, "PNG", startX + labelWidth - 40, 10, 30, 30);
+
+  let currentY = 40;
+
+  // === Ship To Section ===
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Ship To:", startX + 3, currentY);
+
+  currentY += 7;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+
+  const shipToText = [
+    selfShippingDetails.address.street || "",
+    `${selfShippingDetails.address.city || ""}, ${selfShippingDetails.address.state || ""} - ${selfShippingDetails.address.pincode || ""}`,
+    selfShippingDetails.address.country || "India",
+    `Phone: ${selfShippingDetails.address.phone || "N/A"}`,
+  ];
+
+  shipToText.forEach((line) => {
+    doc.text(line, startX + 5, currentY);
+    currentY += 6;
+  });
+
+  const shipToBottom = currentY + 2;
+
+  // Border around Ship To
+  doc.setLineWidth(1);
+  doc.rect(startX, 35, labelWidth, shipToBottom - 35);
+
+  currentY = shipToBottom + 10;
+
+  // === Order Information Section ===
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Order Information:", startX + 3, currentY);
+
+  currentY += 7;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+
+  const orderInfo = [
+    `Order ID: ${selectedReturn?.orderId || "N/A"}`,
+    `Return ID: ${selectedReturn?.id || "N/A"}`,
+    `Return Type: ${selectedReturn?.productDetails?.metadata?.returnType || "N/A"}`,
+    `Reason: ${selectedReturn?.reason || "N/A"}`,
+    `Original Order Total: ₹${selectedReturn?.originalOrderTotal?.toFixed(2) || "N/A"}`,
+  ];
+
+  const orderStartY = currentY;
+  orderInfo.forEach((line) => {
+    doc.text(line, startX + 5, currentY);
+    currentY += 6;
+  });
+
+  const orderBottom = currentY + 2;
+  doc.rect(startX, orderStartY - 10, labelWidth, orderBottom - (orderStartY - 10));
+
+  currentY = orderBottom + 10;
+
+  // === Product Details Section ===
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Product Details:", startX + 3, currentY);
+
+  currentY += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+
+  const productName = selectedReturn?.productDetails?.name || "N/A";
+  const wrappedProduct = doc.splitTextToSize(productName, labelWidth - 10);
+  doc.text(wrappedProduct, startX + 5, currentY);
+
+  const productHeight = wrappedProduct.length * 6 + 8;
+  doc.rect(startX, currentY - 8, labelWidth, productHeight);
+
+  // === Footer ===
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(10);
+  doc.text(
+    "Generated by Your Company - For Return Shipping Purposes Only",
+    startX,
+    285
+  );
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, startX, 290);
+
+  // Save PDF
+  doc.save(`shipping_label_${selectedReturn?.id || "unknown"}.pdf`);
+};
 
     const getReturnStatusForItem = (item) => {
         if (!localReturnRequests || !item) return null;
@@ -275,13 +362,12 @@ const OrderDetailPage = () => {
 
     const selfShippingDetails = {
         address: {
-            company: "FabStore Office",
-            street: "456 MG Road",
-            city: "Mumbai",
-            state: "Maharashtra",
-            pincode: "400001",
+            street: "Bc 94, Shop G1, Aparupa Apartment, Anurupapally, Krishnapur, Kestopur ",
+            city: "Kolkata",
+            state: "West Bengal",
+            pincode: "700101",
             country: "India",
-            phone: "+91-98765-43210"
+            phone: "+91-90884-65885"
         },
         instructions: [
             "Package the product securely in its original packaging or a sturdy box to prevent damage during transit.",
@@ -308,9 +394,7 @@ const OrderDetailPage = () => {
                                     const returnRequest = getReturnStatusForItem(item);
                                     const returnStatus = returnRequest?.status || null;
                                     const returnReqType = returnRequest?.type || null;
-                                    const canReturn = isDelivered && isReturnWindowOpen && !returnStatus;
-
-                                    console.log('Return Request for item:', returnRequest);
+                                    const canReturn = isDelivered && isReturnWindowOpen && !returnStatus && (!order.cancelRequestId || cancelRequest?.status === 'rejected');
 
                                     return (
                                         <div key={item.id || index} className={`flex flex-col gap-4 ${index > 0 ? "pt-6 border-t border-gray-100" : ""}`}>
@@ -370,9 +454,7 @@ const OrderDetailPage = () => {
                                                                     : returnReqType === "self-shipping"
                                                                         ? "Self Shipping"
                                                                         : "Request"}{" "}
-                                                            request submitted 
-                                                            {/* Current Status -{" "}
-                                                            {returnStatus.charAt(0).toUpperCase() + returnStatus.slice(1)} */}
+                                                            request submitted
                                                             . Please check{" "}
                                                             {returnReqType === "self-shipping" ? "Self Shipping" : returnReqType} status.
                                                         </p>
@@ -411,7 +493,100 @@ const OrderDetailPage = () => {
 
                         <div className="bg-white rounded-lg shadow-sm border p-6">
                             <div className="space-y-4">
-                                {isCancelled ? (
+                                {order.cancelRequestId && cancelRequest ? (
+                                    <>
+                                        {cancelRequest.status === "rejected" && (
+                                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                                                <p className="text-red-800 font-medium">Cancel request was rejected.</p>
+                                            </div>
+                                        )}
+                                        {cancelRequest.status !== "rejected" && (
+                                            <>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                                        <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 8 8">
+                                                            <path d="M6.564.75l-3.59 3.612-1.538-1.55L0 4.26l2.974 2.99L8 2.193z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-gray-900">Order Confirmed, {formatDate(orderDate)}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="ml-2 w-0.5 h-6 bg-green-500"></div>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${cancelRequest.status === "pending" ? "bg-blue-500" : "bg-green-500"}`}>
+                                                        {cancelRequest.status !== "pending" ? (
+                                                            <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 8 8">
+                                                                <path d="M6.564.75l-3.59 3.612-1.538-1.55L0 4.26l2.974 2.99L8 2.193z" />
+                                                            </svg>
+                                                        ) : (
+                                                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className={`font-medium ${cancelRequest.status === "pending" ? "text-gray-500" : "text-gray-900"}`}>
+                                                            Cancel Requested, {formatDate(cancelRequest.timestamp?.toDate())}
+                                                            {cancelRequest.status === "pending" && " (Awaiting Approval)"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {cancelRequest.status !== "pending" && (
+                                                    <>
+                                                        <div className="ml-2 w-0.5 h-6 bg-red-500"></div>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                                                <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 8 8">
+                                                                    <path d="M1.41 0l-1.41 1.41.72.72 1.78 1.81-1.78 1.81-.72.72 1.41 1.41.72-.72 1.81-1.78 1.81 1.78.72.72 1.41-1.41-.72-.72-1.78-1.81 1.78-1.81.72-.72-1.41-1.41-.72.72-1.81 1.78-1.81-1.78-.72-.72z" />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <p className="font-medium text-red-600">Order Cancelled, {formatDate(cancelRequest.approvedAt?.toDate() || statusUpdateDate)}</p>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+                                        {cancelRequest.status === "rejected" && orderStatuses.map((status, index) => {
+                                            // Normal timeline for rejected
+                                            const isCompleted = index <= currentStatusIndex;
+                                            const isCurrent = index === currentStatusIndex;
+                                            const isLast = index === orderStatuses.length - 1;
+
+                                            return (
+                                                <div key={status.key}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div
+                                                            className={`w-4 h-4 rounded-full flex items-center justify-center ${isCompleted
+                                                                ? "bg-green-500"
+                                                                : isCurrent
+                                                                    ? "bg-blue-500"
+                                                                    : "bg-gray-300"
+                                                                }`}
+                                                        >
+                                                            {isCompleted ? (
+                                                                <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 8 8">
+                                                                    <path d="M6.564.75l-3.59 3.612-1.538-1.55L0 4.26l2.974 2.99L8 2.193z" />
+                                                                </svg>
+                                                            ) : (
+                                                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className={`font-medium ${isCompleted ? "text-gray-900" : "text-gray-500"}`}>
+                                                                {status.label}
+                                                                {status.date && `, ${formatDate(status.date)}`}
+                                                                {isCurrent && !status.date && " (Current)"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {!isLast && <div className={`ml-2 w-0.5 h-6 ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}></div>}
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                ) : isCancelled ? (
                                     <>
                                         <div className="flex items-center gap-3">
                                             <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
@@ -750,7 +925,6 @@ const OrderDetailPage = () => {
                                 <p><strong>Quantity:</strong> {selectedReturn?.quantity}</p>
                                 <div>
                                     <strong>Send To (Office Address):</strong>
-                                    <p>{selfShippingDetails.address.company}</p>
                                     <p>{selfShippingDetails.address.street}</p>
                                     <p>{selfShippingDetails.address.city}, {selfShippingDetails.address.state} - {selfShippingDetails.address.pincode}</p>
                                     <p>{selfShippingDetails.address.country}</p>

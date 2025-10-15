@@ -1,5 +1,4 @@
 "use client"
-
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Header from "@/app/components/header/Header"
@@ -8,7 +7,6 @@ import Link from "next/link"
 import confetti from "canvas-confetti"
 import { fetchAndProcessCheckout } from "./actions"
 import { CheckCircle, XCircle } from "lucide-react"
-
 function Spinner() {
   return (
     <div className="flex flex-col items-center">
@@ -17,21 +15,18 @@ function Spinner() {
     </div>
   )
 }
-
 export default function CheckoutClient() {
   const searchParams = useSearchParams()
   const checkoutId = searchParams.get("checkout_id")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
-
   useEffect(() => {
     if (!checkoutId) {
       setError("No checkout ID provided")
       setLoading(false)
       return
     }
-
     fetchAndProcessCheckout(checkoutId)
       .then(() => {
         setLoading(false)
@@ -42,13 +37,11 @@ export default function CheckoutClient() {
         setLoading(false)
       })
   }, [checkoutId])
-
   useEffect(() => {
     if (success) {
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } })
     }
   }, [success])
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
@@ -56,7 +49,6 @@ export default function CheckoutClient() {
       </div>
     )
   }
-
   if (error) {
     return (
       <>
@@ -75,7 +67,6 @@ export default function CheckoutClient() {
       </>
     )
   }
-
   return (
     <main className="flex flex-col min-h-screen bg-gray-50">
       <Header />
