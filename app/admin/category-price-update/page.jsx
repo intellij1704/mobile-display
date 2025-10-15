@@ -1,4 +1,4 @@
-// Path: src/pages/category-price-update.js (Rewritten Page Component)
+// Path: src/pages/category-price-update.js
 "use client";
 import { useCategories } from "@/lib/firestore/categories/read";
 import { bulkUpdatePricesByCategory } from "@/lib/firestore/products/write";

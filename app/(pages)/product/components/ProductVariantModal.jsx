@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ChevronLeft, ChevronRight, ShoppingBag, Zap, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, ShoppingBag, Zap, X, Check, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
@@ -151,6 +151,28 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
   const formatPrice = (amount) => `₹${amount?.toLocaleString("en-IN")}`
 
+  const isAdded = useMemo(() => {
+    if (!userData?.carts) return false
+
+    return userData.carts.some((item) => {
+      if (item?.id !== product.id) return false
+
+      if (hasColorOptions) {
+        if (item?.selectedColor !== selectedColor) return false
+      } else {
+        if (item?.selectedColor) return false
+      }
+
+      if (hasQualityOptions) {
+        if (item?.selectedQuality !== selectedQuality) return false
+      } else {
+        if (item?.selectedQuality) return false
+      }
+
+      return true
+    })
+  }, [userData?.carts, product.id, selectedColor, selectedQuality, hasColorOptions, hasQualityOptions])
+
   const validateSelections = () => {
     if (isActuallyVariable && hasColorOptions && !selectedColor) {
       setError("Please select a color!")
@@ -174,6 +196,49 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     setShowReturnSelector(true)
   }
 
+  const handleRemoveFromCart = useCallback(async () => {
+    if (!confirm("Remove this item from cart?")) return
+
+    setIsLoading(true)
+    try {
+      if (!userData?.carts) {
+        toast.error("Cart is empty")
+        return
+      }
+
+      const newList = userData.carts.filter((cartItem) => {
+        if (cartItem?.id !== product.id) return true
+
+        if (hasColorOptions) {
+          if (cartItem?.selectedColor !== selectedColor) return true
+        } else {
+          if (cartItem?.selectedColor) return true
+        }
+
+        if (hasQualityOptions) {
+          if (cartItem?.selectedQuality !== selectedQuality) return true
+        } else {
+          if (cartItem?.selectedQuality) return true
+        }
+
+        return false
+      })
+
+      if (newList.length === userData.carts.length) {
+        toast.error("Item not found in cart")
+        return
+      }
+
+      await updateCarts({ list: newList, uid: user?.uid })
+      toast.success("Item removed from cart")
+    } catch (error) {
+      console.error("Error removing item from cart:", error)
+      toast.error(error?.message || "Failed to remove item")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [userData?.carts, product.id, selectedColor, selectedQuality, hasColorOptions, hasQualityOptions, user?.uid])
+
   const handleBuyNow = () => {
     if (!validateSelections()) return
     if (!user?.uid) {
@@ -196,8 +261,8 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
             {
               id: product.id,
               quantity: 1,
-              ...(isActuallyVariable && { selectedColor }),
-              ...(isActuallyVariable && hasQualityOptions && { selectedQuality }),
+              ...(hasColorOptions && { selectedColor }),
+              ...(hasQualityOptions && { selectedQuality }),
               returnType: choice.id,
               returnFee: choice.fee,
             },
@@ -255,6 +320,12 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     setTimeout(() => {
       onClose()
     }, 200)
+  }
+
+  const isDarkColor = (color) => {
+    // Simple check for dark colors; can expand if needed
+    const darkColors = ['black', 'red', 'blue', 'green', 'purple', 'brown'];
+    return darkColors.includes(color.toLowerCase());
   }
 
   if (!product || (!isOpen && !animate)) return null
@@ -405,22 +476,58 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                   <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
                     Select Color
                   </h4>
-                  <div className="flex gap-2 flex-wrap">
-                    {colors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => setSelectedColor(color)}
-                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-200 hover:scale-110 ${selectedColor === color
-                          ? "border-gray-800 ring-2 ring-gray-300 scale-110"
-                          : "border-gray-300 hover:border-gray-400"
-                          }`}
-                        style={{ backgroundColor: color.toLowerCase() }}
-                        title={color}
-                      />
-                    ))}
+                  <div className="flex flex-wrap gap-4">
+                    {colors.map((color) => {
+                      const isSelected = selectedColor === color;
+                      const colorStyle = color.toLowerCase();
+                      const checkClass = isDarkColor(colorStyle) ? "text-white" : "text-black";
+                      return (
+                        <label
+                          key={color}
+                          className="relative cursor-pointer transform transition-transform duration-150 hover:scale-105 active:scale-95"
+                          title={color}
+                        >
+                          <input
+                            type="radio"
+                            name="color"
+                            value={color}
+                            checked={isSelected}
+                            onChange={(e) => setSelectedColor(e.target.value)}
+                            className="sr-only peer"
+                            aria-label={`Select ${color} color`}
+                          />
+
+                          {/* Color circle */}
+                          <span
+                            className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-in-out ${
+                              isSelected
+                                ? "border-black ring-2 ring-black/30 shadow-md scale-105"
+                                : "border-gray-300 hover:border-gray-500"
+                            }`}
+                            style={{ backgroundColor: colorStyle }}
+                          >
+                            {isSelected && (
+                              <Check
+                                size={18}
+                                strokeWidth={3}
+                                className={`transition-opacity duration-200 ${checkClass} opacity-100`}
+                              />
+                            )}
+                          </span>
+
+                          <span
+                            className={`block text-xs text-center mt-1 transition-colors duration-200 ${
+                              isSelected ? "font-semibold text-black" : "text-gray-600"
+                            }`}
+                          >
+                            {color}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                   <p className="text-xs sm:text-sm text-gray-600 font-medium capitalize">
-                    Selected: <span className="text-gray-900 font-semibold">{selectedColor || "None"}</span>
+                    Selected color: <span className="text-gray-900 font-semibold">{selectedColor || "None"}</span>
                   </p>
                 </div>
               )}
@@ -431,20 +538,50 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                   <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
                     Select Quality
                   </h4>
-                  <div className="flex gap-2 flex-wrap">
-                    {qualities.map((quality) => (
-                      <Button
-                        key={quality}
-                        variant={selectedQuality === quality ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedQuality(quality)}
-                        className={`uppercase font-semibold text-xs px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all duration-200 hover:scale-105 ${selectedQuality === quality ? "bg-gray-900 hover:bg-gray-800 shadow-lg" : "hover:bg-gray-100"
+                  <div className="flex flex-wrap gap-3 items-start justify-start">
+                    {qualities.map((quality) => {
+                      const isSelected = selectedQuality === quality;
+                      return (
+                        <label
+                          key={quality}
+                          className={`relative border rounded-xl px-4 py-3 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 w-fit min-w-[120px] max-w-[180px]
+                          ${
+                            isSelected
+                              ? "border-[#BB0300] bg-red-50 shadow-sm"
+                              : "border-gray-300 bg-white hover:border-gray-400"
                           }`}
-                      >
-                        {quality}
-                      </Button>
-                    ))}
+                        >
+                          <input
+                            type="radio"
+                            name="quality"
+                            value={quality}
+                            checked={isSelected}
+                            onChange={(e) => setSelectedQuality(e.target.value)}
+                            className="sr-only"
+                          />
+
+                          {/* Tick mark */}
+                          {isSelected && (
+                            <span className="absolute -top-2 -right-2 bg-[#BB0300] text-white rounded-full p-[2px]">
+                              <Check size={12} strokeWidth={3} />
+                            </span>
+                          )}
+
+                          {/* Title */}
+                          <span
+                            className={`text-sm font-semibold text-center ${
+                              isSelected ? "text-black" : "text-gray-800"
+                            }`}
+                          >
+                            {quality}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
+                  <p className="text-xs sm:text-sm text-gray-600 font-medium capitalize">
+                    Selected quality: <span className="text-gray-900 font-semibold">{selectedQuality || "None"}</span>
+                  </p>
                 </div>
               )}
 
@@ -452,12 +589,21 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
               <div className="flex flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                 <Button
-                  onClick={handleAddToCart}
+                  onClick={isAdded ? handleRemoveFromCart : handleAddToCart}
                   disabled={isActionDisabled}
                   className="w-full sm:flex-1 bg-gray-900 hover:bg-gray-800 text-white h-12 sm:h-12 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 hover:shadow-xl"
                 >
-                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Add To Cart
+                  {isAdded ? (
+                    <>
+                      <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      Remove From Cart
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      Add To Cart
+                    </>
+                  )}
                 </Button>
                 <Button
                   onClick={handleBuyNow}

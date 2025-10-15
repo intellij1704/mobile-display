@@ -143,7 +143,7 @@ export const deleteProduct = async ({ id }) => {
 };
 
 // Bulk update price By category (Percentage Change)
-export const bulkUpdatePricesByCategory = async ({ categoryId, percentage }) => {
+export const bulkUpdatePricesByCategory = async ({ categoryId, percentage, skipHistory = false }) => {
   if (!categoryId) throw new Error("Category ID is required");
   if (isNaN(percentage)) throw new Error("Valid percentage is required");
 
@@ -187,17 +187,19 @@ export const bulkUpdatePricesByCategory = async ({ categoryId, percentage }) => 
   await batch.commit();
   console.log(`Updated prices for ${snapshot.docs.length} products in category ${categoryId}.`);
 
-  // Store update history
-  const historyRef = doc(collection(db, "price_update_history"));
-  await setDoc(historyRef, {
-    categoryId,
-    percentage,
-    timestamp: Timestamp.now(),
-    revised: false,
-  });
+  if (!skipHistory) {
+    // Store update history
+    const historyRef = doc(collection(db, "price_update_history"));
+    await setDoc(historyRef, {
+      categoryId,
+      percentage,
+      timestamp: Timestamp.now(),
+      revised: false,
+    });
+  }
 };
 
-// Revise Price Update (Reverse the percentage change)
+// Revise Price Update (Reverse the percentage change exactly)
 export const revisePriceUpdate = async ({ historyId }) => {
   if (!historyId) throw new Error("History ID is required");
 
@@ -208,12 +210,20 @@ export const revisePriceUpdate = async ({ historyId }) => {
   const historyData = historyDoc.data();
   if (historyData.revised) throw new Error("This update has already been revised");
 
-  // Apply negative percentage to reverse
+  const p = historyData.percentage;
+  const r = p / 100;
+  if (Math.abs(1 + r) < 1e-10) throw new Error("Cannot reverse a 100% decrease");
+
+  const reverse_r = -r / (1 + r);
+  const reverse_p = reverse_r * 100;
+
+  // Apply reverse percentage without creating new history
   await bulkUpdatePricesByCategory({
     categoryId: historyData.categoryId,
-    percentage: -historyData.percentage,
+    percentage: reverse_p,
+    skipHistory: true,
   });
 
-  // Mark as revised (but do not create new history for revise)
+  // Mark as revised
   await updateDoc(historyRef, { revised: true });
 };

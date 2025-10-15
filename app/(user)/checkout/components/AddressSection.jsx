@@ -127,7 +127,7 @@ function AddressSection({
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex justify-between items-start">
+                            <div className="flex md:flex-row flex-col justify-between items-start gap-2">
                                 <label className="flex items-start cursor-pointer flex-1">
                                     <input
                                         type="radio"
@@ -149,7 +149,7 @@ function AddressSection({
                                         <p className="text-sm text-gray-600">{addr.country}</p>
                                     </div>
                                 </label>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 ">
                                     <button
                                         onClick={() => startEditing(addr.id)}
                                         className="text-sm text-gray-600 hover:text-gray-900"
@@ -280,13 +280,13 @@ function AddressSection({
             </div>
 
             {/* --- Save & Next --- */}
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-6 flex md:flex-row flex-col md:items-center gap-2 md:justify-between justify-end">
                 <p className="text-sm text-gray-500">
                     We’ll use this address for delivery and order updates.
                 </p>
                 <button
                     onClick={onSaveContactNext}
-                    className="inline-flex items-center justify-center rounded-lg bg-gray-900 text-white px-4 py-2.5 text-sm font-medium hover:bg-black transition-colors"
+                    className="inline-flex items-center justify-center rounded-lg bg-gray-900 text-white px-4 py-2.5 text-xs md:text-sm font-medium hover:bg-black transition-colors"
                     disabled={savingContact}
                 >
                     {savingContact ? (

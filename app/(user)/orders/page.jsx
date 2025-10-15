@@ -26,16 +26,42 @@ const OrdersPage = () => {
     if (!orderToCancel) return;
 
     const currentOrder = orders?.find((o) => o.id === orderToCancel);
-    const canCancel =
-      currentOrder?.status !== "cancelled" &&
-      currentOrder?.status !== "delivered" &&
-      currentOrder?.status !== "outForDelivery";
+let canCancel = true;
+let errorMessage = "";
 
-    if (!canCancel) {
-      toast.error("This order cannot be cancelled at this time.");
-      setOrderToCancel(null);
-      return;
-    }
+if (!currentOrder) {
+  canCancel = false;
+  errorMessage = "Order not found.";
+} else {
+  switch (currentOrder.status) {
+    case "cancelled":
+      canCancel = false;
+      errorMessage = "This order is already cancelled.";
+      break;
+    case "delivered":
+      canCancel = false;
+      errorMessage = "This order has already been delivered and cannot be cancelled.";
+      break;
+    case "shipped":
+      canCancel = false;
+      errorMessage = "This order has already been shipped and cannot be cancelled.";
+      break;
+    case "outForDelivery":
+      canCancel = false;
+      errorMessage = "This order is out for delivery and cannot be cancelled.";
+      break;
+    default:
+      canCancel = true;
+  }
+}
+
+if (!canCancel) {
+  toast.error(errorMessage);
+  setOrderToCancel(null);
+  return;
+}
+
+
 
     setIsCancelling(true);
     try {

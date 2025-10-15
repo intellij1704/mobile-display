@@ -99,7 +99,6 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
   // Fixed cart item detection for variable products
   const isAdded = useMemo(() => {
     if (!userData?.carts) return false
-    if ((effectiveIsVariable && !selectedColor) || (effectiveHasQualityOptions && !selectedQuality)) return false
 
     return userData.carts.find((item) => {
       // For non-variable products, just match the ID

@@ -797,41 +797,62 @@ function CouponsBox({ appliedCoupons, appliedOffers, couponError, onRemove, onOp
 }
 
 function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) {
-    const product = item.product;
-    const quantity = item.quantity || 1;
-    const selectedColor = item.selectedColor;
-    const selectedQuality = item.selectedQuality;
-    const returnType = item.returnType;
-    const categoryName = getCategoryName(product.categoryId);
-    const price = getItemPrice(item) * quantity;
+  const product = item.product;
+  const quantity = item.quantity || 1;
+  const selectedColor = item.selectedColor;
+  const selectedQuality = item.selectedQuality;
+  const returnType = item.returnType;
+  const categoryName = getCategoryName(product.categoryId);
+  const price = getItemPrice(item) * quantity;
 
-    let variantInfo = '';
-    if (selectedColor) variantInfo += ` - ${selectedColor}`;
-    if (selectedQuality) variantInfo += ` - ${selectedQuality}`;
+  let variantInfo = '';
+  if (selectedColor) variantInfo += ` - ${selectedColor}`;
+  if (selectedQuality) variantInfo += ` - ${selectedQuality}`;
 
-    return (
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="flex justify-between items-start">
-                <div className="flex items-start gap-3">
-                    <img 
-                        src={product.featureImageURL || "/placeholder.svg"} 
-                        alt={product.title} 
-                        className="w-16 h-16 object-cover rounded-md" 
-                    />
-                    <div>
-                        <h3 className="font-medium text-gray-900">{product.title}{variantInfo}</h3>
-                        <p className="text-sm text-gray-500">Qty: {quantity}</p>
-                        <p className="text-sm text-gray-500">Category: {categoryName}</p>
-                        <p className="text-sm text-gray-500">Return Type: {returnType}</p>
-                    </div>
-                </div>
-                <span className="font-medium text-gray-900">₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Left Section */}
+        <div className="flex items-start sm:items-center gap-4 w-full">
+          <img
+            src={product.featureImageURL || "/placeholder.svg"}
+            alt={product.title}
+            className="w-20 h-20 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+          />
+
+          <div className="flex flex-col gap-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 text-base leading-snug line-clamp-2 break-words">
+              {product.title}
+              <span className="font-normal text-gray-600">{variantInfo}</span>
+            </h3>
+
+            <div className="text-sm text-gray-600 space-y-0.5">
+              <p><span className="font-medium text-gray-700">Qty:</span> {quantity}</p>
+              <p><span className="font-medium text-gray-700">Category:</span> {categoryName}</p>
+              <p><span className="font-medium text-gray-700">Return Type:</span> {returnType}</p>
             </div>
-            <p className="mt-2 text-sm text-gray-600">Estimated Delivery: {estimatedDelivery}</p>
+          </div>
         </div>
-    );
-}
 
+        {/* Right Section (Price) */}
+        <div className="flex sm:flex-col justify-between sm:justify-center items-end sm:items-end w-full sm:w-auto">
+          <span className="font-semibold text-lg text-gray-900 whitespace-nowrap">
+            ₹{price.toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        </div>
+      </div>
+
+      {/* Delivery Info */}
+      <p className="mt-3 text-sm text-gray-600 border-t border-gray-100 pt-2">
+        Estimated Delivery:{" "}
+        <span className="font-medium text-gray-800">{estimatedDelivery}</span>
+      </p>
+    </div>
+  );
+}
 // ---------- Main Component ----------
 export default function Checkout({ productList }) {
     const { user } = useAuth()
@@ -846,11 +867,11 @@ function StepIndicator({ step }) {
     const isSummary = step === "summary"
     const isPayment = step === "payment"
     return (
-        <div className="mt-3 flex items-center gap-3 text-sm">
+        <div className="mt-3 flex items-center gap-3 md:text-sm text-xs">
             <StepPill active={isContact}>1. Address</StepPill>
-            <div className="h-px flex-1 bg-gray-200" />
+            <div className="h-px md:flex-1 bg-gray-200" />
             <StepPill active={isSummary}>2. Summary</StepPill>
-            <div className="h-px flex-1 bg-gray-200" />
+            <div className="h-px md:flex-1 bg-gray-200" />
             <StepPill active={isPayment}>3. Payment</StepPill>
         </div>
     )

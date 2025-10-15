@@ -18,8 +18,6 @@ const ReturnDetailPage = () => {
     const [printModalOpen, setPrintModalOpen] = useState(false);
     console.log(returnRequest)
 
-    
-
     useEffect(() => {
         const handleEsc = (e) => {
             if (e.key === "Escape" && printModalOpen) {
@@ -70,9 +68,10 @@ const ReturnDetailPage = () => {
     const baseStatuses = [
         { key: "pending", label: "Pending" },
         { key: "processing", label: "Processing" },
-        { key: "approved", label: "Approved" },
-        { key: "rejected", label: "Rejected" },
     ];
+
+    const approvedStatus = { key: "approved", label: "Approved" };
+    const rejectedStatus = { key: "rejected", label: "Rejected" };
 
     const selfShippingAdditional = [
         { key: "waiting_for_shipment", label: "Waiting for Shipment" },
@@ -103,16 +102,20 @@ const ReturnDetailPage = () => {
 
     const metadataReturnType = product.metadata?.returnType;
 
-    if (metadataReturnType === "self-shipping") {
-        statuses = [...statuses, ...selfShippingAdditional];
+    if (returnStatus === "rejected") {
+        statuses = [...statuses, rejectedStatus];
     } else {
-        statuses = [...statuses, ...easyAdditional];
-    }
-
-    if (returnType === "replacement") {
-        statuses = [...statuses, ...replacementAdditional];
-    } else {
-        statuses = [...statuses, ...returnAdditional];
+        statuses = [...statuses, approvedStatus];
+        if (metadataReturnType === "self-shipping") {
+            statuses = [...statuses, ...selfShippingAdditional];
+        } else {
+            statuses = [...statuses, ...easyAdditional];
+        }
+        if (returnType === "replacement") {
+            statuses = [...statuses, ...replacementAdditional];
+        } else {
+            statuses = [...statuses, ...returnAdditional];
+        }
     }
 
     const getStatusIndex = (status) => {
@@ -163,6 +166,17 @@ const ReturnDetailPage = () => {
             country: "India",
             phone: "+91-98765-43210"
         },
+    };
+
+    const getStatusColor = (statusKey, isCompleted, isCurrent) => {
+        if (statusKey === "rejected") {
+            return isCompleted || isCurrent ? "bg-red-500" : "bg-gray-300";
+        }
+        return isCompleted ? "bg-green-500" : isCurrent ? "bg-blue-500" : "bg-gray-300";
+    };
+
+    const getLineColor = (isCompleted) => {
+        return isCompleted ? "bg-green-500" : "bg-gray-300";
     };
 
     return (
@@ -244,20 +258,16 @@ const ReturnDetailPage = () => {
                         <div className="bg-white rounded-lg shadow-sm border p-6">
                             <div className="space-y-4">
                                 {statuses.map((status, index) => {
-                                    const isCompleted = index <= currentStatusIndex;
+                                    const isCompleted = index < currentStatusIndex || (index === currentStatusIndex && returnStatus !== "pending" && returnStatus !== "processing");
                                     const isCurrent = index === currentStatusIndex;
                                     const isLast = index === statuses.length - 1;
+                                    const isRejected = status.key === "rejected";
 
                                     return (
                                         <div key={status.key}>
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    className={`w-4 h-4 rounded-full flex items-center justify-center ${isCompleted
-                                                        ? "bg-green-500"
-                                                        : isCurrent
-                                                            ? "bg-blue-500"
-                                                            : "bg-gray-300"
-                                                        }`}
+                                                    className={`w-4 h-4 rounded-full flex items-center justify-center ${getStatusColor(status.key, isCompleted, isCurrent)}${isRejected ? " border border-red-600" : ""}`}
                                                 >
                                                     {isCompleted ? (
                                                         <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 8 8">
@@ -274,7 +284,7 @@ const ReturnDetailPage = () => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            {!isLast && <div className={`ml-2 w-0.5 h-6 ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}></div>}
+                                            {!isLast && <div className={`ml-2 w-0.5 h-6 ${isRejected ? "bg-red-500" : getLineColor(isCompleted)}`}></div>}
                                         </div>
                                     );
                                 })}

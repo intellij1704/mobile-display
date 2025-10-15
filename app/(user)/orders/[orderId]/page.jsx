@@ -131,6 +131,18 @@ const OrderDetailPage = () => {
     const returnWindowEnd = new Date(orderDate?.getTime() + 15 * 24 * 60 * 60 * 1000);
     const isReturnWindowOpen = new Date() <= returnWindowEnd;
 
+    const getUniqueLineItemId = (item) => {
+        const productData = item.price_data.product_data;
+        let uniqueId = item.id || productData.metadata?.productId || '';
+        if (productData.metadata?.selectedColor) {
+            uniqueId += `_${productData.metadata.selectedColor}`;
+        }
+        if (productData.metadata?.selectedQuality) {
+            uniqueId += `_${productData.metadata.selectedQuality}`;
+        }
+        return uniqueId;
+    };
+
     const openModal = (item) => {
         setSelectedItem(item);
         setSelectedReason(null);
@@ -164,7 +176,7 @@ const OrderDetailPage = () => {
         try {
             const productData = selectedItem.price_data.product_data;
             const returnType = productData.metadata?.returnType || "easy-return";
-            const lineItemId = selectedItem.id || productData.metadata?.productId;
+            const lineItemId = getUniqueLineItemId(selectedItem);
 
             if (!lineItemId) {
                 throw new Error("Unable to determine line item ID");
@@ -248,7 +260,7 @@ const OrderDetailPage = () => {
 
     const getReturnStatusForItem = (item) => {
         if (!localReturnRequests || !item) return null;
-        const lineItemId = item.id || item.price_data.product_data.metadata?.productId;
+        const lineItemId = getUniqueLineItemId(item);
         const matchingRequest = localReturnRequests.find((req) => req.lineItemId === lineItemId);
         return matchingRequest ? matchingRequest : null;
     };

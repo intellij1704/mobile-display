@@ -1,3 +1,4 @@
+// Path: src/lib/firestore/products/read.js
 "use client";
 
 import { db } from "@/lib/firebase";
@@ -278,7 +279,21 @@ export const usePriceUpdateHistory = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+    const q = query(collection(db, "price_update_history"), orderBy("timestamp", "desc"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      setData(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      setIsLoading(false);
+    }, (err) => {
+      setError(err.message);
+      setIsLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const refetch = async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -292,9 +307,5 @@ export const usePriceUpdateHistory = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  return { data, isLoading, error, refetch: fetchData };
+  return { data, isLoading, error, refetch };
 };
