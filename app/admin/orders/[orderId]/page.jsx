@@ -85,6 +85,7 @@ function Page() {
     const totalAmount = checkout?.total || 0;
     const advance = checkout?.advance || 0;
     const remaining = checkout?.remaining || 0;
+    const codAmount = checkout?.codAmount || 0;
 
     const address = JSON.parse(checkout?.metadata?.address ?? "{}");
     const deliveryType = checkout?.metadata?.deliveryType || "standard";
@@ -435,11 +436,13 @@ function Page() {
                                         </div>
                                     )}
 
-                                    {remaining > 0 && (
+                                    {(codAmount > 0 || remaining > 0) && (
                                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
                                             <div className="flex justify-between items-center">
                                                 <span className="text-orange-800 font-medium">Need to pay on delivery</span>
-                                                <span className="text-orange-800 font-bold">₹{remaining.toFixed(2)}</span>
+                                                <span className="text-orange-800 font-bold"> {codAmount > 0
+                                                    ? `₹${codAmount.toFixed(2)}`
+                                                    : `₹${remaining.toFixed(2)}`}</span>
                                             </div>
                                         </div>
                                     )}

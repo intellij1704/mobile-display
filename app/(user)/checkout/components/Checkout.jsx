@@ -245,7 +245,14 @@ function ContactAndAddress({ userData, user, productList }) {
             const selectedQuality = item.selectedQuality
             const matchingVariation = product.variations.find(v => {
                 const attrs = v.attributes || {}
-                return attrs.Color === selectedColor && (!selectedQuality || attrs.Quality === selectedQuality)
+                let match = true
+                if (selectedColor) {
+                    match = match && attrs.Color === selectedColor
+                }
+                if (selectedQuality) {
+                    match = match && attrs.Quality === selectedQuality
+                }
+                return match
             })
             if (matchingVariation) {
                 return parseFloat(matchingVariation.salePrice || matchingVariation.price) || 0
@@ -677,7 +684,7 @@ function ContactAndAddress({ userData, user, productList }) {
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span>Pay remaining 90% balance on delivery in cash</span>
+                                        <span>Cash to collect on delivery</span>
                                         <span>
                                             ₹{remaining.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>

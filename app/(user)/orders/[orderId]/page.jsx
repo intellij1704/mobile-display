@@ -19,7 +19,7 @@ const OrderDetailPage = () => {
     const { user } = useAuth();
     const { data: orders, error, isLoading } = useOrders({ uid: user?.uid });
 
-    console.log("dkmsdms",orders)
+    console.log("dkmsdms", orders)
 
     const { orderId } = useParams();
     const router = useRouter();
@@ -94,6 +94,7 @@ const OrderDetailPage = () => {
     const returnFee = order?.checkout?.returnFee || (returnFees + replacementFees);
     const advance = order?.checkout?.advance || 0;
     const remaining = order?.checkout?.remaining || 0;
+    const codAmount = order?.checkout?.codAmount || 0;
     const total = order?.checkout?.total || 0;
     const deliveryType = order?.checkout?.metadata?.deliveryType || "";
 
@@ -240,110 +241,110 @@ const OrderDetailPage = () => {
         }
     };
 
-const generatePDF = () => {
-  const doc = new jsPDF("p", "mm", "a4");
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  const labelWidth = 150;
-  const startX = (pageWidth - labelWidth) / 2;
-  const logoUrl = "/logo.png"; // Update to your logo path
+    const generatePDF = () => {
+        const doc = new jsPDF("p", "mm", "a4");
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        const labelWidth = 150;
+        const startX = (pageWidth - labelWidth) / 2;
+        const logoUrl = "/logo.png"; // Update to your logo path
 
-  // Header
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Shipping Label", startX, 25);
+        // Header
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.text("Shipping Label", startX, 25);
 
-  // Add Logo (top right)
-  doc.addImage(logoUrl, "PNG", startX + labelWidth - 40, 10, 30, 30);
+        // Add Logo (top right)
+        doc.addImage(logoUrl, "PNG", startX + labelWidth - 40, 10, 30, 30);
 
-  let currentY = 40;
+        let currentY = 40;
 
-  // === Ship To Section ===
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("Ship To:", startX + 3, currentY);
+        // === Ship To Section ===
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("Ship To:", startX + 3, currentY);
 
-  currentY += 7;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
+        currentY += 7;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
 
-  const shipToText = [
-    selfShippingDetails.address.street || "",
-    `${selfShippingDetails.address.city || ""}, ${selfShippingDetails.address.state || ""} - ${selfShippingDetails.address.pincode || ""}`,
-    selfShippingDetails.address.country || "India",
-    `Phone: ${selfShippingDetails.address.phone || "N/A"}`,
-  ];
+        const shipToText = [
+            selfShippingDetails.address.street || "",
+            `${selfShippingDetails.address.city || ""}, ${selfShippingDetails.address.state || ""} - ${selfShippingDetails.address.pincode || ""}`,
+            selfShippingDetails.address.country || "India",
+            `Phone: ${selfShippingDetails.address.phone || "N/A"}`,
+        ];
 
-  shipToText.forEach((line) => {
-    doc.text(line, startX + 5, currentY);
-    currentY += 6;
-  });
+        shipToText.forEach((line) => {
+            doc.text(line, startX + 5, currentY);
+            currentY += 6;
+        });
 
-  const shipToBottom = currentY + 2;
+        const shipToBottom = currentY + 2;
 
-  // Border around Ship To
-  doc.setLineWidth(1);
-  doc.rect(startX, 35, labelWidth, shipToBottom - 35);
+        // Border around Ship To
+        doc.setLineWidth(1);
+        doc.rect(startX, 35, labelWidth, shipToBottom - 35);
 
-  currentY = shipToBottom + 10;
+        currentY = shipToBottom + 10;
 
-  // === Order Information Section ===
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("Order Information:", startX + 3, currentY);
+        // === Order Information Section ===
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("Order Information:", startX + 3, currentY);
 
-  currentY += 7;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
+        currentY += 7;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
 
-  const orderInfo = [
-    `Order ID: ${selectedReturn?.orderId || "N/A"}`,
-    `Return ID: ${selectedReturn?.id || "N/A"}`,
-    `Return Type: ${selectedReturn?.productDetails?.metadata?.returnType || "N/A"}`,
-    `Reason: ${selectedReturn?.reason || "N/A"}`,
-    `Original Order Total: ₹${selectedReturn?.originalOrderTotal?.toFixed(2) || "N/A"}`,
-  ];
+        const orderInfo = [
+            `Order ID: ${selectedReturn?.orderId || "N/A"}`,
+            `Return ID: ${selectedReturn?.id || "N/A"}`,
+            `Return Type: ${selectedReturn?.productDetails?.metadata?.returnType || "N/A"}`,
+            `Reason: ${selectedReturn?.reason || "N/A"}`,
+            `Original Order Total: ₹${selectedReturn?.originalOrderTotal?.toFixed(2) || "N/A"}`,
+        ];
 
-  const orderStartY = currentY;
-  orderInfo.forEach((line) => {
-    doc.text(line, startX + 5, currentY);
-    currentY += 6;
-  });
+        const orderStartY = currentY;
+        orderInfo.forEach((line) => {
+            doc.text(line, startX + 5, currentY);
+            currentY += 6;
+        });
 
-  const orderBottom = currentY + 2;
-  doc.rect(startX, orderStartY - 10, labelWidth, orderBottom - (orderStartY - 10));
+        const orderBottom = currentY + 2;
+        doc.rect(startX, orderStartY - 10, labelWidth, orderBottom - (orderStartY - 10));
 
-  currentY = orderBottom + 10;
+        currentY = orderBottom + 10;
 
-  // === Product Details Section ===
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("Product Details:", startX + 3, currentY);
+        // === Product Details Section ===
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("Product Details:", startX + 3, currentY);
 
-  currentY += 8;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
+        currentY += 8;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
 
-  const productName = selectedReturn?.productDetails?.name || "N/A";
-  const wrappedProduct = doc.splitTextToSize(productName, labelWidth - 10);
-  doc.text(wrappedProduct, startX + 5, currentY);
+        const productName = selectedReturn?.productDetails?.name || "N/A";
+        const wrappedProduct = doc.splitTextToSize(productName, labelWidth - 10);
+        doc.text(wrappedProduct, startX + 5, currentY);
 
-  const productHeight = wrappedProduct.length * 6 + 8;
-  doc.rect(startX, currentY - 8, labelWidth, productHeight);
+        const productHeight = wrappedProduct.length * 6 + 8;
+        doc.rect(startX, currentY - 8, labelWidth, productHeight);
 
-  // === Footer ===
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(10);
-  doc.text(
-    "Generated by Your Company - For Return Shipping Purposes Only",
-    startX,
-    285
-  );
-  doc.text(`Date: ${new Date().toLocaleDateString()}`, startX, 290);
+        // === Footer ===
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(10);
+        doc.text(
+            "Generated by Your Company - For Return Shipping Purposes Only",
+            startX,
+            285
+        );
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, startX, 290);
 
-  // Save PDF
-  doc.save(`shipping_label_${selectedReturn?.id || "unknown"}.pdf`);
-};
+        // Save PDF
+        doc.save(`shipping_label_${selectedReturn?.id || "unknown"}.pdf`);
+    };
 
     const getReturnStatusForItem = (item) => {
         if (!localReturnRequests || !item) return null;
@@ -772,11 +773,13 @@ const generatePDF = () => {
                                         <span className="text-green-600">-₹{advance.toFixed(2)}</span>
                                     </div>
                                 )}
-                                {remaining > 0 && (
+                                {(codAmount > 0 || remaining > 0) && (
                                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
                                         <div className="flex justify-between items-center">
                                             <span className="text-orange-800 font-medium">Need to pay on delivery</span>
-                                            <span className="text-orange-800 font-bold">₹{remaining.toFixed(2)}</span>
+                                            <span className="text-orange-800 font-bold"> {codAmount > 0
+                                                ? `₹${codAmount.toFixed(2)}`
+                                                : `₹${remaining.toFixed(2)}`}</span>
                                         </div>
                                     </div>
                                 )}

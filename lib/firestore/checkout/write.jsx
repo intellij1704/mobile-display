@@ -1,3 +1,4 @@
+// @/lib/firestore/checkout/write.js
 import { db } from "@/lib/firebase"
 import { collection, doc, getDoc, setDoc, Timestamp } from "firebase/firestore"
 
@@ -36,7 +37,14 @@ export const createCheckoutCODAndGetId = async ({
             const selectedQuality = item.selectedQuality
             const matchingVariation = product.variations.find(v => {
                 const attrs = v.attributes || {}
-                return attrs.Color === selectedColor && attrs.Quality === selectedQuality
+                let match = true
+                if (selectedColor) {
+                    match = match && attrs.Color === selectedColor
+                }
+                if (selectedQuality) {
+                    match = match && attrs.Quality === selectedQuality
+                }
+                return match
             })
             if (matchingVariation) {
                 return parseFloat(matchingVariation.salePrice || matchingVariation.price) || 0
@@ -122,7 +130,7 @@ export const createCheckoutCODAndGetId = async ({
                     returnFee: item?.returnFee || 0,
                 },
             },
-            unit_amount: Math.round(getItemPrice(item)) * 100,
+            unit_amount: Math.round(getItemPrice(item) * 100),
         },
         quantity: item?.quantity ?? 1,
     }))
@@ -149,7 +157,7 @@ export const createCheckoutCODAndGetId = async ({
         returnFee,
         total,
         advance,
-        remaining,
+        codAmount: remaining, // For Shipmozo integration
         appliedCoupons: appliedCoupons || [],
         appliedOffers: appliedOffers || [],
         createdAt: Timestamp.now(),
@@ -167,7 +175,7 @@ export const createCheckoutCODAndGetId = async ({
             returnFee,
             total,
             advance,
-            remaining,
+            codAmount: remaining, // For Shipmozo
             appliedCoupons: appliedCoupons || [],
             appliedOffers: appliedOffers || [],
             createdAt: Timestamp.now(),
