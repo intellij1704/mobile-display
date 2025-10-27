@@ -175,7 +175,7 @@ async function pushToShipmozo(orderId, address, products, totalAmount, codAmount
             });
 
             await orderRef.set(updateData, { merge: true });
-            console.log("✅ Order successfully pushed to Shipmozo and updated in Firestore");
+            console.log(" Order successfully pushed to Shipmozo and updated in Firestore");
         } else {
             const updateData = cleanData({
                 shipmozoStatus: "failed",
@@ -211,7 +211,7 @@ const processOrder = async ({ checkout }) => {
 
     const paymentAmount = checkout?.advance || 0;
     const totalAmount = checkout?.total || 0;
-    const codAmount = checkout?.remaining || 0;
+    const codAmount = checkout?.codAmount || 0;
     const paymentMode = checkout?.paymentMode || "online";
 
     const products = [];
