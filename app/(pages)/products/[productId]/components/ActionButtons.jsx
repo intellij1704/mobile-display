@@ -88,21 +88,31 @@ export default function ActionButtons({ product, selectedColor, selectedQuality,
       if (isLoadingUser || !userData) {
         throw new Error("User data not loaded. Please try again.")
       }
+
+      const serializedProduct = { id: product.id, categoryId: product.categoryId, title: product.title, featureImageURL: product.featureImageURL, isVariable: product.isVariable, variations: product.variations, price: product.price, salePrice: product.salePrice };
+      const serializedOffers = activeOffers.map(offer => ({
+        couponCode: offer.couponCode,
+        discountPercentage: offer.discountPercentage,
+        categories: offer.categories,
+        offerType: offer.offerType,
+        id: offer.id,
+      }));
+
       const checkoutId = await createCheckoutCODAndGetId({
         uid: user?.uid,
         products: [
           {
-            product,
+            product: serializedProduct,
             quantity: 1,
             selectedColor: selectedColor || null,
             selectedQuality: selectedQuality || null,
             returnType: choice.id,
           },
         ],
-        address: userData?.address || {},
+        address: userData?.addresses?.find(a => a.isDefault) || userData?.addresses?.[0] || {},
         deliveryType: "standard",
         appliedCoupons: [],
-        appliedOffers: activeOffers,
+        appliedOffers: serializedOffers,
       })
 
       router.push(

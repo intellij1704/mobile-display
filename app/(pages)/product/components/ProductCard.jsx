@@ -243,14 +243,14 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
           uid: user?.uid,
           products: [
             {
-              product,
+              product: { id: product.id, categoryId: product.categoryId, title: product.title, featureImageURL: product.featureImageURL, isVariable: product.isVariable, variations: product.variations, price: product.price, salePrice: product.salePrice },
               quantity: 1,
               selectedColor: effectiveColor,
               selectedQuality: effectiveQuality,
               returnType: choice.id,
             },
           ],
-          address: userData?.address || {},
+          address: userData?.addresses?.find(a => a.isDefault) || userData?.addresses?.[0] || {},
           deliveryType: "standard",
           appliedCoupons: [],
           appliedOffers: [],

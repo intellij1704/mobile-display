@@ -63,7 +63,7 @@ function ContactAndAddress({ userData, user, productList }) {
     const [step, setStep] = useState("contact")
     const [savingContact, setSavingContact] = useState(false)
     const [placing, setPlacing] = useState(false)
-    const [paymentMode, setPaymentMode] = useState("cod")
+    const [paymentMode, setPaymentMode] = useState("")
     const [deliveryType, setDeliveryType] = useState("standard")
     const [showDrawer, setShowDrawer] = useState(false)
     const [couponLoading, setCouponLoading] = useState(false)
@@ -466,33 +466,18 @@ function ContactAndAddress({ userData, user, productList }) {
 
             setPlacing(true)
 
-            const serializedProductList = productList.map(item => {
-                // Create a plain object from the product to remove any non-serializable fields like Timestamps
-                const plainProduct = JSON.parse(JSON.stringify(item.product));
-                return {
-                    product: {
-                        id: plainProduct.id,
-                        title: plainProduct.title,
-                        featureImageURL: plainProduct.featureImageURL,
-                        isVariable: plainProduct.isVariable,
-                        variations: plainProduct.variations,
-                        price: plainProduct.price,
-                        salePrice: plainProduct.salePrice,
-                        categoryId: plainProduct.categoryId,
-                    },
-                    quantity: item.quantity,
-                    selectedColor: item.selectedColor,
-                    selectedQuality: item.selectedQuality,
-                    returnType: item.returnType,
-                    returnFee: item.returnFee,
-                };
-            });
-
-            const serializedAppliedOffers = appliedOffers.map((offer) => ({
+            const serializedAppliedOffers = appliedOffers.map(offer => ({
                 couponCode: offer.couponCode,
                 discountPercentage: offer.discountPercentage,
                 categories: offer.categories,
-            }))
+                offerType: offer.offerType,
+                id: offer.id,
+            }));
+
+            const serializedProductList = productList.map(item => ({
+                ...item,
+                product: { id: item.product.id, categoryId: item.product.categoryId, title: item.product.title, featureImageURL: item.product.featureImageURL, isVariable: item.product.isVariable, variations: item.product.variations, price: item.product.price, salePrice: item.product.salePrice }
+            }));
 
             let checkoutData
             let successPath

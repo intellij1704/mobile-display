@@ -5,7 +5,6 @@
 
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
-import { getSpecialOffers } from "../specialOffers/read";
 import { getSpecialOffersServer } from "../specialOffers/read_server";
 const Razorpay = require("razorpay");
 
@@ -85,10 +84,14 @@ export const createCheckoutOnlineAndGetId = async ({
       0
     );
 
-    // --- START: Added Prepaid Discount Logic ---
+    // Validate subtotal
+    if (subtotal <= 0) {
+      throw new Error("Subtotal must be greater than zero");
+    }
+
+    // Calculate discounts category-wise
     const allOffers = await getSpecialOffersServer();
     const prepaidOffers = (allOffers || []).filter((o) => o.offerType === "Prepaid Offer");
-    
     const categoryMaxPrepaid = {};
     const cartCategorySet = new Set(products.map((p) => p?.product?.categoryId));
     for (const cat of [...cartCategorySet]) {
@@ -98,14 +101,7 @@ export const createCheckoutOnlineAndGetId = async ({
         }
         if (maxP > 0) categoryMaxPrepaid[cat] = maxP;
     }
-    // --- END: Added Prepaid Discount Logic ---
 
-    // Validate subtotal
-    if (subtotal <= 0) {
-      throw new Error("Subtotal must be greater than zero");
-    }
-
-    // Calculate discounts category-wise
     const couponPMap = {};
 
     for (const offer of appliedOffers || []) {
@@ -253,7 +249,7 @@ export const createCheckoutOnlineAndGetId = async ({
       total,
       advance,
       codAmount: remaining,
-      appliedCoupons: appliedCoupons || [],
+      appliedCoupons: appliedCoupons || [],      
       appliedOffers: appliedOffers || [],
       createdAt: Timestamp.now(),
       checkout: {

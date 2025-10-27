@@ -50,11 +50,11 @@ function PaymentMode({ paymentMode, setPaymentMode, disableCOD, prepaidOffer }) 
                             <span className="font-medium text-gray-900">Pay Online</span>
                         </div>
                         <p className="ml-7 mt-1 text-sm text-gray-500">Secure payment online</p>
-                        {prepaidOffer && (
+                        {/* {prepaidOffer && (
                             <p className="ml-7 mt-2 text-sm font-semibold text-green-600">
                                 🎉 Instant {prepaidOffer.discountPercentage}% discount on prepaid orders!
                             </p>
-                        )}
+                        )} */}
                     </div>
                 </div>
             </button>
