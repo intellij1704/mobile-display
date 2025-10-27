@@ -297,7 +297,7 @@ function Page() {
                             : "bg-teal-100 text-teal-800 border border-teal-200"
                         }`}
                       >
-                        Shipmozo: {shipmozoStatus || "Fetching..."}
+                        Shipmozo: {shipmozoStatus || "NA"}
                       </span>
                     </div>
                   </div>
@@ -524,7 +524,7 @@ function Page() {
                   <div className="border-t border-gray-200 my-2"></div>
                   {advance > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">10% advance paid</span>
+                      <span className="text-gray-600">Amount Paid</span>
                       <span className="text-green-600">-₹{advance.toFixed(2)}</span>
                     </div>
                   )}

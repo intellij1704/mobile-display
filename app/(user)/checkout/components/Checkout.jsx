@@ -1,3 +1,10 @@
+// File: app/checkout/page.jsx or similar (the main checkout component file)
+// This is the rewritten Checkout page with Razorpay integration for both COD (advance) and Online (full) payments.
+// I've added the loadRazorpay function, modified handlePlaceOrder to create appropriate checkout sessions,
+// create Razorpay orders (handled in the backend functions), and open the Razorpay modal.
+// On successful payment, the handler redirects to the appropriate success page with payment verification params.
+// I've also imported createCheckoutOnlineAndGetId (assuming it's in the same lib).
+
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
@@ -7,7 +14,7 @@ import { ChevronLeft } from "lucide-react"
 
 // External app hooks and actions
 import { useAuth } from "@/context/AuthContext"
-import { createCheckoutCODAndGetId } from "@/lib/firestore/checkout/write"
+import { createCheckoutCODAndGetId, createCheckoutOnlineAndGetId } from "@/lib/firestore/checkout/write"
 import { useSpecialOffers } from "@/lib/firestore/specialOffers/read"
 import { useCategories } from "@/lib/firestore/categories/read"
 import { useShippingSettings } from "@/lib/firestore/shipping/read"
@@ -337,18 +344,29 @@ function ContactAndAddress({ userData, user, productList }) {
             const catDiscount = catSum * (effectiveP / 100)
             d += catDiscount
 
-            if (displayCouponP > 0) {
-                lines.push({
-                    label: `Coupon Discount for ${getCategoryName(cat)} (${displayCouponP}%)`,
-                    amount: -(catSum * (displayCouponP / 100)),
-                })
-            }
-            if (displayAdditionalP > 0) {
-                const prefix = displayCouponP > 0 ? "Additional " : ""
-                lines.push({
-                    label: `${prefix}Prepaid Discount for ${getCategoryName(cat)} (${displayAdditionalP}%)`,
-                    amount: -(catSum * (displayAdditionalP / 100)),
-                })
+            if (paymentMode === "cod") {
+                if (displayCouponP > 0) {
+                    lines.push({
+                        label: `Coupon Discount for ${getCategoryName(cat)} (${displayCouponP}%)`,
+                        amount: -(catSum * (displayCouponP / 100)),
+                    });
+                }
+            } else { // Online payment mode
+                if (displayCouponP > 0) {
+                     lines.push({
+                        label: `Coupon Discount for ${getCategoryName(cat)} (${displayCouponP}%)`,
+                        amount: -(catSum * (displayCouponP / 100)),
+                    });
+                }
+                if (displayAdditionalP > 0) {
+                    const prefix = displayCouponP > 0 ? "Additional " : "";
+                    lines.push({
+                        label: `${prefix}Prepaid Discount for ${getCategoryName(
+                            cat
+                        )} (${displayAdditionalP}%)`,
+                        amount: -(catSum * (displayAdditionalP / 100)),
+                    });
+                }
             }
         }
         return { discountLines: lines, discount: d }
@@ -361,8 +379,8 @@ function ContactAndAddress({ userData, user, productList }) {
     }
 
     const returnFees = useMemo(() => {
-        return productList.reduce((sum, item) => {
-            if (item?.returnType === "easy-return") {
+        return productList?.reduce((sum, item) => {
+            if (item?.returnType === "easy-return"){
                 const itemSubtotal = (item?.quantity || 0) * getItemPrice(item)
                 return sum + 160 + 0.05 * itemSubtotal
             }
@@ -371,7 +389,7 @@ function ContactAndAddress({ userData, user, productList }) {
     }, [productList])
 
     const replacementFees = useMemo(() => {
-        return productList.reduce((sum, item) => {
+        return productList?.reduce((sum, item) => {
             if (item?.returnType === "easy-replacement") return sum + 30
             return sum
         }, 0)
@@ -379,7 +397,7 @@ function ContactAndAddress({ userData, user, productList }) {
 
     const subtotalAfterDiscount = Math.max(0, totalPrice - discount)
     const shippingCharge = subtotalAfterDiscount >= minFreeDelivery ? 0 : shippingExtraCharges
-    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0
+    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0 
 
     const total = subtotalAfterDiscount + shippingCharge + airExpressFee + returnFees + replacementFees
     const advance =
@@ -425,6 +443,17 @@ function ContactAndAddress({ userData, user, productList }) {
 
     const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null
 
+    // Load Razorpay SDK
+    const loadRazorpay = async () => {
+        return new Promise((resolve) => {
+            const script = document.createElement("script")
+            script.src = "https://checkout.razorpay.com/v1/checkout.js"
+            script.onload = () => resolve(true)
+            script.onerror = () => resolve(false)
+            document.body.appendChild(script)
+        })
+    }
+
     async function handlePlaceOrder() {
         if (!selectedAddress) {
             toast.error("Please select a delivery address")
@@ -434,9 +463,26 @@ function ContactAndAddress({ userData, user, productList }) {
         try {
             if (totalPrice <= 0) throw new Error("Price should be greater than 0")
             if (!productList || productList.length === 0) throw new Error("Product List Is Empty")
-            if (paymentMode === "online") throw new Error("Online Payment Option Not Available")
 
             setPlacing(true)
+
+            const serializedProductList = productList.map(item => ({
+                product: {
+                    id: item.product.id,
+                    title: item.product.title,
+                    featureImageURL: item.product.featureImageURL,
+                    isVariable: item.product.isVariable,
+                    variations: item.product.variations,
+                    price: item.product.price,
+                    salePrice: item.product.salePrice,
+                    categoryId: item.product.categoryId,
+                },
+                quantity: item.quantity,
+                selectedColor: item.selectedColor,
+                selectedQuality: item.selectedQuality,
+                returnType: item.returnType,
+                returnFee: item.returnFee,
+            }));
 
             const serializedAppliedOffers = appliedOffers.map((offer) => ({
                 couponCode: offer.couponCode,
@@ -444,28 +490,82 @@ function ContactAndAddress({ userData, user, productList }) {
                 categories: offer.categories,
             }))
 
-            const checkoutId = await createCheckoutCODAndGetId({
-                uid: user?.uid,
-                products: productList,
-                address: {
-                    fullName: selectedAddress.fullName,
-                    mobile: selectedAddress.mobile,
-                    email: selectedAddress.email,
-                    addressLine1: selectedAddress.streetAddress,
-                    city: selectedAddress.city,
-                    state: selectedAddress.state,
-                    pincode: selectedAddress.pinCode,
-                    landmark: selectedAddress.landmark,
-                    country: selectedAddress.country,
-                },
-                deliveryType,
-                appliedCoupons,
-                appliedOffers: serializedAppliedOffers,
-            })
+            let checkoutData
+            let successPath
+            if (paymentMode === "cod") {
+                checkoutData = await createCheckoutCODAndGetId({
+                    uid: user?.uid,
+                    products: serializedProductList,
+                    address: {
+                        fullName: selectedAddress.fullName,
+                        mobile: selectedAddress.mobile,
+                        email: selectedAddress.email,
+                        addressLine1: selectedAddress.streetAddress,
+                        city: selectedAddress.city,
+                        state: selectedAddress.state,
+                        pincode: selectedAddress.pinCode,
+                        landmark: selectedAddress.landmark,
+                        country: selectedAddress.country,
+                    },
+                    deliveryType,
+                    appliedCoupons,
+                    appliedOffers: serializedAppliedOffers,
+                })
+                successPath = "/checkout-success"
+            } else {
+                checkoutData = await createCheckoutOnlineAndGetId({
+                    uid: user?.uid,
+                    products: serializedProductList,
+                    address: {
+                        fullName: selectedAddress.fullName,
+                        mobile: selectedAddress.mobile,
+                        email: selectedAddress.email,
+                        addressLine1: selectedAddress.streetAddress,
+                        city: selectedAddress.city,
+                        state: selectedAddress.state,
+                        pincode: selectedAddress.pinCode,
+                        landmark: selectedAddress.landmark,
+                        country: selectedAddress.country,
+                    },
+                    deliveryType,
+                    appliedCoupons,
+                    appliedOffers: serializedAppliedOffers,
+                })
+                successPath = "/checkout-success"
+            }
 
-            router.push(`/checkout-cod?checkout_id=${checkoutId}`)
+            const { checkoutId, razorpayOrderId, amount } = checkoutData
+
+            const res = await loadRazorpay()
+            if (!res) {
+                toast.error("Failed to load payment gateway. Please try again.")
+                return
+            }
+
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: Math.round(amount * 100),
+                currency: "INR",
+                name: "Mobile Display",
+                description: paymentMode === "cod" ? "Advance Payment for COD Order" : "Full Payment for Order",
+                order_id: razorpayOrderId,
+                handler: function (response) {
+                    router.push(`${successPath}?checkout_id=${checkoutId}&razorpay_payment_id=${response.razorpay_payment_id}&razorpay_order_id=${response.razorpay_order_id}&razorpay_signature=${response.razorpay_signature}`)
+                },
+                prefill: {
+                    name: selectedAddress.fullName,
+                    email: selectedAddress.email,
+                    contact: selectedAddress.mobile,
+                },
+                theme: {
+                    color: "#3399cc",
+                },
+            }
+
+            const paymentObject = new window.Razorpay(options)
+            paymentObject.open()
         } catch (err) {
-            toast.error(err?.message || "Failed to place order")
+            toast.error(err?.message || "Failed to initiate payment")
         } finally {
             setPlacing(false)
         }
@@ -514,9 +614,14 @@ function ContactAndAddress({ userData, user, productList }) {
 
     const bestOffer = (specialOffers || [])
         .filter(
-            (o) => o.couponCode && o.offerType !== "Prepaid Offer" && o.categories?.some((c) => allCategories.includes(c)),
+            (o) => o.offerType !== "Prepaid Offer" && o.categories?.some((c) => allCategories.includes(c)),
         )
         .sort((a, b) => b.discountPercentage - a.discountPercentage)?.[0]
+    
+    const bestPrepaidOffer = (prepaidOffers || [])
+        .filter((o) => o.categories?.some((c) => allCategories.includes(c)))
+        .sort((a,b) => b.discountPercentage - a.discountPercentage)?.[0]
+
 
     const loadingSummary = offersLoading && step === "summary"
 
@@ -673,7 +778,7 @@ function ContactAndAddress({ userData, user, productList }) {
                                 </div>
                             </div>
 
-                            <PaymentMode paymentMode={paymentMode} setPaymentMode={setPaymentMode} disableCOD={disableCOD} />
+                            <PaymentMode paymentMode={paymentMode} setPaymentMode={setPaymentMode} disableCOD={disableCOD} prepaidOffer={bestPrepaidOffer} />
 
                             {paymentMode === "cod" ? (
                                 <div className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
@@ -709,7 +814,7 @@ function ContactAndAddress({ userData, user, productList }) {
                                 {placing ? (
                                     <>
                                         <Spinner />
-                                        <span className="ml-2">Placing order...</span>
+                                        <span className="ml-2">Initiating payment...</span>
                                     </>
                                 ) : (
                                     "Proceed to Pay"
@@ -804,61 +909,61 @@ function CouponsBox({ appliedCoupons, appliedOffers, couponError, onRemove, onOp
 }
 
 function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) {
-  const product = item.product;
-  const quantity = item.quantity || 1;
-  const selectedColor = item.selectedColor;
-  const selectedQuality = item.selectedQuality;
-  const returnType = item.returnType;
-  const categoryName = getCategoryName(product.categoryId);
-  const price = getItemPrice(item) * quantity;
+    const product = item.product;
+    const quantity = item.quantity || 1;
+    const selectedColor = item.selectedColor;
+    const selectedQuality = item.selectedQuality;
+    const returnType = item.returnType;
+    const categoryName = getCategoryName(product.categoryId);
+    const price = getItemPrice(item) * quantity;
 
-  let variantInfo = '';
-  if (selectedColor) variantInfo += ` - ${selectedColor}`;
-  if (selectedQuality) variantInfo += ` - ${selectedQuality}`;
+    let variantInfo = '';
+    if (selectedColor) variantInfo += ` - ${selectedColor}`;
+    if (selectedQuality) variantInfo += ` - ${selectedQuality}`;
 
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/* Left Section */}
-        <div className="flex items-start sm:items-center gap-4 w-full">
-          <img
-            src={product.featureImageURL || "/placeholder.svg"}
-            alt={product.title}
-            className="w-20 h-20 object-cover rounded-lg border border-gray-200 flex-shrink-0"
-          />
+    return (
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                {/* Left Section */}
+                <div className="flex items-start sm:items-center gap-4 w-full">
+                    <img
+                        src={product.featureImageURL || "/placeholder.svg"}
+                        alt={product.title}
+                        className="w-20 h-20 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+                    />
 
-          <div className="flex flex-col gap-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 text-base leading-snug line-clamp-2 break-words">
-              {product.title}
-              <span className="font-normal text-gray-600">{variantInfo}</span>
-            </h3>
+                    <div className="flex flex-col gap-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 text-base leading-snug line-clamp-2 break-words">
+                            {product.title}
+                            <span className="font-normal text-gray-600">{variantInfo}</span>
+                        </h3>
 
-            <div className="text-sm text-gray-600 space-y-0.5">
-              <p><span className="font-medium text-gray-700">Qty:</span> {quantity}</p>
-              <p><span className="font-medium text-gray-700">Category:</span> {categoryName}</p>
-              <p><span className="font-medium text-gray-700">Return Type:</span> {returnType}</p>
+                        <div className="text-sm text-gray-600 space-y-0.5">
+                            <p><span className="font-medium text-gray-700">Qty:</span> {quantity}</p>
+                            <p><span className="font-medium text-gray-700">Category:</span> {categoryName}</p>
+                            <p><span className="font-medium text-gray-700">Return Type:</span> {returnType}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Section (Price) */}
+                <div className="flex sm:flex-col justify-between sm:justify-center items-end sm:items-end w-full sm:w-auto">
+                    <span className="font-semibold text-lg text-gray-900 whitespace-nowrap">
+                        ₹{price.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                        })}
+                    </span>
+                </div>
             </div>
-          </div>
-        </div>
 
-        {/* Right Section (Price) */}
-        <div className="flex sm:flex-col justify-between sm:justify-center items-end sm:items-end w-full sm:w-auto">
-          <span className="font-semibold text-lg text-gray-900 whitespace-nowrap">
-            ₹{price.toLocaleString("en-IN", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
+            {/* Delivery Info */}
+            <p className="mt-3 text-sm text-gray-600 border-t border-gray-100 pt-2">
+                Estimated Delivery:{" "}
+                <span className="font-medium text-gray-800">{estimatedDelivery}</span>
+            </p>
         </div>
-      </div>
-
-      {/* Delivery Info */}
-      <p className="mt-3 text-sm text-gray-600 border-t border-gray-100 pt-2">
-        Estimated Delivery:{" "}
-        <span className="font-medium text-gray-800">{estimatedDelivery}</span>
-      </p>
-    </div>
-  );
+    );
 }
 // ---------- Main Component ----------
 export default function Checkout({ productList }) {

@@ -1,7 +1,9 @@
+// File: components/PaymentMode.jsx
+// This component remains mostly unchanged, but I've ensured it's compatible with the new flow.
+// Online payment is now enabled.
+
 import { CreditCard, Truck } from 'lucide-react'
 import React from 'react'
-
-
 
 function RadioDot({ selected }) {
     return (
@@ -13,7 +15,7 @@ function RadioDot({ selected }) {
     )
 }
 
-function PaymentMode({ paymentMode, setPaymentMode, disableCOD }) {
+function PaymentMode({ paymentMode, setPaymentMode, disableCOD, prepaidOffer }) {
     return (
         <div className="space-y-3">
             <button
@@ -48,12 +50,16 @@ function PaymentMode({ paymentMode, setPaymentMode, disableCOD }) {
                             <span className="font-medium text-gray-900">Pay Online</span>
                         </div>
                         <p className="ml-7 mt-1 text-sm text-gray-500">Secure payment online</p>
+                        {prepaidOffer && (
+                            <p className="ml-7 mt-2 text-sm font-semibold text-green-600">
+                                🎉 Instant {prepaidOffer.discountPercentage}% discount on prepaid orders!
+                            </p>
+                        )}
                     </div>
                 </div>
             </button>
         </div>
     )
 }
-
 
 export default PaymentMode

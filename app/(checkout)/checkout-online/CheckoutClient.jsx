@@ -1,5 +1,6 @@
-// File: app/checkout-cod/page.jsx (assuming it's the client file, renamed from CheckoutClient.jsx for clarity)
-// Rewritten to extract razorpay params from searchParams and pass to fetchAndProcessCheckout.
+// File: app/checkout-online/page.jsx
+// This is a new file, duplicated from checkout-cod/page.jsx for online payments.
+// Changes: Import from ./actions (assuming actions.js in checkout-online), collection adjusted in actions.
 
 "use client"
 import { useEffect, useState } from "react"
@@ -18,7 +19,7 @@ function Spinner() {
     </div>
   )
 }
-export default function CheckoutCodClient() {
+export default function CheckoutOnlineClient() {
   const searchParams = useSearchParams()
   const checkoutId = searchParams.get("checkout_id")
   const razorpayPaymentId = searchParams.get("razorpay_payment_id")

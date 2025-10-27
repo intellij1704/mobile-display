@@ -769,7 +769,7 @@ const OrderDetailPage = () => {
                                 </div>
                                 {advance > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">10% advance paid</span>
+                                        <span className="text-gray-600">Amount Paid</span>
                                         <span className="text-green-600">-₹{advance.toFixed(2)}</span>
                                     </div>
                                 )}
@@ -787,7 +787,7 @@ const OrderDetailPage = () => {
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Paid by</span>
                                         <span className="text-gray-900">
-                                            {order.paymentMode === "cod" ? "COD" : "UPI, SuperCoins"}
+                                            {order.paymentMode === "cod" ? "COD" : "Prepaid"}
                                         </span>
                                     </div>
                                 </div>
