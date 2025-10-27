@@ -53,51 +53,42 @@ const getItemPrice = (product, selectedColor, selectedQuality) => {
   }
 };
 
-async function pushToShipmozo(
-  orderId,
-  address,
-  products,
-  totalAmount,
-  codAmount
-) {
+async function pushToShipmozo(orderId, address, products, totalAmount, codAmount) {
   if (!orderId || !address || !products || products.length === 0) {
     console.error("Missing required data for Shipmozo push");
     return;
   }
 
-  // Default values - adjust as needed
-  const orderDate = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-  const orderType = "NON ESSENTIALS"; // Adjust based on your logic
+  const orderDate = new Date().toISOString().split("T")[0];
+  const orderType = "NON ESSENTIALS";
+
   let weight = 0;
   let length = 0;
   let width = 0;
   let height = 0;
 
-  // Calculate dimensions and weight based on products - hardcoded defaults for now, improve with product data
-  products.forEach((p) => {
-    weight += 500; // Example per product in grams
+  products.forEach(() => {
+    weight += 500;
     length = Math.max(length, 10);
     width = Math.max(width, 10);
     height = Math.max(height, 10);
   });
 
-  const warehouseId = ""; // Fetch or set properly from your warehouses
+  const warehouseId = "";
   const gstEwaybillNumber = "";
   const gstinNumber = "";
 
-  // Parse phone: remove + and country code if present
   let phone = address.mobile || "";
   phone = phone.replace(/^\+91/, "").replace(/^\+/, "");
 
-  // Product details array - unit_price is per unit, but total order value is reflected in sum
   const productDetail = products.map((p) => ({
     name: p.title || "Unknown Product",
-    sku_number: p.productId || "", // Use productId as SKU
+    sku_number: p.productId || "",
     quantity: p.quantity,
     discount: "0",
-    hsn: "123", // Default HSN, adjust if available
-    unit_price: p.price.toString(), // Unit price per product
-    product_category: "Other", // Adjust if category available
+    hsn: "123",
+    unit_price: p.price.toString(),
+    product_category: "Other",
   }));
 
   const requestBody = {
@@ -106,7 +97,7 @@ async function pushToShipmozo(
     order_type: orderType,
     consignee_name: address.fullName || "",
     consignee_phone: parseInt(phone) || 0,
-    consignee_alternate_phone: "", // Optional
+    consignee_alternate_phone: "",
     consignee_email: address.email || "",
     consignee_address_line_one: address.addressLine1 || "",
     consignee_address_line_two: address.landmark || "",
@@ -115,7 +106,7 @@ async function pushToShipmozo(
     consignee_state: address.state || "",
     product_detail: productDetail,
     payment_type: "COD",
-    cod_amount: codAmount.toString(), // Remaining cash to collect on delivery
+    cod_amount: codAmount.toString(),
     weight,
     length,
     width,
@@ -126,41 +117,74 @@ async function pushToShipmozo(
   };
 
   try {
-    const response = await fetch(
-      "https://shipping-api.com/app/api/v1/push-order",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "public-key": process.env.SHIPMOZO_PUBLIC_KEY,
-          "private-key": process.env.SHIPMOZO_PRIVATE_KEY,
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
+    const response = await fetch("https://shipping-api.com/app/api/v1/push-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
+        "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
+      },
+      body: JSON.stringify(requestBody),
+    });
 
     if (!response.ok) {
       throw new Error(`Shipmozo API error: ${response.statusText}`);
     }
 
     const data = await response.json();
-    if (data.result === "1") {
-      // Success, update order with reference_id
-      const orderRef = adminDB.doc(`orders/${orderId}`);
-      await orderRef.update({
-        shipmozoReferenceId: data.data.reference_id,
+    console.log("Shipmozo API response:", JSON.stringify(data, null, 2));
+
+    // Safely extract keys (if not available → null)
+    const shipmozoOrderId = data?.data?.order_id ?? null;
+    const shipmozoReferenceId = data?.data?.reference_id ?? null;
+    const shipmozoMessage = data?.message ?? "";
+    const orderRef = adminDB.doc(`orders/${orderId}`);
+
+    // ✅ Helper to remove undefined fields before Firestore write
+    const cleanData = (obj) =>
+      Object.fromEntries(
+        Object.entries(obj).filter(([_, v]) => v !== undefined)
+      );
+
+    if (data.result === "1" && shipmozoOrderId) {
+      const updateData = cleanData({
+        shipmozoOrderId,
+        shipmozoReferenceId,
         shipmozoStatus: "pushed",
-        shipmozoTotalAmount: totalAmount, // Store total order amount
-        shipmozoCodAmount: codAmount, // Store COD amount for reference
+        shipmozoTotalAmount: totalAmount,
+        shipmozoCodAmount: codAmount,
+        shipmozoResponse: data,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      console.log("Order pushed to Shipmozo successfully");
+
+      await orderRef.set(updateData, { merge: true });
+
+      console.log("✅ Order successfully pushed to Shipmozo and updated in Firestore");
     } else {
-      console.error("Shipmozo push failed:", data.message);
+      const updateData = cleanData({
+        shipmozoStatus: "failed",
+        shipmozoError: shipmozoMessage || "Unknown error",
+        shipmozoResponse: data,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await orderRef.set(updateData, { merge: true });
+      console.error("❌ Shipmozo push failed:", shipmozoMessage);
     }
   } catch (error) {
-    console.error("Error pushing to Shipmozo:", error);
+    console.error("🔥 Error pushing to Shipmozo:", error);
+
+    const orderRef = adminDB.doc(`orders/${orderId}`);
+    const updateData = {
+      shipmozoStatus: "error",
+      shipmozoError: error.message,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await orderRef.set(updateData, { merge: true });
   }
 }
+
 
 const processOrder = async ({ checkout }) => {
   const orderRef = adminDB.doc(`orders/${checkout?.id}`);
