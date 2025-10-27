@@ -170,10 +170,7 @@ export default function Page() {
           errors.price = "Valid price is required"
           simpleProductHasError = true;
         }
-        if (data?.stock === "" || isNaN(stock) || stock < 0) {
-          errors.stock = "Valid stock is required"
-          simpleProductHasError = true;
-        }
+    
         if ((data?.salePrice !== "" && data?.salePrice != null) && (!isNaN(salePrice) && salePrice >= price)) {
           errors.salePrice = "Sale price must be less than price"
           simpleProductHasError = true;

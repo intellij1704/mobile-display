@@ -37,10 +37,8 @@ export default function ColorSelector({
       }
 
       // Small delay for smoother transition (debounce)
-      setTimeout(() => {
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        router.push(newUrl, { scroll: false });
-      }, 100);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      router.push(newUrl, { scroll: false });
     },
     [router, searchParams, currentQuality]
   );
@@ -61,8 +59,8 @@ export default function ColorSelector({
             color.toLowerCase() === "black"
               ? "#000"
               : color.toLowerCase() === "white"
-              ? "#fff"
-              : color;
+                ? "#fff"
+                : color;
 
           return (
             <label
@@ -82,30 +80,27 @@ export default function ColorSelector({
 
               {/* Color circle */}
               <span
-                className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-in-out ${
-                  isSelected
-                    ? "border-black ring-2 ring-black/30 shadow-md scale-105"
-                    : "border-gray-300 hover:border-gray-500"
-                }`}
+                className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-in-out ${isSelected
+                  ? "border-black ring-2 ring-black/30 shadow-md scale-105"
+                  : "border-gray-300 hover:border-gray-500"
+                  }`}
                 style={{ backgroundColor: colorStyle }}
               >
                 {isSelected && (
                   <Check
                     size={18}
                     strokeWidth={3}
-                    className={`transition-opacity duration-200 ${
-                      color.toLowerCase() === "black"
-                        ? "text-white"
-                        : "text-black"
-                    } opacity-100`}
+                    className={`transition-opacity duration-200 ${color.toLowerCase() === "black"
+                      ? "text-white"
+                      : "text-black"
+                      } opacity-100`}
                   />
                 )}
               </span>
 
               <span
-                className={`block text-xs text-center mt-1 transition-colors duration-200 ${
-                  isSelected ? "font-semibold text-black" : "text-gray-600"
-                }`}
+                className={`block text-xs text-center mt-1 transition-colors duration-200 ${isSelected ? "font-semibold text-black" : "text-gray-600"
+                  }`}
               >
                 {formatColorName(color)}
               </span>

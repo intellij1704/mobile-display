@@ -136,7 +136,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
       </div>
 
       {/* Special Offers Section - New */}
-      <OffersSection product={product} />
+      <OffersSection product={product} selectedVariation={displayVariation} />
 
       {/* Key Features */}
       <div className="w-full mt-8">
@@ -183,6 +183,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
           product={product}
           selectedColor={selectedColor}
           selectedQuality={selectedQuality}
+          selectedVariation={displayVariation}
         />
       </AuthContextProvider>
 

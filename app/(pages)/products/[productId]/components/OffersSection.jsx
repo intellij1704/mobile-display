@@ -6,7 +6,7 @@ import { TicketPercent, X, Copy, Check } from "lucide-react"
 import Image from "next/image"
 import discount from "@/public/icon/discount.svg"
 
-const OffersSection = ({ product }) => {
+const OffersSection = ({ product, selectedVariation }) => {
   const { data, error, isLoading } = useSpecialOffers()
   const [visibleOffers, setVisibleOffers] = useState(3)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -19,8 +19,9 @@ const OffersSection = ({ product }) => {
   const activeOffers =
     data?.filter((offer) => offer.status === "Active" && offer.categories?.includes(product.categoryId)) || []
 
-  const mrp = product.salePrice || product.price
-  const salePrice = product.salePrice
+  // Use selectedVariation for pricing (works for both variable and non-variable products)
+  const mrp = parseFloat(selectedVariation?.price) || parseFloat(product.price) || 0
+  const salePrice = selectedVariation?.salePrice ? parseFloat(selectedVariation.salePrice) : product.salePrice ? parseFloat(product.salePrice) : null
   const hasSale = !!salePrice
   const basePrice = salePrice || mrp
   const maxDiscountPerc = activeOffers.reduce((max, offer) => Math.max(max, offer.discountPercentage || 0), 0)
@@ -89,7 +90,7 @@ const OffersSection = ({ product }) => {
     return (
       <div className="mt-4">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Available Offers</h3>
-        <p className="text-sm text-red-500">Failed to load offers: {error}</p>
+        <p className="text-sm text-red-500">Failed to load offers: {String(error)}</p>
       </div>
     )
   }
@@ -120,7 +121,7 @@ const OffersSection = ({ product }) => {
             <Image
               src={discount || "/placeholder.svg"}
               alt="Discount Icon"
-              width={28} // smaller size
+              width={28}
               height={28}
               className="rounded-md"
             />

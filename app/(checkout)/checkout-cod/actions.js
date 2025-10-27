@@ -4,6 +4,7 @@
 import { admin, adminDB } from "@/lib/firebase_admin";
 
 const fetchCheckout = async (checkoutId) => {
+  try{
   const list = await adminDB
     .collectionGroup("checkout_sessions_cod")
     .where("id", "==", checkoutId)
@@ -13,6 +14,17 @@ const fetchCheckout = async (checkoutId) => {
     throw new Error("Invalid Checkout ID");
   }
   return list.docs[0].data();
+}catch (err) {
+    console.error('fetchCheckout error structured:', {
+      message: err.message,
+      code: err.code,
+      name: err.name,
+      details: err.details,
+      stack: err.stack,
+      metadata: err.metadata ? (typeof err.metadata.get === 'function' ? err.metadata.getMap() : err.metadata) : undefined
+    });
+    throw err;
+  }
 };
 
 // Helper to get item price considering variations

@@ -11,7 +11,7 @@ import AddToCartButton from "@/app/components/AddToCartButton"
 import ReturnTypeSelector from "@/app/components/ReturnTypeSelector"
 import { useUser } from "@/lib/firestore/user/read"
 
-export default function ActionButtons({ product, selectedColor, selectedQuality }) {
+export default function ActionButtons({ product, selectedColor, selectedQuality, selectedVariation }) {
   const { data, error, isLoading } = useSpecialOffers()
   const { user } = useAuth()
   const { data: userData, isLoading: isLoadingUser } = useUser({ uid: user?.uid })
@@ -28,48 +28,8 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
   const hasQualityOptions = qualities.length > 0;
   const isActuallyVariable = product?.isVariable && product.variations?.length > 0;
 
-  const selectedVariation = useMemo(() => {
-    // For non-variable products, create a mock variation from the base product
-    if (!isActuallyVariable) {
-      return {
-        price: product.price,
-        salePrice: product.salePrice,
-        attributes: {},
-        imageURLs: [],
-        stock: product.stock,
-      }
-    }
-
-    // Find the variation that matches the selected attributes
-    return product.variations.find(v => {
-      const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
-      const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
-      return colorMatch && qualityMatch
-    })
-  }, [selectedColor, selectedQuality, product, hasColorOptions, hasQualityOptions, isActuallyVariable])
-
-  // Compute the lowest variation for initial display
-  const lowestVariation = useMemo(() => {
-    if (!isActuallyVariable) {
-      return {
-        price: product.price,
-        salePrice: product.salePrice,
-        attributes: {},
-        imageURLs: [],
-        stock: product.stock,
-      }
-    }
-    return product.variations.reduce((lowest, current) => {
-      const lowestP = parseFloat(lowest.salePrice || lowest.price)
-      const currentP = parseFloat(current.salePrice || current.price)
-      return currentP < lowestP ? current : lowest
-    }, product.variations[0])
-  }, [product, isActuallyVariable])
-
-  const displayVariation = selectedVariation || lowestVariation;
-
-  const mrp = parseFloat(displayVariation?.price) || 0
-  const salePrice = displayVariation?.salePrice ? parseFloat(displayVariation.salePrice) : null
+  const mrp = parseFloat(selectedVariation?.price) || 0
+  const salePrice = selectedVariation?.salePrice ? parseFloat(selectedVariation.salePrice) : null
   const hasSale = !!salePrice
   const basePrice = salePrice || mrp
 
@@ -199,7 +159,7 @@ export default function ActionButtons({ product, selectedColor, selectedQuality 
     <div className="md:static md:bg-transparent fixed bottom-0 left-0 w-full bg-white p-4 md:p-0 md:mt-5 rounded-xl shadow-md md:shadow-none z-[999]">
       {hasAdditionalOffers && (
         <div className="bg-red-500 absolute -top-5 left-0 -z-[999] text-white text-center text-sm rounded-t-3xl p-1 w-full">
-          Get {maxDiscountPerc}% off on {highestOffer.offerType} - {highestOffer?.couponCode}
+          Get {maxDiscountPerc}% off on {highestOffer.offerType}  {highestOffer?.couponCode}
         </div>
       )}
 

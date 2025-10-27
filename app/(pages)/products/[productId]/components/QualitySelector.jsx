@@ -25,11 +25,9 @@ export default function QualitySelector({
       else url.searchParams.delete("quality");
       if (currentColor) url.searchParams.set("color", currentColor);
 
-      setTimeout(() => {
         router.push(`${url.pathname}?${url.searchParams.toString()}`, {
           scroll: false,
         });
-      }, 100);
     },
     [router, currentColor]
   );
