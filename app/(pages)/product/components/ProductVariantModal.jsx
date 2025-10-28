@@ -273,11 +273,21 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
         onClose()
       } else if (actionType === "buy") {
         // Buy now
+        const serializedProduct = {
+          id: product.id,
+          categoryId: product.categoryId,
+          title: product.title,
+          featureImageURL: product.featureImageURL,
+          isVariable: product.isVariable,
+          variations: product.variations,
+          price: product.price,
+          salePrice: product.salePrice,
+        }
         const checkoutId = await createCheckoutCODAndGetId({
           uid: user?.uid,
           products: [
             {
-              product,
+              product: serializedProduct,
               quantity: 1,
               selectedColor: selectedColor || null,
               selectedQuality: selectedQuality || null,
