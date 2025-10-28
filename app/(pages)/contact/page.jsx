@@ -1,31 +1,87 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import CircularProgress from "@mui/material/CircularProgress";
 
 export default function ContactUs() {
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
-  } = useForm();
+    formState: { errors, isSubmitSuccessful },
+    setValue,
+    watch,
+  } = useForm({
+    mode: "onChange", // Validate on input change
+  });
 
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
+  const [formStatus, setFormStatus] = useState({ type: "", message: "" });
 
-  const onSubmit = (data) => {
+  const messageValue = watch("message") || "";
+
+  // Effect to clear success message after 5 seconds
+  useEffect(() => {
+    if (formStatus.type === "success") {
+      const timer = setTimeout(() => {
+        setFormStatus({ type: "", message: "" });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [formStatus]);
+
+  const onSubmit = async (data) => {
     setLoading(true);
-    setSuccess("");
+    setFormStatus({ type: "", message: "" });
 
-    console.log("Form Data:", data);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
-    // Fake API call simulation
-    setTimeout(() => {
+      const result = await res.json();
+
+      if (result.success) {
+        setFormStatus({
+          type: "success",
+          message: "Your message has been sent successfully!",
+        });
+        reset();
+      } else {
+        setFormStatus({
+          type: "error",
+          message: "Failed to send your message. Try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setFormStatus({ type: "error", message: "Something went wrong. Please try again later." });
+    } finally {
       setLoading(false);
-      setSuccess("Your message has been sent successfully");
-      reset(); // clear form after success
-    }, 2000);
+    }
+  };
+
+  // Restrict names to letters and spaces only
+  const handleNameInput = (e, field) => {
+    const value = e.target.value.replace(/[^A-Za-z\s'-]/g, "");
+    setValue(field, value, { shouldValidate: true });
+  };
+
+  // Restrict phone number to digits only (with optional +)
+  const handlePhoneInput = (e) => {
+    const value = e.target.value.replace(/[^0-9+]/g, "");
+    setValue("phone", value, { shouldValidate: true });
+  };
+
+  // Restrict message length to 300 chars
+  const handleMessageChange = (e) => {
+    const value = e.target.value.slice(0, 300);
+    setValue("message", value, { shouldValidate: true });
   };
 
   return (
@@ -76,7 +132,14 @@ export default function ContactUs() {
               <label className="block mb-1 font-medium text-gray-700">First Name</label>
               <input
                 type="text"
-                {...register("firstName", { required: "First name is required" })}
+                {...register("firstName", {
+                  required: "First name is required",
+                  pattern: {
+                    value: /^[A-Za-z\s'-]+$/,
+                    message: "Please enter a valid name",
+                  },
+                })}
+                onChange={(e) => handleNameInput(e, "firstName")}
                 placeholder="John"
                 className="w-full border-b border-gray-400 focus:outline-none focus:border-red-500 py-1"
               />
@@ -88,8 +151,15 @@ export default function ContactUs() {
               <label className="block mb-1 font-medium text-gray-700">Last Name</label>
               <input
                 type="text"
+                {...register("lastName", {
+                  required: "Last name is required",
+                  pattern: {
+                    value: /^[A-Za-z\s'-]+$/,
+                    message: "Please enter a valid name",
+                  },
+                })}
+                onChange={(e) => handleNameInput(e, "lastName")}
                 placeholder="Doe"
-                {...register("lastName", { required: "Last name is required" })}
                 className="w-full border-b border-gray-400 focus:outline-none focus:border-red-500 py-1"
               />
               {errors.lastName && (
@@ -119,14 +189,15 @@ export default function ContactUs() {
               <label className="block mb-1 font-medium text-gray-700">Phone Number</label>
               <input
                 type="tel"
-                placeholder="+91 123456789"
+                placeholder="1234567890"
                 {...register("phone", {
                   required: "Phone number is required",
                   pattern: {
-                    value: /^[0-9\s+-]+$/,
-                    message: "Invalid phone number",
+                    value: /^\+?[0-9]{10,15}$/,
+                    message: "Enter a valid phone number (10-15 digits)",
                   },
                 })}
+                onChange={handlePhoneInput}
                 className="w-full border-b border-gray-400 focus:outline-none focus:border-red-500 py-1"
               />
               {errors.phone && <p className="text-red-600 text-sm">{errors.phone.message}</p>}
@@ -136,28 +207,55 @@ export default function ContactUs() {
           <div>
             <label className="block mb-1 font-medium text-gray-700">Message</label>
             <textarea
-              {...register("message", { required: "Message is required" })}
+              {...register("message", {
+                required: "Message is required",
+                maxLength: {
+                  value: 300,
+                  message: "Message cannot exceed 300 characters",
+                },
+              })}
               rows="4"
+              value={messageValue}
+              onChange={handleMessageChange}
               placeholder="Write your message.."
               className="w-full border-b border-gray-400 focus:outline-none focus:border-red-500 py-1"
             />
-            {errors.message && <p className="text-red-600 text-sm">{errors.message.message}</p>}
+            <div className="flex justify-between text-sm mt-1">
+              <p className="text-red-600 h-4">
+                {errors.message && errors.message.message}
+              </p>
+              <span className="text-gray-500">
+                {messageValue.length}/300
+              </span>
+            </div>
           </div>
 
-          <div className="text-right">
+          <div className="text-right flex justify-end">
             <button
               type="submit"
               disabled={loading}
-              className={`${
-                loading ? "bg-gray-400" : "bg-red-600 hover:bg-red-700"
-              } text-white font-medium px-6 py-2 rounded transition`}
+              className={`sm:mx-0 flex items-center justify-center gap-2 ${loading ? "bg-red-400 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"
+                } text-white font-medium px-6 py-2 rounded transition`}
             >
-              {loading ? "Sending..." : "Send Message"}
+              {loading ? (
+                <>
+                  <CircularProgress size={20} color="inherit" />
+                  <span>Sending...</span>
+                </>
+              ) : (
+                "Send Message"
+              )}
             </button>
           </div>
 
-          {/* Success Message */}
-          {success && <p className="text-green-600 text-center mt-4 font-medium">{success}</p>}
+          {formStatus.message && (
+            <p
+              className={`text-center mt-4 font-medium ${formStatus.type === "success"
+                  ? "text-green-600"
+                  : "text-red-600"
+                }`}
+            >{formStatus.message}</p>
+          )}
         </form>
       </div>
 
@@ -167,7 +265,7 @@ export default function ContactUs() {
           width="100%"
           height="100%"
           className="rounded-lg"
-          src="https://maps.google.com/maps?q=kolkata&output=embed"
+          src="https://maps.google.com/maps?q=132+Dartmouth+Street,Boston,Massachusetts&output=embed"
           style={{ filter: "grayscale(0) contrast(1.2) opacity(100%)" }}
         ></iframe>
       </div>
