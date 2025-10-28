@@ -6,8 +6,161 @@ import { CircularProgress } from "@mui/material";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import jsPDF from "jspdf";
 import { useOrder } from "@/lib/firestore/orders/read";
+import html2pdf from "html2pdf.js"
+import JsBarcode from "jsbarcode"
+
+const ShippingLabel = ({ selectedReturn, orderId, returnId, orderDate, addressData, selfShippingDetails }) => {
+    const [barcodeOrder, setBarcodeOrder] = useState("")
+
+    useEffect(() => {
+        // Generate barcode images
+        const canvas2 = document.createElement("canvas")
+
+        try {
+            JsBarcode(canvas2, orderId || "16010969333796", {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: false,
+            })
+
+            setBarcodeOrder(canvas2.toDataURL())
+        } catch (err) {
+            console.log("[v0] Barcode generation error:", err)
+        }
+    }, [orderId])
+
+    return (
+        <div
+            className="bg-white p-0 text-black"
+            style={{ width: "100mm", height: "160mm", margin: "0 auto", fontFamily: "Arial, sans-serif", }}
+        >
+            {/* Main Container with Border */}
+            <div style={{ border: "3px solid #000", height: "100%", display: "flex", flexDirection: "column" }}>
+                {/* SECTION 1: Ship To & Courier Info */}
+                <div style={{ display: "flex", borderBottom: "2px solid #000", minHeight: "120px" }}>
+                    <div style={{ flex: 1, padding: "12px", borderRight: "2px solid #000" }}>
+                        <div style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "4px" }}>
+                            SHIP TO
+                        </div>
+                        <div style={{ fontSize: "10px", lineHeight: "1.3", color: "#333" }}>
+                            <div style={{ fontStyle: "italic", fontWeight: "bold" }}>
+                                From:- {selfShippingDetails?.address?.street?.split(",")[0] || "Sober_stuffs"}
+                            </div>
+                            <div>{selfShippingDetails?.address?.street || "Tirupati Tapovan Society Street 8"}</div>
+                            <div>{selfShippingDetails?.address?.city || "Panchwati Main Road Amin Marg"}</div>
+                            <div>{selfShippingDetails?.address?.state || "Rajkot"}</div>
+                            <div>{selfShippingDetails?.address?.pincode || "360001"}</div>
+                            <div style={{ marginTop: "4px", fontWeight: "bold" }}>
+                                Phone Num - {selfShippingDetails?.address?.phone || "9427451709"}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        style={{
+                            flex: 1,
+                            padding: "12px",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                        }}
+                    >
+                        <div style={{ width: "100%" }}>
+                            <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                                Order #: {orderId || "16010969333796"}
+                            </div>
+                            <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                                Return Id #: {returnId || "16010969333796"}
+                            </div>
+                            {barcodeOrder && (
+                                <img
+                                    src={barcodeOrder || "/placeholder.svg"}
+                                    alt="Order Barcode"
+                                    style={{ height: "40px", width: "100%" }}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* SECTION 2: Address & Product Details */}
+                <div style={{ display: "flex", borderBottom: "2px solid #000", minHeight: "50px" }}>
+                    <div style={{ flex: 1, padding: "8px", borderRight: "2px solid #000" }}>
+                        <div style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "4px" }}>Address</div>
+                        <div style={{ fontSize: "12px", fontStyle: "italic", fontWeight: "bold", marginBottom: "2px" }}>
+                            {addressData?.fullName || "N/A"}
+                        </div>
+                        <div style={{ fontSize: "10px", lineHeight: "1.3", color: "#333" }}>
+                            <div>House No.: {addressData?.addressLine1 || "N/A"}</div>
+                            <div>
+                                Address: {addressData?.city || "N/A"}, {addressData?.state || "N/A"}
+                            </div>
+                            <div>Landmark: {addressData?.landmark || "N/A"}</div>
+                            <div>{addressData?.pincode || "N/A"}</div>
+                            <div style={{ marginTop: "4px", fontWeight: "bold" }}>Phone Num - {addressData?.mobile || "N/A"}</div>
+                        </div>
+                    </div>
+                    <div style={{ flex: 1, padding: "10px", fontSize: "11px" }}>
+                        <div>Quantity: {selectedReturn?.quantity || ""}</div>
+                        {selectedReturn?.productDetails?.metadata?.selectedColor && (
+                            <div>Color: {selectedReturn?.productDetails?.metadata?.selectedColor}</div>
+                        )}
+                        {selectedReturn?.productDetails?.metadata?.selectedQuality && (
+                            <div>Quality: {selectedReturn?.productDetails?.metadata?.selectedQuality}</div>
+                        )}
+                        <div>Return Type: {selectedReturn?.productDetails?.metadata?.returnType}</div>
+                        <div>Reason: {selectedReturn?.reason}</div>
+                        <div style={{ marginTop: "4px" }}>Item(s): {selectedReturn?.productDetails?.name || "Product"}</div>
+                    </div>
+                </div>
+
+                {/* SECTION 4: Product Description */}
+                <div
+                    style={{
+                        borderBottom: "2px solid #000",
+                        padding: "12px",
+                        minHeight: "80px",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <div>
+                        <div style={{ fontSize: "12px", fontWeight: "bold", marginBottom: "8px" }}>
+                            Product Description: {selectedReturn?.productDetails?.name || "Product Name"}
+                        </div>
+                        <div style={{ fontSize: "11px", display: "flex", gap: "20px" }}>
+                            <div>SKU: {selectedReturn?.productDetails?.metadata?.productId || "SKU-UNKNOWN"}</div>
+                            <div>QTY.: {selectedReturn?.quantity || 1}</div>
+                            <div>Total: Rs.{selectedReturn?.originalOrderTotal?.toFixed(2) || "0.00"}</div>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: "11px", marginTop: "8px" }}>
+                        <div>
+                            Order Date: {orderDate ? new Date(orderDate).toLocaleDateString("en-IN") : "N/A"}
+                        </div>
+                        <div>Gstin No.:</div>
+                    </div>
+                </div>
+
+                {/* SECTION 5: Legal Disclaimer */}
+                <div style={{ borderBottom: "2px solid #000", padding: "10px", fontSize: "9px", lineHeight: "1.4" }}>
+                    <div>
+                        Lorem ipsum, dolor sit amet consectetur adipisicing elit. Consequatur minus amet porro ipsum dolor, nisi blanditiis quaerat qui nam culpa atque. Omnis vero consequatur repudiandae repellat labore ex distinctio ipsum?
+                    </div>
+                </div>
+
+                {/* SECTION 6: Footer */}
+                <div style={{ padding: "10px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>
+                    THIS IS AN AUTO-GENERATED LABEL AND DOES NOT NEED SIGNATURE.
+                </div>
+            </div>
+        </div>
+    )
+}
 
 const ReturnDetailPage = () => {
     const { user } = useAuth();
@@ -16,7 +169,7 @@ const ReturnDetailPage = () => {
     const { data: returnRequest, error: returnError, isLoading: returnIsLoading } = useReturnRequest({ id });
     const { data: order, error: orderError, isLoading: orderIsLoading } = useOrder({ id: returnRequest?.orderId });
     const [printModalOpen, setPrintModalOpen] = useState(false);
-    console.log(returnRequest)
+    const [selectedReturn, setSelectedReturn] = useState(null);
 
     useEffect(() => {
         const handleEsc = (e) => {
@@ -52,6 +205,7 @@ const ReturnDetailPage = () => {
     const statusUpdateDate = returnRequest.timestamp?.toDate ? new Date(returnRequest.timestamp.seconds * 1000) : null;
     const product = returnRequest.productDetails;
     const addressData = order?.checkout?.metadata?.address ? JSON.parse(order.checkout.metadata.address) : {};
+    const orderDate = order?.timestampCreate?.toDate()
 
     const returnType = returnRequest.type;
     const returnStatus = returnRequest.status;
@@ -125,46 +279,69 @@ const ReturnDetailPage = () => {
     const currentStatusIndex = getStatusIndex(returnStatus);
 
     const openPrintModal = () => {
+        setSelectedReturn(returnRequest);
         setPrintModalOpen(true);
     };
 
     const closePrintModal = () => {
         setPrintModalOpen(false);
+        setSelectedReturn(null);
     };
 
     const generatePDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text("Shipping Label", 105, 10, { align: 'center' });
-        doc.setFontSize(12);
-        doc.text(`Return ID: ${returnRequest.id}`, 10, 30);
-        doc.text(`Order ID: ${returnRequest.orderId}`, 10, 40);
-        doc.text(`Product: ${product.name}`, 10, 50);
-        doc.text(`Quantity: ${returnRequest.quantity}`, 10, 60);
-        doc.text("Send To (Office Address):", 10, 80);
-        doc.text(selfShippingDetails.address.company, 10, 90);
-        doc.text(selfShippingDetails.address.street, 10, 100);
-        doc.text(`${selfShippingDetails.address.city}, ${selfShippingDetails.address.state} - ${selfShippingDetails.address.pincode}`, 10, 110);
-        doc.text(selfShippingDetails.address.country, 10, 120);
-        doc.text(`Phone: ${selfShippingDetails.address.phone}`, 10, 130);
-        doc.text("From (Your Address):", 10, 150);
-        doc.text(addressData.fullName, 10, 160);
-        doc.text(addressData.addressLine1, 10, 170);
-        doc.text(`${addressData.city}, ${addressData.state} - ${addressData.pincode}`, 10, 180);
-        doc.text(`Landmark: ${addressData.landmark}`, 10, 190);
-        doc.text(`Phone: ${addressData.mobile}`, 10, 200);
-        doc.save("shipping_label.pdf");
+        const element = document.getElementById("shipping-label-content")
+        if (!element) {
+            alert("Label content not found")
+            return
+        }
+
+        element.scrollTop = 0
+
+        const originalOverflow = element.style.overflowY
+        const originalHeight = element.style.height
+        element.style.overflowY = 'visible'
+        element.style.height = 'auto'
+
+        const opt = {
+            margin: [0, 0, 0, 0],
+            filename: `shipping_label_${returnRequest?.id || "unknown"}.pdf`,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                height: element.scrollHeight,
+                width: element.scrollWidth,
+                scrollX: 0,
+                scrollY: 0,
+                windowHeight: element.scrollHeight,
+                windowWidth: element.scrollWidth
+            },
+            jsPDF: {
+                orientation: "portrait",
+                unit: "mm",
+                format: [160, 100]
+            },
+        }
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.overflowY = originalOverflow
+            element.style.height = originalHeight
+        }).catch((err) => {
+            console.error("PDF generation error:", err)
+            alert("Failed to generate PDF. Please try again.")
+            element.style.overflowY = originalOverflow
+            element.style.height = originalHeight
+        })
     };
 
     const selfShippingDetails = {
         address: {
-            company: "FabStore Office",
-            street: "456 MG Road",
-            city: "Mumbai",
-            state: "Maharashtra",
-            pincode: "400001",
+            street: "Bc 94, Shop G1, Aparupa Apartment, Anurupapally, Krishnapur, Kestopur",
+            city: "Kolkata",
+            state: "West Bengal",
+            pincode: "700101",
             country: "India",
-            phone: "+91-98765-43210"
+            phone: "+91-90884-65885",
         },
     };
 
@@ -325,52 +502,59 @@ const ReturnDetailPage = () => {
 
             {printModalOpen && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999] p-4"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) closePrintModal();
                     }}
                 >
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+                    <div
+                        className="relative bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-gray-200 
+                 flex flex-col max-h-[95vh] overflow-hidden animate-fadeIn"
+                    >
+                        {/* Close Button */}
                         <button
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100 z-10"
                             onClick={closePrintModal}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
-                        <div className="text-center mb-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">Shipping Label</h2>
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-2 text-left">
-                                <p><strong>Return ID:</strong> {returnRequest.id}</p>
-                                <p><strong>Order ID:</strong> {returnRequest.orderId}</p>
-                                <p><strong>Product:</strong> {product.name}</p>
-                                <p><strong>Quantity:</strong> {returnRequest.quantity}</p>
-                                <div>
-                                    <strong>Send To (Office Address):</strong>
-                                    <p>{selfShippingDetails.address.company}</p>
-                                    <p>{selfShippingDetails.address.street}</p>
-                                    <p>{selfShippingDetails.address.city}, {selfShippingDetails.address.state} - {selfShippingDetails.address.pincode}</p>
-                                    <p>{selfShippingDetails.address.country}</p>
-                                    <p>Phone: {selfShippingDetails.address.phone}</p>
-                                </div>
-                                <div>
-                                    <strong>From (Your Address):</strong>
-                                    <p>{addressData.fullName}</p>
-                                    <p>{addressData.addressLine1}</p>
-                                    <p>{addressData.city}, {addressData.state} - {addressData.pincode}</p>
-                                    <p>Landmark: {addressData.landmark}</p>
-                                    <p>Phone: {addressData.mobile}</p>
-                                </div>
-                            </div>
+
+                        {/* Modal Header */}
+                        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
+                            <h2 className="text-xl font-semibold text-gray-800">
+                                🏷️ Shipping Label Preview
+                            </h2>
+                        </div>
+
+                        {/* Scrollable Content - Increased max height for better visibility */}
+                        <div
+                            id="shipping-label-content"
+                            className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent max-h-[calc(95vh-200px)]"
+                            style={{ scrollBehavior: 'smooth' }} // Smooth scrolling for better UX
+                        >
+                            <ShippingLabel
+                                selectedReturn={selectedReturn}
+                                orderId={returnRequest?.orderId}
+                                orderDate={orderDate}
+                                returnId={id}
+                                addressData={addressData}
+                                selfShippingDetails={selfShippingDetails}
+                            />
+                        </div>
+
+                        {/* Footer / Action Buttons - Sticky to bottom */}
+                        <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
                             <button
-                                className="mt-4 w-full py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02] transition-all duration-200 shadow-lg"
+                                className="flex-1 py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-blue-600 to-blue-700 
+                     hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02] transition-all duration-200 shadow-md"
                                 onClick={generatePDF}
                             >
-                                Download Label as PDF
+                                Download Label
                             </button>
                             <button
-                                className="mt-2 w-full py-3 rounded-xl text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition-all duration-200"
+                                className="flex-1 py-3 rounded-xl text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition-all duration-200"
                                 onClick={closePrintModal}
                             >
                                 Close
