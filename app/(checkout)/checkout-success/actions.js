@@ -9,20 +9,23 @@ import crypto from "crypto";
 
 const fetchCheckout = async (checkoutId) => {
     try {
-        let list;
-        if (checkoutId.startsWith("cod_")) {
+        let list = await adminDB
+            .collectionGroup("checkout_sessions_online")
+            .where("id", "==", checkoutId)
+            .limit(1)
+            .get();
+
+        if (list.empty) {
             list = await adminDB
-                .collectionGroup("checkout_sessions_cod")
-                .where("id", "==", checkoutId)
-                .limit(1)
-                .get();
-        } else if (checkoutId.startsWith("online_")) {
-            list = await adminDB
-                .collectionGroup("checkout_sessions_online")
-                .where("id", "==", checkoutId)
-                .limit(1)
-                .get();
-        } else {
+              .collectionGroup("checkout_sessions_cod")
+              .where("id", "==", checkoutId)
+              .limit(1)
+              .get();
+        }
+
+        // The new order IDs start with "ORD-", so the old prefix check is no longer valid.
+        // We check both collections. If it's not in either, then it's invalid.
+        if (!checkoutId.startsWith("ORD-")) {
             throw new Error("Invalid Checkout ID format");
         }
 

@@ -4,7 +4,7 @@
 "use server";
 
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, Timestamp, runTransaction } from "firebase/firestore";
 import { getSpecialOffersServer } from "../specialOffers/read_server";
 const Razorpay = require("razorpay");
 
@@ -22,6 +22,29 @@ try {
   console.error("Failed to initialize Razorpay client:", error);
   throw new Error("Payment gateway initialization failed: " + error.message);
 }
+
+// Helper function to generate a new order ID
+const generateOrderId = async () => {
+  const counterRef = doc(db, "counters", "orders");
+
+  const newId = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+
+      let lastId = 10000;
+      if (counterDoc.exists()) {
+          lastId = counterDoc.data().lastId || 10000;
+      }
+
+      const newCount = lastId + 1;
+      transaction.set(counterRef, { lastId: newCount }, { merge: true });
+
+      const today = new Date();
+      const dateStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
+      return `ORD-${dateStr}-${newCount}`;
+  });
+
+  return newId;
+};
 
 export const createCheckoutOnlineAndGetId = async ({
   uid,
@@ -44,7 +67,7 @@ export const createCheckoutOnlineAndGetId = async ({
     }
 
     // Generate checkout ID
-    const checkoutId = `online_${doc(collection(db, "ids")).id}`;
+    const checkoutId = await generateOrderId();
     const ref = doc(db, `users/${uid}/checkout_sessions_online/${checkoutId}`);
 
     // Load shipping settings
@@ -318,7 +341,7 @@ export const createCheckoutCODAndGetId = async ({
     }
 
     // Generate checkout ID
-    const checkoutId = `cod_${doc(collection(db, "ids")).id}`;
+    const checkoutId = await generateOrderId();
     const ref = doc(db, `users/${uid}/checkout_sessions_cod/${checkoutId}`);
 
     // Load shipping settings

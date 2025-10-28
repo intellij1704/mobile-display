@@ -9,7 +9,7 @@ import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { db } from "@/lib/firebase"
-import { addDoc, collection, doc, updateDoc, arrayUnion, query, where, getDocs } from "firebase/firestore"
+import { addDoc, collection, doc, updateDoc, arrayUnion, query, where, getDocs, runTransaction, setDoc } from "firebase/firestore"
 import html2pdf from "html2pdf.js"
 import JsBarcode from "jsbarcode"
 
@@ -175,6 +175,27 @@ const ShippingLabel = ({ selectedReturn, orderId, returnId, orderDate, addressDa
         </div>
     )
 }
+
+const generateReturnId = async () => {
+    const counterRef = doc(db, "counters", "return_requests");
+
+    const newId = await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+
+        let lastId = 10000;
+        if (counterDoc.exists()) {
+            lastId = counterDoc.data().lastId || 10000;
+        }
+
+        const newCount = lastId + 1;
+        transaction.set(counterRef, { lastId: newCount }, { merge: true });
+
+        const today = new Date();
+        const dateStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
+        return `RET-${dateStr}-${newCount}`;
+    });
+    return newId;
+};
 
 const OrderDetailPage = () => {
     const { user } = useAuth()
@@ -347,8 +368,8 @@ const OrderDetailPage = () => {
             margin: [0, 0, 0, 0], // Zero margins for label precision
             filename: `shipping_label_${selectedReturn?.id || "unknown"}.pdf`,
             image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { 
-                scale: 2, 
+            html2canvas: {
+                scale: 2,
                 useCORS: true,
                 height: element.scrollHeight, // Capture full scroll height
                 width: element.scrollWidth,
@@ -357,9 +378,9 @@ const OrderDetailPage = () => {
                 windowHeight: element.scrollHeight, // Ensure full viewport for canvas
                 windowWidth: element.scrollWidth
             },
-            jsPDF: { 
-                orientation: "portrait", 
-                unit: "mm", 
+            jsPDF: {
+                orientation: "portrait",
+                unit: "mm",
                 format: [160, 100] // Custom format matching label dimensions (height x width in mm)
             },
         }
@@ -384,6 +405,8 @@ const OrderDetailPage = () => {
         setIsSubmitting(true)
         try {
             const productData = selectedItem.price_data.product_data
+            const returnId = await generateReturnId(); // Generate the new return ID
+
             const returnType = productData.metadata?.returnType || "easy-return"
             const lineItemId = getUniqueLineItemId(selectedItem)
 
@@ -411,6 +434,7 @@ const OrderDetailPage = () => {
             }
 
             const newReturnRequest = {
+                id: returnId, // Use the generated ID
                 orderId: orderId,
                 lineItemId: lineItemId,
                 userId: user.uid,
@@ -425,15 +449,16 @@ const OrderDetailPage = () => {
                 createdAt: new Date(),
             }
 
-            const docRef = await addDoc(collection(db, "return_requests"), newReturnRequest)
+            const returnDocRef = doc(db, "return_requests", returnId);
+            await setDoc(returnDocRef, newReturnRequest);
 
             const orderRef = doc(db, "orders", orderId)
             await updateDoc(orderRef, {
-                returnRequestIds: arrayUnion(docRef.id),
+                returnRequestIds: arrayUnion(returnId),
                 updatedAt: new Date(),
             })
 
-            setLocalReturnRequests([...localReturnRequests, { ...newReturnRequest, id: docRef.id }])
+            setLocalReturnRequests([...localReturnRequests, newReturnRequest])
 
             setTimeout(() => {
                 closeModal()
