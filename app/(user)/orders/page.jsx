@@ -227,7 +227,7 @@ const OrdersPage = () => {
 
               const isCancelPending = order?.cancelRequestId && order?.status !== "cancelled";
 
-              const orderNumber = orders.length - orderIndex;
+              const orderNumber =  order?.status
 
               return (
                 <div

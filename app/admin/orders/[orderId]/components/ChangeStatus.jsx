@@ -50,11 +50,11 @@ function ChangeOrderStatus({ order }) {
       >
         <option value="">Update Status</option>
         <option value="pending">Pending</option>
-        <option value="shipped">Shipped</option>
+        {/* <option value="shipped">Shipped</option>
         <option value="pickup">Pickup</option>
         <option value="inTransit">In Transit</option>
         <option value="outForDelivery">Out For Delivery</option>
-        <option value="delivered">Delivered</option>
+        <option value="delivered">Delivered</option> */}
         <option value="cancelled">Cancelled</option>
       </select>
 

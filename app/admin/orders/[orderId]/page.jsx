@@ -1,7 +1,7 @@
 "use client";
 
 import { useOrder } from "@/lib/firestore/orders/read";
-import { approveCancelRequest, rejectCancelRequest } from "@/lib/firestore/orders/write";
+import { approveCancelRequest, rejectCancelRequest, updateOrderStatus } from "@/lib/firestore/orders/write";
 import { useCancelRequest } from "@/lib/firestore/orders/read";
 import { updateOrderAddress } from "@/lib/firestore/orders/write";
 import { X } from "lucide-react";
@@ -23,6 +23,20 @@ function Page() {
   const [editedAddress, setEditedAddress] = useState({});
   const [updateError, setUpdateError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Mapping from Shipmozo status to our internal status
+  const shipmozoToInternalStatus = {
+    "NEW ORDER": "pending",
+    "Pickup Pending": "shipped",
+    "Waiting for Pickup": "shipped",
+    "Order Picked Up": "pickup",
+    "In-Transit": "inTransit",
+    "Out For Delivery": "outForDelivery",
+    "Undelivered": "undelivered",
+    "Delivered": "delivered",
+    "CANCELLED": "cancelled",
+    "RTO": "rto"
+  };
 
   useEffect(() => {
     const fetchOrderDetail = async () => {
@@ -58,6 +72,16 @@ function Page() {
           setShipmozoStatus(orderData.order_status);
           console.log("🟢 Shipmozo Status Set:", orderData.order_status);
 
+          // Automatically update internal status if it differs
+          const newInternalStatus = shipmozoToInternalStatus[orderData.order_status];
+          if (newInternalStatus && newInternalStatus !== order.status) {
+            console.log(`🚀 Syncing status: Shipmozo '${orderData.order_status}' -> Internal '${newInternalStatus}'`);
+            await updateOrderStatus({ id: orderId, status: newInternalStatus });
+            toast.success(`Order status synced to: ${newInternalStatus}`);
+          }
+
+
+
           const awb = orderData.shipping_details?.awb_number;
           if (awb) {
             console.log("🚚 Fetching tracking for AWB:", awb);
@@ -76,6 +100,12 @@ function Page() {
             if (trackResult.result === "1") {
               setTrackingInfo(trackResult.data);
               console.log("📦 Tracking Info:", trackResult.data);
+              const newTrackingStatus = shipmozoToInternalStatus[trackResult.data.current_status];
+              if (newTrackingStatus && newTrackingStatus !== order.status) {
+                console.log(`🚀 Syncing tracking status: Shipmozo '${trackResult.data.current_status}' -> Internal '${newTrackingStatus}'`);
+                await updateOrderStatus({ id: orderId, status: newTrackingStatus });
+                toast.success(`Order status synced to: ${newTrackingStatus}`);
+              }
             }
           }
         } else {
@@ -196,6 +226,9 @@ function Page() {
     outForDelivery: { bg: "bg-indigo-100", text: "text-indigo-800", border: "border-indigo-200" },
     delivered: { bg: "bg-green-100", text: "text-green-800", border: "border-green-200" },
     cancelled: { bg: "bg-red-100", text: "text-red-800", border: "border-red-200" },
+    undelivered: { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200" },
+    rto: { bg: "bg-pink-100", text: "text-pink-800", border: "border-pink-200" },
+
   };
 
   const currentStatus = order?.status || "pending";
@@ -232,11 +265,46 @@ function Page() {
 
   const handleApproveCancel = async () => {
     if (!confirm("Are you sure you want to approve this cancel request?")) return;
+
+    const shipmozoOrderId = order?.shipmozoOrderId;
+    const awbNumber = trackingInfo?.awb_number; // This might not exist yet
+
     try {
+      // If AWB number is present, attempt to cancel with Shipmozo first.
+      if (shipmozoOrderId && awbNumber) {
+        console.log("Attempting to cancel with Shipmozo...");
+        const shipmozoResponse = await fetch("https://shipping-api.com/app/api/v1/cancel-order", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
+            "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
+          },
+          body: JSON.stringify({
+            order_id: shipmozoOrderId,
+            awb_number: awbNumber,
+          }),
+        });
+
+        const shipmozoResult = await shipmozoResponse.json();
+
+        // If Shipmozo cancellation fails, we stop and show an error.
+        // You might want to allow manual cancellation in Firestore anyway in some cases.
+        if (shipmozoResult.result !== "1") {
+          throw new Error(shipmozoResult.message || "Failed to cancel order with Shipmozo.");
+        }
+
+        toast.success("Order successfully cancelled with Shipmozo.");
+      } else {
+        console.log("AWB number not found. Cancelling in Firestore only.");
+      }
+
+      // If Shipmozo cancellation was successful OR if it was not needed,
+      // approve the request in Firestore.
       await approveCancelRequest({ id: cancelRequest.id, orderId });
-      toast.success("Cancel request approved");
+      toast.success("Cancel request approved in Firestore.");
     } catch (err) {
-      toast.error(err.message || "Failed to approve");
+      toast.error(err.message || "An error occurred during the cancellation process.");
     }
   };
 
@@ -313,10 +381,11 @@ function Page() {
                       </span>
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${trackingInfo?.current_status
-                            ? "bg-blue-100 text-blue-800 border border-blue-200"
-                            : shipmozoStatus === "Error" || shipmozoStatus === "N/A" ?
-                              "bg-gray-100 text-gray-800 border border-gray-200" :
-                              "bg-teal-100 text-teal-800 border border-teal-200"
+                            ? "bg-blue-100 text-blue-800 border border-blue-200" // For detailed tracking status
+                            : shipmozoStatus === "NEW ORDER" ? "bg-yellow-100 text-yellow-800 border border-yellow-200" // For new orders
+                            : shipmozoStatus === "Error" || shipmozoStatus === "N/A" 
+                            ? "bg-gray-100 text-gray-800 border border-gray-200" // For errors or no status
+                            : "bg-teal-100 text-teal-800 border border-teal-200" // Default for other statuses
                           }`}
                       >
                         Shipmozo: {trackingInfo?.current_status || shipmozoStatus || "NA"}
