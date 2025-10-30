@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getDoc,
+  collection as col, // Alias collection to avoid conflict
   getDocs,
   orderBy,
   query,
@@ -38,7 +39,11 @@ export const getProduct = async ({ id, seoSlug }) => {
     return {
       id: snap.id,
       ...snap.data(),
-      variantImages: snap.data()?.variantImages || {},
+      variations:
+        snap.data()?.variations?.map((v) => ({
+          ...v,
+          id: v.id || doc(col(db, "products")).id,
+        })) || [],
       qualities: snap.data()?.qualities || [],
     };
   } catch (error) {

@@ -25,10 +25,7 @@ const fetchCheckout = async (checkoutId) => {
 
         // The new order IDs start with "ORD-", so the old prefix check is no longer valid.
         // We check both collections. If it's not in either, then it's invalid.
-        if (!checkoutId.startsWith("ORD-")) {
-            throw new Error("Invalid Checkout ID format");
-        }
-
+     
         if (list.docs.length === 0) {
             throw new Error("Invalid Checkout ID");
         }

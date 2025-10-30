@@ -38,8 +38,11 @@ export function useProducts({ pageLimit, lastSnapDoc }) {
                 : snapshot.docs.map((snap) => ({
                   id: snap.id,
                   ...snap.data(),
-                  attributes: snap.data().attributes || [],
-                  variations: snap.data().variations || [],
+                  variations:
+                    snap.data().variations?.map((v) => ({
+                      ...v,
+                      id: v.id || doc(collection(db, "products")).id,
+                    })) || [],
                   seoSlug: snap.data().seoSlug || "",
                   seoDescription: snap.data().seoDescription || "",
                   seoKeywords: snap.data().seoKeywords || [],
@@ -78,8 +81,11 @@ export function useProduct({ productId }) {
           next(null, {
             id: snapshot.id,
             ...snapshot.data(),
-            attributes: snapshot.data()?.attributes || [],
-            variations: snapshot.data()?.variations || [],
+            variations:
+              snapshot.data()?.variations?.map((v) => ({
+                ...v,
+                id: v.id || doc(collection(db, "products")).id,
+              })) || [],
             seoSlug: snapshot.data()?.seoSlug || "",
             seoDescription: snapshot.data()?.seoDescription || "",
             seoKeywords: snapshot.data()?.seoKeywords || [],
@@ -117,8 +123,11 @@ export function useProductsByIds({ idsList }) {
               : snapshot.docs.map((snap) => ({
                 id: snap.id,
                 ...snap.data(),
-                attributes: snap.data().attributes || [],
-                variations: snap.data().variations || [],
+                variations:
+                  snap.data().variations?.map((v) => ({
+                    ...v,
+                    id: v.id || doc(collection(db, "products")).id,
+                  })) || [],
                 seoSlug: snap.data().seoSlug || "",
                 seoDescription: snap.data().seoDescription || "",
                 seoKeywords: snap.data().seoKeywords || [],
@@ -154,8 +163,11 @@ export const searchProducts = async (searchTerm) => {
       .map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        attributes: doc.data().attributes || [],
-        variations: doc.data().variations || [],
+        variations:
+          doc.data().variations?.map((v) => ({
+            ...v,
+            id: v.id || doc(collection(db, "products")).id,
+          })) || [],
         seoSlug: doc.data().seoSlug || "",
         seoDescription: doc.data().seoDescription || "",
         seoKeywords: doc.data().seoKeywords || [],
@@ -196,8 +208,11 @@ export function useProductsByModelId(modelId) {
             snap.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
-              attributes: doc.data().attributes || [],
-              variations: doc.data().variations || [],
+              variations:
+                doc.data().variations?.map((v) => ({
+                  ...v,
+                  id: v.id || doc(collection(db, "products")).id,
+                })) || [],
               seoSlug: doc.data().seoSlug || "",
               seoDescription: doc.data().seoDescription || "",
               seoKeywords: doc.data().seoKeywords || [],
@@ -246,8 +261,11 @@ export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, 
                 : snapshot.docs.map((snap) => ({
                   id: snap.id,
                   ...snap.data(),
-                  attributes: snap.data().attributes || [],
-                  variations: snap.data().variations || [],
+                  variations:
+                    snap.data().variations?.map((v) => ({
+                      ...v,
+                      id: v.id || doc(collection(db, "products")).id,
+                    })) || [],
                   seoSlug: snap.data().seoSlug || "",
                   seoDescription: snap.data().seoDescription || "",
                   seoKeywords: snap.data().seoKeywords || [],

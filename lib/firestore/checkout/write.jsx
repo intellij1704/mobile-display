@@ -23,29 +23,6 @@ try {
   throw new Error("Payment gateway initialization failed: " + error.message);
 }
 
-// Helper function to generate a new order ID
-const generateOrderId = async () => {
-  const counterRef = doc(db, "counters", "orders");
-
-  const newId = await runTransaction(db, async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
-
-      let lastId = 10000;
-      if (counterDoc.exists()) {
-          lastId = counterDoc.data().lastId || 10000;
-      }
-
-      const newCount = lastId + 1;
-      transaction.set(counterRef, { lastId: newCount }, { merge: true });
-
-      const today = new Date();
-      const dateStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
-      return `ORD-${dateStr}-${newCount}`;
-  });
-
-  return newId;
-};
-
 export const createCheckoutOnlineAndGetId = async ({
   uid,
   products,
@@ -58,16 +35,26 @@ export const createCheckoutOnlineAndGetId = async ({
   if (!products || products.length === 0) throw new Error("No products provided");
   if (!address) throw new Error("Address is required");
 
-  try {
+  // Generate a new order ID and create checkout doc within a single transaction
+  const { checkoutId, advance, rzpOrderId } = await runTransaction(db, async (transaction) => {
     // Ensure user doc exists
     const userDocRef = doc(db, `users/${uid}`);
-    const userSnap = await getDoc(userDocRef);
+    const userSnap = await transaction.get(userDocRef);
     if (!userSnap.exists()) {
-      await setDoc(userDocRef, { createdAt: Timestamp.now() }, { merge: true });
+      transaction.set(userDocRef, { createdAt: Timestamp.now() }, { merge: true });
     }
 
-    // Generate checkout ID
-    const checkoutId = await generateOrderId();
+    // Generate a new order ID
+    const counterRef = doc(db, "counters", "orders");
+    const counterDoc = await transaction.get(counterRef);
+    let lastId = 10000;
+    if (counterDoc.exists()) {
+      lastId = counterDoc.data().lastId || 10000;
+    }
+    const newCount = lastId + 1;
+    transaction.set(counterRef, { lastId: newCount });
+    const checkoutId = `${newCount}`;
+
     const ref = doc(db, `users/${uid}/checkout_sessions_online/${checkoutId}`);
 
     // Load shipping settings
@@ -118,11 +105,11 @@ export const createCheckoutOnlineAndGetId = async ({
     const categoryMaxPrepaid = {};
     const cartCategorySet = new Set(products.map((p) => p?.product?.categoryId));
     for (const cat of [...cartCategorySet]) {
-        let maxP = 0;
-        for (const po of prepaidOffers) {
-            if (po.categories?.includes(cat)) maxP = Math.max(maxP, po.discountPercentage || 0);
-        }
-        if (maxP > 0) categoryMaxPrepaid[cat] = maxP;
+      let maxP = 0;
+      for (const po of prepaidOffers) {
+        if (po.categories?.includes(cat)) maxP = Math.max(maxP, po.discountPercentage || 0);
+      }
+      if (maxP > 0) categoryMaxPrepaid[cat] = maxP;
     }
 
     const couponPMap = {};
@@ -272,7 +259,7 @@ export const createCheckoutOnlineAndGetId = async ({
       total,
       advance,
       codAmount: remaining,
-      appliedCoupons: appliedCoupons || [],      
+      appliedCoupons: appliedCoupons || [],
       appliedOffers: appliedOffers || [],
       createdAt: Timestamp.now(),
       checkout: {
@@ -299,25 +286,15 @@ export const createCheckoutOnlineAndGetId = async ({
     // Clean payload to avoid Firestore invalid values
     const cleanPayload = JSON.parse(JSON.stringify(payload));
 
-    // Save checkout doc
-    await setDoc(ref, cleanPayload);
-    console.log(`Checkout document created: users/${uid}/checkout_sessions_online/${checkoutId}`);
+    // Stage the checkout document creation within the transaction
+    transaction.set(ref, cleanPayload);
 
-    // Verify document was created
-    const savedDoc = await getDoc(ref);
-    if (!savedDoc.exists()) {
-      throw new Error("Failed to verify checkout document creation");
-    }
+    return { checkoutId, advance, rzpOrderId: rzpOrder.id };
+  });
 
-    return { checkoutId, razorpayOrderId: rzpOrder.id, amount: advance };
-  } catch (error) {
-    console.error("Error in createCheckoutOnlineAndGetId:", {
-      message: error.message,
-      stack: error.stack,
-      details: error,
-    });
-    throw new Error(`Failed to create checkout: ${error.message}`);
-  }
+  console.log(`Checkout document created: users/${uid}/checkout_sessions_online/${checkoutId}`);
+
+  return { checkoutId, razorpayOrderId: rzpOrderId, amount: advance };
 };
 
 export const createCheckoutCODAndGetId = async ({
@@ -332,16 +309,25 @@ export const createCheckoutCODAndGetId = async ({
   if (!products || products.length === 0) throw new Error("No products provided");
   if (!address) throw new Error("Address is required");
 
-  try {
+  const { checkoutId, advance, rzpOrderId } = await runTransaction(db, async (transaction) => {
     // Ensure user doc exists
     const userDocRef = doc(db, `users/${uid}`);
-    const userSnap = await getDoc(userDocRef);
+    const userSnap = await transaction.get(userDocRef);
     if (!userSnap.exists()) {
-      await setDoc(userDocRef, { createdAt: Timestamp.now() }, { merge: true });
+      transaction.set(userDocRef, { createdAt: Timestamp.now() }, { merge: true });
     }
 
-    // Generate checkout ID
-    const checkoutId = await generateOrderId();
+    // Generate a new order ID
+    const counterRef = doc(db, "counters", "orders");
+    const counterDoc = await transaction.get(counterRef);
+    let lastId = 10000;
+    if (counterDoc.exists()) {
+      lastId = counterDoc.data().lastId || 10000;
+    }
+    const newCount = lastId + 1;
+    transaction.set(counterRef, { lastId: newCount });
+    const checkoutId = `${newCount}`;
+
     const ref = doc(db, `users/${uid}/checkout_sessions_cod/${checkoutId}`);
 
     // Load shipping settings
@@ -549,23 +535,13 @@ export const createCheckoutCODAndGetId = async ({
     // Clean payload to avoid Firestore invalid values
     const cleanPayload = JSON.parse(JSON.stringify(payload));
 
-    // Save checkout doc
-    await setDoc(ref, cleanPayload);
-    console.log(`Checkout document created: users/${uid}/checkout_sessions_cod/${checkoutId}`);
+    // Stage the checkout document creation within the transaction
+    transaction.set(ref, cleanPayload);
 
-    // Verify document was created
-    const savedDoc = await getDoc(ref);
-    if (!savedDoc.exists()) {
-      throw new Error("Failed to verify checkout document creation");
-    }
+    return { checkoutId, advance, rzpOrderId: rzpOrder.id };
+  });
 
-    return { checkoutId, razorpayOrderId: rzpOrder.id, amount: advance };
-  } catch (error) {
-    console.error("Error in createCheckoutCODAndGetId:", {
-      message: error.message,
-      stack: error.stack,
-      details: error,
-    });
-    throw new Error(`Failed to create checkout: ${error.message}`);
-  }
+  console.log(`Checkout document created: users/${uid}/checkout_sessions_cod/${checkoutId}`);
+
+  return { checkoutId, razorpayOrderId: rzpOrderId, amount: advance };
 };

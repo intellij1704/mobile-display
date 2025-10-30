@@ -42,7 +42,12 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, data?.email, data?.password)
       toast.success("Logged In Successfully")
     } catch (error) {
-      toast.error(error?.message)
+      if (error.code === 'auth/invalid-credential') {
+        toast.error("Invalid email or password. Please try again.");
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
+      console.error("Login error:", error);
     }
     setIsLoading(false)
   };
@@ -151,8 +156,15 @@ export function SignInWithGoogleComponents({ signInButtonText = "Sign in with Go
       });
       toast.success("Logged In Successfully");
     } catch (error) {
-      toast.error(error.message);
-      console.log(error);
+      if (error.code === 'auth/popup-closed-by-user') {
+        toast.error("Sign-in process was cancelled.");
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        toast.error("An account already exists with the same email address but different sign-in credentials.");
+      }
+      else {
+        toast.error("Something went wrong during Google sign-in. Please try again.");
+      }
+      console.error("Google sign-in error:", error);
     }
     setIsLoading(false);
   };

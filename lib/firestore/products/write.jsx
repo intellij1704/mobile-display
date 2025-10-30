@@ -54,7 +54,18 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-  const newId = doc(collection(db, `ids`)).id;
+  // Generate a unique 5-digit ID
+  let newId;
+  let isUnique = false;
+  while (!isUnique) {
+    const randomId = Math.floor(10000 + Math.random() * 90000).toString();
+    const productRef = doc(db, 'products', randomId);
+    const docSnap = await getDoc(productRef);
+    if (!docSnap.exists()) {
+      newId = randomId;
+      isUnique = true;
+    }
+  }
 
   await setDoc(doc(db, `products/${newId}`), {
     ...data,

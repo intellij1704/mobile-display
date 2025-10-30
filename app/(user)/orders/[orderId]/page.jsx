@@ -176,27 +176,6 @@ const ShippingLabel = ({ selectedReturn, orderId, returnId, orderDate, addressDa
     )
 }
 
-const generateReturnId = async () => {
-    const counterRef = doc(db, "counters", "return_requests");
-
-    const newId = await runTransaction(db, async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-
-        let lastId = 10000;
-        if (counterDoc.exists()) {
-            lastId = counterDoc.data().lastId || 10000;
-        }
-
-        const newCount = lastId + 1;
-        transaction.set(counterRef, { lastId: newCount }, { merge: true });
-
-        const today = new Date();
-        const dateStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
-        return `RET-${dateStr}-${newCount}`;
-    });
-    return newId;
-};
-
 const OrderDetailPage = () => {
     const { user } = useAuth()
     const { data: orders, error, isLoading } = useOrders({ uid: user?.uid })
@@ -404,10 +383,6 @@ const OrderDetailPage = () => {
 
         setIsSubmitting(true)
         try {
-            const productData = selectedItem.price_data.product_data
-            const returnId = await generateReturnId(); // Generate the new return ID
-
-            const returnType = productData.metadata?.returnType || "easy-return"
             const lineItemId = getUniqueLineItemId(selectedItem)
 
             if (!lineItemId) {
@@ -423,42 +398,52 @@ const OrderDetailPage = () => {
             if (!querySnapshot.empty) {
                 throw new Error("A return request for this product has already been submitted.")
             }
+            
+            await runTransaction(db, async (transaction) => {
+                const productData = selectedItem.price_data.product_data;
+                const returnType = productData.metadata?.returnType || "easy-return";
 
-            let requestType
-            if (returnType === "self-shipping") {
-                requestType = "self-shipping"
-            } else if (returnType.includes("replacement")) {
-                requestType = "replacement"
-            } else {
-                requestType = "return"
-            }
+                // Generate Return ID inside the transaction
+                const counterRef = doc(db, "counters", "return_requests");
+                const counterDoc = await transaction.get(counterRef);
+                let lastId = 0;
+                if (counterDoc.exists()) {
+                    lastId = counterDoc.data().lastId || 0;
+                }
+                const newCount = lastId + 1;
+                const returnId = `${newCount}`;
 
-            const newReturnRequest = {
-                id: returnId, // Use the generated ID
-                orderId: orderId,
-                lineItemId: lineItemId,
-                userId: user.uid,
-                reason: selectedReason === "others" ? "others" : selectedReason,
-                ...(selectedReason === "others" && { reason_remarks: customReason }),
-                type: requestType,
-                status: "pending",
-                timestamp: new Date(),
-                productDetails: productData,
-                quantity: selectedItem.quantity || 1,
-                originalOrderTotal: total,
-                createdAt: new Date(),
-            }
+                let requestType;
+                if (returnType === "self-shipping") {
+                    requestType = "self-shipping";
+                } else if (returnType.includes("replacement")) {
+                    requestType = "replacement";
+                } else {
+                    requestType = "return";
+                }
 
-            const returnDocRef = doc(db, "return_requests", returnId);
-            await setDoc(returnDocRef, newReturnRequest);
+                const newReturnRequest = {
+                    id: returnId,
+                    orderId: orderId,
+                    lineItemId: lineItemId,
+                    userId: user.uid,
+                    reason: selectedReason === "others" ? "others" : selectedReason,
+                    ...(selectedReason === "others" && { reason_remarks: customReason }),
+                    type: requestType,
+                    status: "pending",
+                    timestamp: new Date(),
+                    productDetails: productData,
+                    quantity: selectedItem.quantity || 1,
+                    originalOrderTotal: total,
+                    createdAt: new Date(),
+                };
 
-            const orderRef = doc(db, "orders", orderId)
-            await updateDoc(orderRef, {
-                returnRequestIds: arrayUnion(returnId),
-                updatedAt: new Date(),
-            })
+                const returnDocRef = doc(db, "return_requests", returnId);
+                transaction.set(returnDocRef, newReturnRequest);
+                transaction.set(counterRef, { lastId: newCount });
 
-            setLocalReturnRequests([...localReturnRequests, newReturnRequest])
+                setLocalReturnRequests(prev => [...prev, newReturnRequest]);
+            });
 
             setTimeout(() => {
                 closeModal()

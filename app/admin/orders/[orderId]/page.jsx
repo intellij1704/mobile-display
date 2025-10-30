@@ -34,7 +34,7 @@ function Page() {
 
         console.log("🚀 Fetching Shipmozo Order Detail for:", shipmozoOrderId);
         const response = await fetch(
-          `https://shipping-api.com/app/api/v1/get-order-detail/${shipmozoOrderId}`,
+          `https://shipping-api.com/app/api/v1/track-order?awb_number=78065464750`,
           {
             method: "GET",
             headers: {
