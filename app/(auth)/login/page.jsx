@@ -47,7 +47,7 @@ export default function Login() {
       } else {
         toast.error("Something went wrong. Please try again.");
       }
-      console.error("Login error:", error);
+      console.log("Login error:", error);
     }
     setIsLoading(false)
   };
