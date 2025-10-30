@@ -283,26 +283,25 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
           price: product.price,
           salePrice: product.salePrice,
         }
-        const checkoutId = await createCheckoutCODAndGetId({
-          uid: user?.uid,
-          products: [
-            {
-              product: serializedProduct,
-              quantity: 1,
-              selectedColor: selectedColor || null,
-              selectedQuality: selectedQuality || null,
-              returnType: choice.id,
-            },
-          ],
-          address: userData?.address || {},
-          deliveryType: "standard",
-          appliedCoupons: [],
-          appliedOffers: [],
-        })
+        // const checkoutId = await createCheckoutCODAndGetId({
+        //   uid: user?.uid,
+        //   products: [
+        //     {
+        //       product: serializedProduct,
+        //       quantity: 1,
+        //       selectedColor: selectedColor || null,
+        //       selectedQuality: selectedQuality || null,
+        //       returnType: choice.id,
+        //     },
+        //   ],
+        //   address: userData?.address || {},
+        //   deliveryType: "standard",
+        //   appliedCoupons: [],
+        //   appliedOffers: [],
+        // })
         router.push(`/checkout?${new URLSearchParams({
           type: "buynow",
           productId: product?.id,
-          checkoutId,
           ...(selectedColor ? { color: selectedColor } : {}),
           ...(selectedQuality ? { quality: selectedQuality } : {}),
           ...(choice?.id ? { returnType: choice.id } : {})

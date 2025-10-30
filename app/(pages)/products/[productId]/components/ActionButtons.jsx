@@ -98,28 +98,27 @@ export default function ActionButtons({ product, selectedColor, selectedQuality,
         id: offer.id,
       }));
 
-      const checkoutId = await createCheckoutCODAndGetId({
-        uid: user?.uid,
-        products: [
-          {
-            product: serializedProduct,
-            quantity: 1,
-            selectedColor: selectedColor || null,
-            selectedQuality: selectedQuality || null,
-            returnType: choice.id,
-          },
-        ],
-        address: userData?.addresses?.find(a => a.isDefault) || userData?.addresses?.[0] || {},
-        deliveryType: "standard",
-        appliedCoupons: [],
-        appliedOffers: serializedOffers,
-      })
+      // const checkoutId = await createCheckoutCODAndGetId({
+      //   uid: user?.uid,
+      //   products: [
+      //     {
+      //       product: serializedProduct,
+      //       quantity: 1,
+      //       selectedColor: selectedColor || null,
+      //       selectedQuality: selectedQuality || null,
+      //       returnType: choice.id,
+      //     },
+      //   ],
+      //   address: userData?.addresses?.find(a => a.isDefault) || userData?.addresses?.[0] || {},
+      //   deliveryType: "standard",
+      //   appliedCoupons: [],
+      //   appliedOffers: serializedOffers,
+      // })
 
       router.push(
         `/checkout?${new URLSearchParams({
           type: "buynow",
           productId: product?.id,
-          checkoutId,
           ...(selectedColor ? { color: selectedColor } : {}),
           ...(selectedQuality ? { quality: selectedQuality } : {}),
           ...(choice?.id ? { returnType: choice.id } : {})

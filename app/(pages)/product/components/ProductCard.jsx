@@ -57,7 +57,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     return []
   }, [product?.colors, attributes])
 
-  console.log("Newe",product)
+  console.log("Newe", product)
 
   // Compute prices for display
   const { minEffective, displayOriginal, discountPercentage, maxSave } = useMemo(() => {
@@ -239,25 +239,25 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         })
         toast.success("Item added to cart")
       } else if (actionType === "buy") {
-        const checkoutId = await createCheckoutCODAndGetId({
-          uid: user?.uid,
-          products: [
-            {
-              product: { id: product.id, categoryId: product.categoryId, title: product.title, featureImageURL: product.featureImageURL, isVariable: product.isVariable, variations: product.variations, price: product.price, salePrice: product.salePrice },
-              quantity: 1,
-              selectedColor: effectiveColor,
-              selectedQuality: effectiveQuality,
-              returnType: choice.id,
-            },
-          ],
-          address: userData?.addresses?.find(a => a.isDefault) || userData?.addresses?.[0] || {},
-          deliveryType: "standard",
-          appliedCoupons: [],
-          appliedOffers: [],
-        })
+        // const checkoutId = await createCheckoutCODAndGetId({
+        //   uid: user?.uid,
+        //   products: [
+        //     {
+        //       product: { id: product.id, categoryId: product.categoryId, title: product.title, featureImageURL: product.featureImageURL, isVariable: product.isVariable, variations: product.variations, price: product.price, salePrice: product.salePrice },
+        //       quantity: 1,
+        //       selectedColor: effectiveColor,
+        //       selectedQuality: effectiveQuality,
+        //       returnType: choice.id,
+        //     },
+        //   ],
+        //   address: userData?.addresses?.find(a => a.isDefault) || userData?.addresses?.[0] || {},
+        //   deliveryType: "standard",
+        //   appliedCoupons: [],
+        //   appliedOffers: [],
+        // })
         router.push(
           `/checkout?${new URLSearchParams({
-            type: "buynow",
+            // type: "buynow",
             productId: product?.id,
             checkoutId,
             ...(effectiveColor ? { color: effectiveColor } : {}),
