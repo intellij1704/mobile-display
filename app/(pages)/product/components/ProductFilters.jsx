@@ -171,7 +171,7 @@ const ProductFilters = ({
 
       {/* Mobile Layout - Bottom Sheet */}
       <div
-        className={`md:hidden fixed inset-0 z-50 bg-black bg-opacity-50 flex flex-col justify-end transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        className={`md:hidden fixed inset-0 z-[99999] bg-black bg-opacity-50 flex flex-col justify-end transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         onClick={handleClickOutside}
       >

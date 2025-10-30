@@ -257,9 +257,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         // })
         router.push(
           `/checkout?${new URLSearchParams({
-            // type: "buynow",
+            type: "buynow",
             productId: product?.id,
-            checkoutId,
             ...(effectiveColor ? { color: effectiveColor } : {}),
             ...(effectiveQuality ? { quality: effectiveQuality } : {}),
             ...(choice?.id ? { returnType: choice.id } : {})

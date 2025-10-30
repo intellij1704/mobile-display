@@ -191,6 +191,12 @@ const OrderDetailPage = () => {
     const [printModalOpen, setPrintModalOpen] = useState(false)
     const [selectedReturn, setSelectedReturn] = useState(null)
     const [localReturnRequests, setLocalReturnRequests] = useState([])
+    const [isTrackingExpanded, setIsTrackingExpanded] = useState(false);
+    const [expandedStatus, setExpandedStatus] = useState(null);
+    const { data: cancelRequest } = useCancelRequest({ id: order?.cancelRequestId });
+    const [trackingInfo, setTrackingInfo] = useState(null);
+    const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+    const [trackingError, setTrackingError] = useState(null);
 
     const { data: returnRequests, returnError, returnIsLoading } = useReturnRequests({ orderId })
 
@@ -211,6 +217,75 @@ const OrderDetailPage = () => {
         document.addEventListener("keydown", handleEsc)
         return () => document.removeEventListener("keydown", handleEsc)
     }, [modalOpen, printModalOpen])
+
+    const isCancelled = order?.status === "cancelled";
+
+
+    useEffect(() => {
+        const fetchTrackingDetails = async () => {
+            if (!order?.shipmozoOrderId) {
+                setTrackingError("Shipmozo Order ID not found.");
+                return;
+            }
+
+            setIsTrackingLoading(true);
+            setTrackingError(null);
+
+            try {
+                // Step 1: Get Order Details to find AWB number
+                const detailResponse = await fetch(
+                    `https://shipping-api.com/app/api/v1/get-order-detail/${order.shipmozoOrderId}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
+                            "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
+                        },
+                    }
+                );
+
+                if (!detailResponse.ok) throw new Error(`Failed to fetch order details: ${detailResponse.statusText}`);
+                const detailResult = await detailResponse.json();
+
+                const awbNumber = detailResult?.data?.[0]?.shipping_details?.awb_number;
+                if (!awbNumber) {
+                    setTrackingInfo({ current_status: detailResult?.data?.[0]?.order_status || 'Processing' });
+                    return;
+                }
+
+                // Step 2: Get Tracking Details with AWB number
+                const trackResponse = await fetch(
+                    `https://shipping-api.com/app/api/v1/track-order?awb_number=${awbNumber}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
+                            "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
+                        },
+                    }
+                );
+
+                if (!trackResponse.ok) throw new Error(`Failed to fetch tracking details: ${trackResponse.statusText}`);
+                const trackResult = await trackResponse.json();
+
+                if (trackResult.result === "1") {
+                    setTrackingInfo(trackResult.data);
+                } else {
+                    throw new Error(trackResult.message || "Could not fetch tracking info.");
+                }
+            } catch (err) {
+                setTrackingError(err.message);
+            } finally {
+                setIsTrackingLoading(false);
+            }
+        };
+
+        if (order && !isCancelled) {
+            fetchTrackingDetails();
+        }
+    }, [order]);
 
     if (isLoading || !orders || returnIsLoading) {
         return (
@@ -258,17 +333,45 @@ const OrderDetailPage = () => {
 
     const formatDate = (date) => {
         if (!date) return "N/A"
-        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        const dateObj = date instanceof Date ? date : new Date(date)
+        if (isNaN(dateObj.getTime())) return "N/A"
+        return dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })
     }
 
-    const orderStatuses = [
-        { key: "pending", label: "Order Confirmed", date: orderDate },
-        { key: "shipped", label: "Shipped", date: null },
-        { key: "pickup", label: "Picked up", date: null },
-        { key: "inTransit", label: "In Transit", date: null },
-        { key: "outForDelivery", label: "Out for Delivery", date: null },
-        { key: "delivered", label: "Delivered", date: order.status === "delivered" ? statusUpdateDate : null },
-    ]
+    const formatScanDate = (date) => {
+        if (!date) return "N/A"
+        const dateObj = date instanceof Date ? date : new Date(date)
+        if (isNaN(dateObj.getTime())) return "N/A"
+        return dateObj.toLocaleString("en-US", {
+            month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true,
+        })
+    }
+
+    const shipmozoStatusMap = {
+        "Pickup Pending": "shipped",
+        "Waiting for Pickup": "shipped",
+        "Order Picked Up": "pickup",
+        "In-Transit": "inTransit",
+        "Out For Delivery": "outForDelivery",
+        "Undelivered": "undelivered",
+        "Delivered": "delivered",
+        "CANCELLED": "cancelled"
+    };
+
+    const getShipmozoStatusKey = () => {
+        if (isCancelled) return 'cancelled';
+        if (!trackingInfo?.awb_number) return 'pending';
+
+        if (trackingInfo?.current_status) {
+            return shipmozoStatusMap[trackingInfo.current_status] || 'shipped';
+        }
+        return 'pending';
+    };
+
+    const shipmozoStatusKey = getShipmozoStatusKey();
+
+    const orderStatuses = [{ key: "pending", label: "Order Confirmed", date: orderDate }, { key: "shipped", label: "Shipped", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('shipment picked up'))?.date || null }, { key: "pickup", label: "Picked up", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('shipment picked up'))?.date || null }, { key: "inTransit", label: "In Transit", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('in transit'))?.date || null }, { key: "outForDelivery", label: "Out for Delivery", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('out for delivery'))?.date || null }, { key: "delivered", label: "Delivered", date: order.status === "delivered" ? statusUpdateDate : null },];
+
 
     const getStatusIndex = (status) => {
         const statusMap = {
@@ -278,17 +381,18 @@ const OrderDetailPage = () => {
             inTransit: 3,
             outForDelivery: 4,
             delivered: 5,
+            undelivered: 4, // Show it at the same level as out for delivery
             cancelled: -1,
         }
         return statusMap[status] || 0
     }
 
-    const currentStatusIndex = getStatusIndex(order.status)
-    const isCancelled = order.status === "cancelled"
+    const currentStatusIndex = getStatusIndex(shipmozoStatusKey);
     const isDelivered = order.status === "delivered"
 
     const returnWindowEnd = new Date(orderDate?.getTime() + 15 * 24 * 60 * 60 * 1000)
     const isReturnWindowOpen = new Date() <= returnWindowEnd
+
 
     const getUniqueLineItemId = (item) => {
         const productData = item.price_data.product_data
@@ -398,7 +502,7 @@ const OrderDetailPage = () => {
             if (!querySnapshot.empty) {
                 throw new Error("A return request for this product has already been submitted.")
             }
-            
+
             await runTransaction(db, async (transaction) => {
                 const productData = selectedItem.price_data.product_data;
                 const returnType = productData.metadata?.returnType || "easy-return";
@@ -675,7 +779,7 @@ const OrderDetailPage = () => {
                                         )}
                                         {cancelRequest.status === "rejected" &&
                                             orderStatuses.map((status, index) => {
-                                                const isCompleted = index <= currentStatusIndex
+                                                const isCompleted = index <= getStatusIndex(order.status)
                                                 const isCurrent = index === currentStatusIndex
                                                 const isLast = index === orderStatuses.length - 1
 
@@ -736,13 +840,15 @@ const OrderDetailPage = () => {
                                     </>
                                 ) : (
                                     orderStatuses.map((status, index) => {
-                                        const isCompleted = index <= currentStatusIndex
+                                        const isCompleted = index <= currentStatusIndex;
                                         const isCurrent = index === currentStatusIndex
                                         const isLast = index === orderStatuses.length - 1
 
                                         return (
                                             <div key={status.key}>
-                                                <div className="flex items-center gap-3">
+                                                <div
+                                                    className={`flex items-center gap-3`}
+                                                >
                                                     <div
                                                         className={`w-4 h-4 rounded-full flex items-center justify-center ${isCompleted ? "bg-green-500" : isCurrent ? "bg-blue-500" : "bg-gray-300"
                                                             }`}
@@ -764,14 +870,53 @@ const OrderDetailPage = () => {
                                                     </div>
                                                 </div>
 
+                                                {status.key === 'shipped' && trackingInfo?.awb_number && (
+                                                    <div className="ml-6 mt-1">
+                                                        <p className="text-xs text-gray-500">AWB: {trackingInfo.awb_number}</p>
+                                                        <p className="text-xs text-gray-500">Courier: {trackingInfo.courier}</p>
+                                                    </div>
+                                                )}
+                                                        {isCurrent && trackingInfo?.scan_detail?.length > 0 && (
+                                                            <div className="mt-4 ml-6">
+                                                                <button
+                                                                    onClick={() => setIsTrackingExpanded(!isTrackingExpanded)}
+                                                                    className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                                                >
+                                                                    {isTrackingExpanded ? 'Hide All Updates' : 'See All Updates'}
+                                                                    <svg className={`w-4 h-4 transition-transform ${isTrackingExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                                    </svg>
+                                                                </button>
+                                                                {isTrackingExpanded && (
+                                                                    <div className="mt-2 p-3 bg-gray-100 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                                                        <div className="space-y-3">
+                                                                            {[...trackingInfo.scan_detail].sort((a, b) => new Date(a.date) - new Date(b.date)).map((scan, scanIndex) => (
+                                                                                <div key={scanIndex} className="text-xs text-gray-700">
+                                                                                    <div className="flex justify-between items-start">
+                                                                                        <p className="font-medium text-gray-800 flex-1 pr-2">{scan.status}</p>
+                                                                                        <p className="text-gray-500 whitespace-nowrap">{formatScanDate(scan.date)}</p>
+                                                                                    </div>
+                                                                                    <p className="text-gray-500">{scan.location}</p>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
                                                 {!isLast && (
-                                                    <div className={`ml-2 w-0.5 h-6 ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}></div>
+                                                    <div
+                                                        className={`ml-2 w-0.5 h-6 transition-all duration-300 ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}
+                                                    ></div>
                                                 )}
                                             </div>
                                         )
                                     })
                                 )}
                             </div>
+
+
 
                             {!isCancelled && isDelivered && isReturnWindowOpen && (
                                 <div className="mt-6 pt-4 border-t border-gray-100">
@@ -919,184 +1064,188 @@ const OrderDetailPage = () => {
             </div>
 
             {/* Return Reason Modal */}
-            {modalOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
-                    onClick={(e) => {
-                        if (e.target === e.currentTarget) closeModal()
-                    }}
-                >
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
-                        <button
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
-                            onClick={closeModal}
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                        <div className="text-center mb-6">
-                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                            </div>
-                            <h2 className="text-xl font-bold text-gray-900">
-                                Select Reason for{" "}
-                                {selectedItem?.price_data.product_data.metadata?.returnType?.includes("replacement")
-                                    ? "Replacement"
-                                    : "Return"}
-                            </h2>
-                            <p className="text-sm text-gray-500 mt-1">Choose the best option that describes your issue</p>
-                        </div>
-                        <div className="space-y-3 mb-6">
-                            {returnReasons.map((reason) => (
-                                <label
-                                    key={reason.value}
-                                    className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-blue-50 border border-gray-200 transition-colors"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="returnReason"
-                                        value={reason.value}
-                                        checked={selectedReason === reason.value}
-                                        onChange={(e) => setSelectedReason(e.target.value)}
-                                        className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 focus:ring-2"
-                                    />
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-2xl">{reason.icon}</span>
-                                            <p className="font-semibold text-gray-900">{reason.label}</p>
-                                        </div>
-                                        <p className="text-sm text-gray-500 ml-9 mt-1">Didn't like the product or ordered by mistake</p>
-                                    </div>
-                                </label>
-                            ))}
-                        </div>
-                        {selectedReason === "others" && (
-                            <textarea
-                                className="w-full p-2 border border-gray-300 rounded-md mb-6"
-                                placeholder="Please specify the reason"
-                                value={customReason}
-                                onChange={(e) => setCustomReason(e.target.value)}
-                                rows={3}
-                            />
-                        )}
-                        {selectedReason && selectedItem?.price_data.product_data.metadata?.returnType === "self-shipping" && (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-                                <h3 className="font-semibold text-yellow-800 mb-3 text-center">Self-Shipping Instructions</h3>
-                                <div className="space-y-2 text-sm text-yellow-700">
-                                    <p className="font-medium">Ship to our office:</p>
-                                    <div className="bg-white p-2 rounded-lg border">
-                                        <p className="font-semibold">{selfShippingDetails.address.street}</p>
-                                        <p>
-                                            {selfShippingDetails.address.city}, {selfShippingDetails.address.state} -{" "}
-                                            {selfShippingDetails.address.pincode}
-                                        </p>
-                                        <p>{selfShippingDetails.address.country}</p>
-                                        <p className="text-xs">Phone: {selfShippingDetails.address.phone}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="font-medium">Packaging & Shipping Tips:</p>
-                                        <ul className="list-disc list-inside space-y-1 text-xs">
-                                            {selfShippingDetails.instructions.map((instr, idx) => (
-                                                <li key={idx}>{instr}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <button
-                            className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isSubmitting && (selectedReason !== "others" || customReason.trim())
-                                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
-                                : "bg-gray-300 cursor-not-allowed"
-                                }`}
-                            disabled={!selectedReason || isSubmitting || (selectedReason === "others" && !customReason.trim())}
-                            onClick={handleSubmit}
-                        >
-                            {isSubmitting ? (
-                                <div className="flex items-center justify-center gap-2">
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    Submitting...
-                                </div>
-                            ) : (
-                                "Submit Return/Replacement Request"
-                            )}
-                        </button>
-                    </div>
-                </div>
-            )}
-            {printModalOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999] p-4"
-                    onClick={(e) => {
-                        if (e.target === e.currentTarget) closePrintModal();
-                    }}
-                >
+            {
+                modalOpen && (
                     <div
-                        className="relative bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-gray-200 
-                 flex flex-col max-h-[95vh] overflow-hidden animate-fadeIn"
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) closeModal()
+                        }}
                     >
-                        {/* Close Button */}
-                        <button
-                            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100 z-10"
-                            onClick={closePrintModal}
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-
-                        {/* Modal Header */}
-                        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
-                            <h2 className="text-xl font-semibold text-gray-800">
-                                🏷️ Shipping Label Preview
-                            </h2>
-                        </div>
-
-                        {/* Scrollable Content - Increased max height for better visibility */}
-                        <div
-                            id="shipping-label-content"
-                            className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent max-h-[calc(95vh-200px)]"
-                            style={{ scrollBehavior: 'smooth' }} // Smooth scrolling for better UX
-                        >
-                            <ShippingLabel
-                                selectedReturn={selectedReturn}
-                                orderId={orderId}
-                                orderDate={orderDate}
-                                returnId={selectedReturn?.id}
-                                addressData={addressData}
-                                selfShippingDetails={selfShippingDetails}
-                            />
-                        </div>
-
-                        {/* Footer / Action Buttons - Sticky to bottom */}
-                        <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
                             <button
-                                className="flex-1 py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-blue-600 to-blue-700 
-                     hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02] transition-all duration-200 shadow-md"
-                                onClick={generatePDF}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                                onClick={closeModal}
                             >
-                                Download Label
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
+                            <div className="text-center mb-6">
+                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    Select Reason for{" "}
+                                    {selectedItem?.price_data.product_data.metadata?.returnType?.includes("replacement")
+                                        ? "Replacement"
+                                        : "Return"}
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">Choose the best option that describes your issue</p>
+                            </div>
+                            <div className="space-y-3 mb-6">
+                                {returnReasons.map((reason) => (
+                                    <label
+                                        key={reason.value}
+                                        className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-blue-50 border border-gray-200 transition-colors"
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="returnReason"
+                                            value={reason.value}
+                                            checked={selectedReason === reason.value}
+                                            onChange={(e) => setSelectedReason(e.target.value)}
+                                            className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                                        />
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-2xl">{reason.icon}</span>
+                                                <p className="font-semibold text-gray-900">{reason.label}</p>
+                                            </div>
+                                            <p className="text-sm text-gray-500 ml-9 mt-1">Didn't like the product or ordered by mistake</p>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                            {selectedReason === "others" && (
+                                <textarea
+                                    className="w-full p-2 border border-gray-300 rounded-md mb-6"
+                                    placeholder="Please specify the reason"
+                                    value={customReason}
+                                    onChange={(e) => setCustomReason(e.target.value)}
+                                    rows={3}
+                                />
+                            )}
+                            {selectedReason && selectedItem?.price_data.product_data.metadata?.returnType === "self-shipping" && (
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                                    <h3 className="font-semibold text-yellow-800 mb-3 text-center">Self-Shipping Instructions</h3>
+                                    <div className="space-y-2 text-sm text-yellow-700">
+                                        <p className="font-medium">Ship to our office:</p>
+                                        <div className="bg-white p-2 rounded-lg border">
+                                            <p className="font-semibold">{selfShippingDetails.address.street}</p>
+                                            <p>
+                                                {selfShippingDetails.address.city}, {selfShippingDetails.address.state} -{" "}
+                                                {selfShippingDetails.address.pincode}
+                                            </p>
+                                            <p>{selfShippingDetails.address.country}</p>
+                                            <p className="text-xs">Phone: {selfShippingDetails.address.phone}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="font-medium">Packaging & Shipping Tips:</p>
+                                            <ul className="list-disc list-inside space-y-1 text-xs">
+                                                {selfShippingDetails.instructions.map((instr, idx) => (
+                                                    <li key={idx}>{instr}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <button
-                                className="flex-1 py-3 rounded-xl text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition-all duration-200"
+                                className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isSubmitting && (selectedReason !== "others" || customReason.trim())
+                                    ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
+                                    : "bg-gray-300 cursor-not-allowed"
+                                    }`}
+                                disabled={!selectedReason || isSubmitting || (selectedReason === "others" && !customReason.trim())}
+                                onClick={handleSubmit}
+                            >
+                                {isSubmitting ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Submitting...
+                                    </div>
+                                ) : (
+                                    "Submit Return/Replacement Request"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+            {
+                printModalOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999] p-4"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) closePrintModal();
+                        }}
+                    >
+                        <div
+                            className="relative bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-gray-200 
+                 flex flex-col max-h-[95vh] overflow-hidden animate-fadeIn"
+                        >
+                            {/* Close Button */}
+                            <button
+                                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100 z-10"
                                 onClick={closePrintModal}
                             >
-                                Close
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
+
+                            {/* Modal Header */}
+                            <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
+                                <h2 className="text-xl font-semibold text-gray-800">
+                                    🏷️ Shipping Label Preview
+                                </h2>
+                            </div>
+
+                            {/* Scrollable Content - Increased max height for better visibility */}
+                            <div
+                                id="shipping-label-content"
+                                className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent max-h-[calc(95vh-200px)]"
+                                style={{ scrollBehavior: 'smooth' }} // Smooth scrolling for better UX
+                            >
+                                <ShippingLabel
+                                    selectedReturn={selectedReturn}
+                                    orderId={orderId}
+                                    orderDate={orderDate}
+                                    returnId={selectedReturn?.id}
+                                    addressData={addressData}
+                                    selfShippingDetails={selfShippingDetails}
+                                />
+                            </div>
+
+                            {/* Footer / Action Buttons - Sticky to bottom */}
+                            <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+                                <button
+                                    className="flex-1 py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-blue-600 to-blue-700 
+                     hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02] transition-all duration-200 shadow-md"
+                                    onClick={generatePDF}
+                                >
+                                    Download Label
+                                </button>
+                                <button
+                                    className="flex-1 py-3 rounded-xl text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition-all duration-200"
+                                    onClick={closePrintModal}
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-        </div>
+        </div >
     )
 }
 

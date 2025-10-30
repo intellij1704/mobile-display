@@ -18,6 +18,7 @@ function Page() {
   const { data: order, error, isLoading } = useOrder({ id: orderId });
   const { data: cancelRequest } = useCancelRequest({ id: order?.cancelRequestId });
   const [shipmozoStatus, setShipmozoStatus] = useState(null);
+  const [trackingInfo, setTrackingInfo] = useState(null);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editedAddress, setEditedAddress] = useState({});
   const [updateError, setUpdateError] = useState(null);
@@ -25,7 +26,7 @@ function Page() {
 
   useEffect(() => {
     const fetchOrderDetail = async () => {
-      try {
+      try { 
         const shipmozoOrderId = order?.shipmozoOrderId;
         if (!shipmozoOrderId) {
           console.warn("⚠️ Shipmozo Order ID missing for order:", orderId);
@@ -34,7 +35,7 @@ function Page() {
 
         console.log("🚀 Fetching Shipmozo Order Detail for:", shipmozoOrderId);
         const response = await fetch(
-          `https://shipping-api.com/app/api/v1/track-order?awb_number=${shipmozoOrderId}`,
+          `https://shipping-api.com/app/api/v1/get-order-detail/${shipmozoOrderId}`,
           {
             method: "GET",
             headers: {
@@ -52,16 +53,38 @@ function Page() {
         const result = await response.json();
         console.log("✅ Shipmozo Order Details:", result);
 
-        if (result?.result === "1" && result?.data?.[0]?.order_status) {
-          setShipmozoStatus(result.data[0].order_status);
-          console.log("🟢 Shipmozo Status Set:", result.data[0].order_status);
+        if (result?.result === "1" && result?.data?.[0]) {
+          const orderData = result.data[0];
+          setShipmozoStatus(orderData.order_status);
+          console.log("🟢 Shipmozo Status Set:", orderData.order_status);
+
+          const awb = orderData.shipping_details?.awb_number;
+          if (awb) {
+            console.log("🚚 Fetching tracking for AWB:", awb);
+            const trackResponse = await fetch(
+              `https://shipping-api.com/app/api/v1/track-order?awb_number=${awb}`,
+              {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
+                  "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
+                },
+              }
+            );
+            const trackResult = await trackResponse.json();
+            if (trackResult.result === "1") {
+              setTrackingInfo(trackResult.data);
+              console.log("📦 Tracking Info:", trackResult.data);
+            }
+          }
         } else {
           console.warn("⚠️ Shipmozo Response:", result.message);
           setShipmozoStatus("N/A");
         }
       } catch (error) {
         console.error("❌ Error fetching Shipmozo order details:", error.message);
-        setShipmozoStatus("Error");
+        setShipmozoStatus("Error"); 
       }
     };
 
@@ -289,15 +312,14 @@ function Page() {
                         Internal: {order?.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "Pending"}
                       </span>
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                          shipmozoStatus === "NEW_ORDER"
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${trackingInfo?.current_status
                             ? "bg-blue-100 text-blue-800 border border-blue-200"
-                            : shipmozoStatus === "Error" || shipmozoStatus === "N/A"
-                            ? "bg-gray-100 text-gray-800 border border-gray-200"
-                            : "bg-teal-100 text-teal-800 border border-teal-200"
-                        }`}
+                            : shipmozoStatus === "Error" || shipmozoStatus === "N/A" ?
+                              "bg-gray-100 text-gray-800 border border-gray-200" :
+                              "bg-teal-100 text-teal-800 border border-teal-200"
+                          }`}
                       >
-                        Shipmozo: {shipmozoStatus || "NA"}
+                        Shipmozo: {trackingInfo?.current_status || shipmozoStatus || "NA"}
                       </span>
                     </div>
                   </div>
