@@ -1,21 +1,26 @@
 import { db } from "@/lib/firebase";
-import { doc, setDoc, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 
 export const createUser = async ({ uid, displayName, mobileNo, email, gender, country, photoURL }) => {
-  await setDoc(
-    doc(db, `users/${uid}`),
-    {
-      displayName: displayName,
-      mobileNo: mobileNo ?? "",
-      email: email ?? "",
-      gender: gender ?? "",
-      country: country ?? "",
-      photoURL: photoURL ?? "",
-      addresses: [],
-      timestampCreate: Timestamp.now(),
-    },
-    { merge: true }
-  );
+  const userDocRef = doc(db, `users/${uid}`);
+  const userDoc = await getDoc(userDocRef);
+
+  // Only create the document if it doesn't already exist
+  if (!userDoc.exists()) {
+    await setDoc(
+      userDocRef,
+      {
+        displayName: displayName,
+        mobileNo: mobileNo ?? "",
+        email: email ?? "",
+        gender: gender ?? "",
+        country: country ?? "",
+        photoURL: photoURL ?? "",
+        addresses: [],
+        timestampCreate: Timestamp.now(),
+      }
+    );
+  }
 };
 
 export const updateFavorites = async ({ uid, list }) => {
