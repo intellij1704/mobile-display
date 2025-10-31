@@ -5,6 +5,8 @@
 "use server";
 
 import { admin, adminDB } from "@/lib/firebase_admin";
+import { getInvoiceAsBuffer } from "@/app/(user)/orders/[orderId]/Invoice";
+import nodemailer from "nodemailer";
 import crypto from "crypto";
 
 const fetchCheckout = async (checkoutId) => {
@@ -201,6 +203,79 @@ async function pushToShipmozo(orderId, address, products, totalAmount, codAmount
     }
 }
 
+const generateAndSendInvoice = async (orderData) => {
+    try {
+        // Validate that all necessary SMTP environment variables are set.
+        if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_EMAIL || !process.env.SMTP_PASS || !process.env.SMTP_FROM_EMAIL) {
+            console.error("❌ Missing SMTP configuration. Please check your environment variables (SMTP_HOST, SMTP_PORT, SMTP_EMAIL, SMTP_PASS, SMTP_FROM_EMAIL).");
+            throw new Error("Email service is not configured correctly on the server.");
+        }
+
+        console.log(`Starting invoice generation for order: ${orderData.id}`);
+        const { pdfBuffer, downloadURL } = await getInvoiceAsBuffer(orderData);
+        console.log(`PDF generated and uploaded for order: ${orderData.id}. URL: ${downloadURL}`);
+
+        // Update order with invoice URL
+        const orderRef = adminDB.doc(`orders/${orderData.id}`);
+        await orderRef.update({
+            invoiceUrl: downloadURL,
+            timestampInvoiceGenerated: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`Firestore updated with invoice URL for order: ${orderData.id}`);
+
+        // Send email with Nodemailer
+        const address = JSON.parse(orderData.checkout.metadata.address || "{}");
+        if (!address.email) {
+            console.error(`No email found for order ${orderData.id}. Skipping email.`);
+            return;
+        }
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT,
+            secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
+            auth: {
+                user: process.env.SMTP_EMAIL,
+                pass: process.env.SMTP_PASS,
+            },
+        });
+  
+
+
+        const mailOptions = {
+  from: `"Mobile Display" <${process.env.SMTP_FROM_EMAIL}>`,
+  to: address.email,
+  subject: `Your Mobile Display Order is Confirmed! #${orderData.id}`,
+  text: `Hello ${address.fullName},\n\nThank you for your order #${orderData.id}! You can find your invoice attached.\n\nBest regards,\nThe Mobile Display Team`,
+  html: `
+    <h2>Thank you for your order, ${address.fullName}!</h2>
+    <p>Your order <strong>#${orderData.id}</strong> has been successfully placed.</p>
+    <p>Please find your invoice attached.</p>
+   <p>We will notify you again once your order has shipped.</p>
+    <br/>
+    <p>—<br/>
+    The Mobile Display Team<br/>
+    <a href="https://mobiledisplay.in">mobiledisplay.in</a><br/>
+    Anurupapally, Krishnapur, West Bengal 700101
+    </p>
+  `,
+  attachments: [{
+    filename: `invoice_${orderData.id}.pdf`,
+    content: pdfBuffer,
+    contentType: 'application/pdf',
+  }],
+};
+
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Order confirmation email sent successfully to ${address.email} for order ${orderData.id}`);
+    } catch (error) {
+        console.error(`Error in generateAndSendInvoice for order ${orderData.id}:`, error);
+        // Optionally, update the order to indicate a failure in post-processing
+        const orderRef = adminDB.doc(`orders/${orderData.id}`);
+        await orderRef.update({ postProcessingError: `Invoice/Email Failed: ${error.message}` }).catch();
+    }
+};
+
 const processOrder = async ({ checkout }) => {
     const orderRef = adminDB.doc(`orders/${checkout?.id}`);
     const order = await orderRef.get();
@@ -241,7 +316,7 @@ const processOrder = async ({ checkout }) => {
         });
     }
 
-    await orderRef.set({
+    const newOrderData = {
         checkout: checkout,
         payment: {
             amount: paymentAmount,
@@ -252,7 +327,9 @@ const processOrder = async ({ checkout }) => {
         paymentMode,
         timestampCreate: admin.firestore.Timestamp.now(),
         products,
-    });
+    };
+
+    await orderRef.set(newOrderData);
 
     const address = JSON.parse(checkout?.metadata?.address || "{}");
 
@@ -277,6 +354,10 @@ const processOrder = async ({ checkout }) => {
     });
 
     await batch.commit();
+
+    // Generate and send invoice after all other database writes are complete.
+    await generateAndSendInvoice({ ...newOrderData, id: checkout?.id });
+
     return true;
 };
 

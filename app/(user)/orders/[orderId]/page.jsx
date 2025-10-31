@@ -9,8 +9,7 @@ import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { db } from "@/lib/firebase"
-import { addDoc, collection, doc, updateDoc, arrayUnion, query, where, getDocs, runTransaction, setDoc } from "firebase/firestore"
-import html2pdf from "html2pdf.js"
+import { collection, doc, query, where, getDocs, runTransaction } from "firebase/firestore"
 import JsBarcode from "jsbarcode"
 
 const ShippingLabel = ({ selectedReturn, orderId, returnId, orderDate, addressData, selfShippingDetails }) => {
@@ -432,7 +431,8 @@ const OrderDetailPage = () => {
     }
 
     const generatePDF = () => {
-        const element = document.getElementById("shipping-label-content")
+        const element = document.getElementById("shipping-label-content");
+        const html2pdf = window.html2pdf; // Access html2pdf from the window object
         if (!element) {
             alert("Label content not found")
             return
