@@ -76,7 +76,7 @@ function Page() {
           const newInternalStatus = shipmozoToInternalStatus[orderData.order_status];
           if (newInternalStatus && newInternalStatus !== order.status) {
             console.log(`🚀 Syncing status: Shipmozo '${orderData.order_status}' -> Internal '${newInternalStatus}'`);
-            await updateOrderStatus({ id: orderId, status: newInternalStatus });
+            await updateOrderStatus({ id: orderId, status: newInternalStatus, orderData: order });
             toast.success(`Order status synced to: ${newInternalStatus}`);
           }
 
@@ -103,7 +103,7 @@ function Page() {
               const newTrackingStatus = shipmozoToInternalStatus[trackResult.data.current_status];
               if (newTrackingStatus && newTrackingStatus !== order.status) {
                 console.log(`🚀 Syncing tracking status: Shipmozo '${trackResult.data.current_status}' -> Internal '${newTrackingStatus}'`);
-                await updateOrderStatus({ id: orderId, status: newTrackingStatus });
+                await updateOrderStatus({ id: orderId, status: newTrackingStatus, orderData: order });
                 toast.success(`Order status synced to: ${newTrackingStatus}`);
               }
             }
@@ -301,7 +301,7 @@ function Page() {
 
       // If Shipmozo cancellation was successful OR if it was not needed,
       // approve the request in Firestore.
-      await approveCancelRequest({ id: cancelRequest.id, orderId });
+      await approveCancelRequest({ id: cancelRequest.id, orderId, orderData: order });
       toast.success("Cancel request approved in Firestore.");
     } catch (err) {
       toast.error(err.message || "An error occurred during the cancellation process.");

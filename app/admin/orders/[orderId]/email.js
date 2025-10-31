@@ -1,8 +1,11 @@
 "use server";
 
 import nodemailer from "nodemailer";
+import { getInvoiceAsBuffer } from "@/app/(user)/orders/[orderId]/Invoice";
+import { adminDB } from "@/lib/firebase_admin";
 
-export async function sendOrderStatusUpdateEmail(orderId, newStatus, recipientEmail, customerName) {
+
+export async function sendOrderStatusUpdateEmail(orderId, newStatus, recipientEmail, customerName, orderData) {
     // Validate SMTP credentials
     if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_EMAIL || !process.env.SMTP_PASS || !process.env.SMTP_FROM_EMAIL) {
         console.error("❌ Missing SMTP configuration. Please check your environment variables (SMTP_HOST, SMTP_PORT, SMTP_EMAIL, SMTP_PASS, SMTP_FROM_EMAIL).");
@@ -26,14 +29,29 @@ export async function sendOrderStatusUpdateEmail(orderId, newStatus, recipientEm
 
     let subject = "";
     let htmlBody = "";
+    let attachments = [];
     const formattedStatus = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
 
     switch (newStatus) {
         case "delivered":
             subject = `Your Mobile Display Order #${orderId} has been successfully delivered!`;
+            const { pdfBuffer, downloadURL, newInvoiceId } = await generateAndSendDeliveredInvoice(orderData);
+            attachments.push({
+                filename: `invoice_${orderId}_delivered.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf',
+            });
+
+            // Save the delivered invoice URL to the order
+            await adminDB.doc(`orders/${orderId}`).update({
+                deliveredInvoiceUrl: downloadURL,
+                deliveredInvoiceId: newInvoiceId
+            });
+
             htmlBody = `
                 <h1>Hello ${customerName || "Customer"},</h1>
                 <p>Great news! Your order <strong>#${orderId}</strong> has been successfully delivered.</p>
+                <p>Please find your final invoice attached.</p>
                 <p>We hope you enjoy your purchase!</p>
                 <br/>
                 <p>If you have any questions or need further assistance, please don't hesitate to contact us.</p>
@@ -73,6 +91,7 @@ export async function sendOrderStatusUpdateEmail(orderId, newStatus, recipientEm
         to: recipientEmail,
         subject: subject,
         html: htmlBody,
+        attachments: attachments,
     };
 
     try {
@@ -83,3 +102,32 @@ export async function sendOrderStatusUpdateEmail(orderId, newStatus, recipientEm
         throw new Error(`Failed to send email: ${error.message}`);
     }
 }
+
+export const generateAndSendDeliveredInvoice = async (orderData) => {
+  try {
+    // 1. Get new invoice number
+    const counterRef = adminDB.doc("counters/invoices");
+    const newInvoiceId = await adminDB.runTransaction(async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      const newId = (counterDoc.data()?.lastId || 0) + 1;
+      transaction.set(counterRef, { lastId: newId }, { merge: true });
+      return newId;
+    });
+
+    console.log(`Starting delivered invoice generation for order: ${orderData.id}, Invoice ID: ${newInvoiceId}`);
+
+    // 2. Generate PDF
+    const { pdfBuffer, downloadURL } = await getInvoiceAsBuffer(orderData, {
+      title: "Delivered Invoice",
+      invoiceId: newInvoiceId,
+      type: "delivered",
+    });
+    console.log(`Delivered PDF generated for order: ${orderData.id}. URL: ${downloadURL}`);
+
+    // 3. Return invoice details to be used for sending email
+    return { pdfBuffer, downloadURL, newInvoiceId };
+  } catch (error) {
+    console.error(`Error in generateAndSendDeliveredInvoice for order ${orderData.id}:`, error);
+    throw new Error(`Failed to generate delivered invoice: ${error.message}`);
+  }
+};

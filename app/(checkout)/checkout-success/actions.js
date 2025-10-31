@@ -212,7 +212,9 @@ const generateAndSendInvoice = async (orderData) => {
         }
 
         console.log(`Starting invoice generation for order: ${orderData.id}`);
-        const { pdfBuffer, downloadURL } = await getInvoiceAsBuffer(orderData);
+        const { pdfBuffer, downloadURL } = await getInvoiceAsBuffer(orderData, {
+            title: 'Order Invoice'
+        });
         console.log(`PDF generated and uploaded for order: ${orderData.id}. URL: ${downloadURL}`);
 
         // Update order with invoice URL
@@ -274,6 +276,35 @@ const generateAndSendInvoice = async (orderData) => {
         const orderRef = adminDB.doc(`orders/${orderData.id}`);
         await orderRef.update({ postProcessingError: `Invoice/Email Failed: ${error.message}` }).catch();
     }
+};
+
+export const generateAndSendDeliveredInvoice = async (orderData) => {
+  try {
+    // 1. Get new invoice number
+    const counterRef = adminDB.doc("counters/invoices");
+    const newInvoiceId = await adminDB.runTransaction(async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      const newId = (counterDoc.data()?.lastId || 0) + 1;
+      transaction.set(counterRef, { lastId: newId }, { merge: true });
+      return newId;
+    });
+
+    console.log(`Starting delivered invoice generation for order: ${orderData.id}, Invoice ID: ${newInvoiceId}`);
+
+    // 2. Generate PDF
+    const { pdfBuffer, downloadURL } = await getInvoiceAsBuffer(orderData, {
+      title: "Delivered Invoice",
+      invoiceId: newInvoiceId,
+      type: "delivered",
+    });
+    console.log(`Delivered PDF generated for order: ${orderData.id}. URL: ${downloadURL}`);
+
+    // 3. Return invoice details to be used for sending email
+    return { pdfBuffer, downloadURL, newInvoiceId };
+  } catch (error) {
+    console.error(`Error in generateAndSendDeliveredInvoice for order ${orderData.id}:`, error);
+    throw new Error(`Failed to generate delivered invoice: ${error.message}`);
+  }
 };
 
 const processOrder = async ({ checkout }) => {

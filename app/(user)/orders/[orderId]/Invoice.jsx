@@ -1,14 +1,20 @@
 import React from 'react';
 import { getStorage } from "firebase-admin/storage";
-import { admin } from '@/lib/firebase_admin';
+import { admin, adminDB } from '@/lib/firebase_admin';
 import puppeteer from 'puppeteer';
 
-const Invoice = ({ order, orderId, addressData, products, companyDetails }) => {
-    const orderDate = order?.timestampCreate?.toDate()?.toLocaleDateString('en-IN', {
+const Invoice = ({ order, orderId, addressData, products, companyDetails, title, invoiceId, type = 'order' }) => {
+    const getOrderDate = (timestamp) => {
+        if (!timestamp) return 'N/A';
+        // Firestore Timestamps have a toDate() method, client-side dates do not when serialized.
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('en-IN', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
-    }) || 'N/A';
+    });
+    };
+    const orderDate = getOrderDate(order?.timestampCreate);
 
     const subtotal = order?.checkout?.subtotal || 0;
     const discount = order?.checkout?.discount || 0;
@@ -31,8 +37,8 @@ const Invoice = ({ order, orderId, addressData, products, companyDetails }) => {
                     <p style={{ margin: '5px 0 0', fontSize: '12px' }}>Email: {companyDetails.email} | Phone: {companyDetails.phone}</p>
                 </div>
                 <div style={{ flex: 1, textAlign: 'right' }}>
-                    <h1 style={{ margin: '0', color: '#000', fontSize: '28px', fontWeight: 'bold' }}>Order Invoice</h1>
-
+                    <h1 style={{ margin: '0', color: '#000', fontSize: '28px', fontWeight: 'bold' }}>{title || 'Invoice'}</h1>
+                    {invoiceId && <p style={{ margin: '5px 0 0', fontSize: '14px' }}><strong>Invoice No:</strong> #{invoiceId}</p>}
                     <p style={{ margin: '5px 0 0', fontSize: '14px' }}><strong>Order ID:</strong> #{orderId}</p>
                     <p style={{ margin: '5px 0 0', fontSize: '14px' }}><strong>Date:</strong> {orderDate}</p>
                 </div>
@@ -126,7 +132,7 @@ const Invoice = ({ order, orderId, addressData, products, companyDetails }) => {
                                 <td style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 'bold', fontSize: '16px' }}>Total</td>
                                 <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 'bold', fontSize: '16px' }}>₹{total.toFixed(2)}</td>
                             </tr>
-                            {paymentMode === 'Cash on Delivery (COD)' && (
+                            {type !== 'delivered' && paymentMode === 'Cash on Delivery (COD)' && (
                                 <>
                                     <tr>
                                         <td style={{ padding: '8px', textAlign: 'left', color: 'green' }}>Advance Paid</td>
@@ -138,7 +144,7 @@ const Invoice = ({ order, orderId, addressData, products, companyDetails }) => {
                                     </tr>
                                 </>
                             )}
-                            {paymentMode === 'Prepaid' && (
+                            {(type === 'delivered' || paymentMode !== 'Cash on Delivery (COD)') && (
                                 <tr>
                                     <td style={{ padding: '8px', textAlign: 'left', color: 'green' }}>Amount Paid</td>
                                     <td style={{ padding: '8px', textAlign: 'right', color: 'green' }}>₹{total.toFixed(2)}</td>
@@ -161,7 +167,7 @@ const Invoice = ({ order, orderId, addressData, products, companyDetails }) => {
 
 export default Invoice;
 
-export const getInvoiceAsBuffer = async (orderData) => {
+export const getInvoiceAsBuffer = async (orderData, { title, invoiceId, type = 'order' } = {}) => {
     const ReactDOMServer = (await import('react-dom/server')).default;
 
     const addressData = JSON.parse(orderData.checkout.metadata.address || '{}');
@@ -172,6 +178,16 @@ export const getInvoiceAsBuffer = async (orderData) => {
         phone: '+91-1234567890',
     };
 
+    // Re-serialize and de-serialize to convert plain JS date strings to Firestore Timestamps if needed
+    const sanitizedOrderData = JSON.parse(JSON.stringify(orderData), (key, value) => {
+        if (key === 'timestampCreate' || key === 'timestampStatusUpdate' || key === 'timestampInvoiceGenerated') {
+            if (value && (typeof value === 'string' || typeof value === 'number')) {
+                return new Date(value);
+            }
+        }
+        return value;
+    });
+
     const invoiceHTML = ReactDOMServer.renderToString(
         <Invoice
             order={orderData}
@@ -179,6 +195,9 @@ export const getInvoiceAsBuffer = async (orderData) => {
             addressData={addressData}
             products={orderData.products}
             companyDetails={companyDetails}
+            title={title || 'Order Invoice'}
+            type={type}
+            invoiceId={invoiceId}
         />
     );
 
@@ -205,8 +224,8 @@ export const getInvoiceAsBuffer = async (orderData) => {
         console.error("❌ FIREBASE_STORAGE_BUCKET environment variable not set.");
         throw new Error("Storage service is not configured correctly on the server.");
     }
-    const bucket = getStorage(admin.app()).bucket(bucketName);
-    const filePath = `invoices/order/invoice_${orderData.id}.pdf`;
+    const bucket = getStorage(adminDB.app).bucket(bucketName);
+    const filePath = `invoices/${orderData.id}/${type}_invoice_${orderData.id}${invoiceId ? '_' + invoiceId : ''}.pdf`;
     const file = bucket.file(filePath);
 
     await file.save(buffer, {

@@ -19,7 +19,7 @@ function ChangeOrderStatus({ order }) {
     setShowConfirm(false);
     try {
       await toast.promise(
-        updateOrderStatus({ id: order?.id, status: selectedStatus }),
+        updateOrderStatus({ id: order?.id, status: selectedStatus, orderData: order }),
         {
           loading: "Updating...",
           success: "Successfully updated",
@@ -50,11 +50,11 @@ function ChangeOrderStatus({ order }) {
       >
         <option value="">Update Status</option>
         <option value="pending">Pending</option>
-        {/* <option value="shipped">Shipped</option>
+        <option value="shipped">Shipped</option>
         <option value="pickup">Pickup</option>
         <option value="inTransit">In Transit</option>
         <option value="outForDelivery">Out For Delivery</option>
-        <option value="delivered">Delivered</option> */}
+        <option value="delivered">Delivered</option>
         <option value="cancelled">Cancelled</option>
       </select>
 
