@@ -9,10 +9,10 @@ const Invoice = ({ order, orderId, addressData, products, companyDetails, title,
         // Firestore Timestamps have a toDate() method, client-side dates do not when serialized.
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
         return date.toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
     };
     const orderDate = getOrderDate(order?.timestampCreate);
 
@@ -179,21 +179,38 @@ export const getInvoiceAsBuffer = async (orderData, { title, invoiceId, type = '
     };
 
     // Re-serialize and de-serialize to convert plain JS date strings to Firestore Timestamps if needed
-    const sanitizedOrderData = JSON.parse(JSON.stringify(orderData), (key, value) => {
-        if (key === 'timestampCreate' || key === 'timestampStatusUpdate' || key === 'timestampInvoiceGenerated') {
-            if (value && (typeof value === 'string' || typeof value === 'number')) {
-                return new Date(value);
+    const sanitizedOrderData = JSON.parse(
+        JSON.stringify(orderData, (key, value) => {
+            // ✅ Handle Firestore Timestamp objects
+            if (value && typeof value === 'object' && typeof value.seconds === 'number') {
+                return new Date(value.seconds * 1000).toISOString();
             }
-        }
-        return value;
-    });
+
+            // ✅ Handle Date objects
+            if (value instanceof Date) {
+                return value.toISOString();
+            }
+
+            // ✅ Keep already valid ISO strings as-is
+            if (
+                typeof value === 'string' &&
+                /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)
+            ) {
+                return value;
+            }
+
+            return value;
+        })
+    );
+
+
 
     const invoiceHTML = ReactDOMServer.renderToString(
         <Invoice
-            order={orderData}
-            orderId={orderData.id}
+            order={sanitizedOrderData}
+            orderId={sanitizedOrderData.id}
             addressData={addressData}
-            products={orderData.products}
+            products={sanitizedOrderData.products}
             companyDetails={companyDetails}
             title={title || 'Order Invoice'}
             type={type}

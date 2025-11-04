@@ -17,9 +17,20 @@ function ChangeOrderStatus({ order }) {
 
   const confirmUpdate = async () => {
     setShowConfirm(false);
+
+    const sanitizedOrder = JSON.parse(JSON.stringify(order, (key, value) => {
+      if (value?.seconds && value?.nanoseconds) {
+        return new Date(value.seconds * 1000 + value.nanoseconds / 1e6).toISOString();
+      }
+      return value;
+    }));
     try {
       await toast.promise(
-        updateOrderStatus({ id: order?.id, status: selectedStatus, orderData: order }),
+        updateOrderStatus({
+          id: order?.id,
+          status: selectedStatus,
+          orderData: sanitizedOrder,
+        }),
         {
           loading: "Updating...",
           success: "Successfully updated",
