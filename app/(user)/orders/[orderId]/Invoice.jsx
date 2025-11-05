@@ -173,7 +173,7 @@ export const getInvoiceAsBuffer = async (orderData, { title, invoiceId, type = '
 
     const addressData = JSON.parse(orderData.checkout.metadata.address || '{}');
     const companyDetails = {
-        logoUrl: `${process.env.NEXT_PUBLIC_DOMAIN}/logo.png`,
+        logoUrl: `https://www.mobiledisplay.in/logo.png`,
         address: 'Anurupapally, Krishnapur, Kestopur, Noth 24 Parganas, West Bengal 700101',
         email: 'info@mobiledisplay.in',
         phone: '+91-1234567890',
