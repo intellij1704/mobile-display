@@ -64,16 +64,18 @@ export function ProductCard({ product }) {
 
   return (
     <div
-      className={`border border-gray-300 hover:border-red-500 bg-[#FAFAFA] shadow-sm rounded-lg overflow-hidden min-h-[300px] cursor-pointer group md:h-auto flex flex-col transition hover:shadow-lg`}
+      className={`border border-gray-300 hover:border-red-500 bg-[#FAFAFA] shadow-sm rounded-lg overflow-hidden cursor-pointer group flex flex-col transition hover:shadow-lg`}
     >
       {/* Product Image Section */}
-      <div className="relative w-full">
-        <img
-          src={product?.featureImageURL}
-          alt={product?.title}
-          className="w-full h-auto object-cover group-hover:scale-95 transition-all duration-500"
-        />
-        {/* Favorite Button */}
+      <div className="relative w-full h-auto md:h-52 overflow-hidden">
+        <Link href={`/products/${product?.seoSlug || product?.id}`}>
+          <img
+            src={product?.featureImageURL || "/placeholder.svg"}
+            alt={product?.title}
+            className="w-full h-full  group-hover:scale-105 transition-transform duration-500"
+          />
+        </Link>
+        {/* Favorite Button - positioned over the image */}
         <div className="absolute top-1 right-1">
           <AuthContextProvider>
             <FavoriteButton productId={product?.id} />
@@ -82,7 +84,7 @@ export function ProductCard({ product }) {
       </div>
 
       {/* Product Details Section */}
-      <div className="p-3 flex flex-col bg-[#FAFAFA]">
+      <div className="p-3 flex flex-col flex-grow bg-[#FAFAFA]">
         <Link href={`/products/${product?.seoSlug || product?.id}`}>
           <div className="flex">
             <h3 className="text-[15px] font-metropolis font-bold text-gray-900 line-clamp-2 hover:text-red-700 transition-colors delay-100">
