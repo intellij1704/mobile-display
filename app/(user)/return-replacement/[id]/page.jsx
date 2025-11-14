@@ -9,6 +9,7 @@ import { db } from "@/lib/firebase";
 import { useOrder } from "@/lib/firestore/orders/read";
 import html2pdf from "html2pdf.js"
 import JsBarcode from "jsbarcode"
+import { ShieldAlert } from "lucide-react";
 
 const ShippingLabel = ({ selectedReturn, orderId, returnId, orderDate, addressData, selfShippingDetails }) => {
     const [barcodeOrder, setBarcodeOrder] = useState("")
@@ -181,7 +182,7 @@ const ReturnDetailPage = () => {
         return () => document.removeEventListener("keydown", handleEsc);
     }, [printModalOpen]);
 
-    if (returnIsLoading || orderIsLoading) {
+    if (returnIsLoading || (returnRequest && orderIsLoading)) {
         return (
             <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
                 <CircularProgress size={60} thickness={4} color="primary" className="mb-4" />
@@ -190,16 +191,47 @@ const ReturnDetailPage = () => {
         );
     }
 
-    if (returnError || orderError || !returnRequest || !order) {
+    if (returnError || orderError || !returnRequest || (returnRequest && !order)) {
         return (
             <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
-                <p className="text-red-600 font-semibold">Error loading return or return not found.</p>
+                <p className="text-red-600 font-semibold">Return request not found.</p>
                 <button className="mt-4 text-blue-600 hover:text-blue-800 font-medium" onClick={() => router.back()}>
                     Go Back
                 </button>
             </div>
         );
     }
+
+    // Security check: Ensure the logged-in user is the one who created the return request.
+    // This check is performed after data loading to ensure we have the returnRequest object.
+if (returnRequest && user && returnRequest.userId !== user.uid) {
+    return (
+        <div className="min-h-screen flex flex-col justify-center items-center bg-gray-100 p-4">
+            <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md w-full">
+                <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-red-100 mb-6">
+                    <ShieldAlert className="h-12 w-12 text-red-600" />
+                </div>
+
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Access Denied</h1>
+
+                <p className="text-gray-600 mb-8">
+                    This return request belongs to another user.  
+                    For security reasons, only the user who created this request  
+                    can view or manage it.  
+                    Please log in with the correct account or return to the homepage.
+                </p>
+
+                <button
+                    onClick={() => router.push('/')}
+                    className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                >
+                    Return to Homepage
+                </button>
+            </div>
+        </div>
+    );
+}
+
 
     const createdDate = new Date(returnRequest.createdAt.seconds * 1000);
     const statusUpdateDate = returnRequest.timestamp?.toDate ? new Date(returnRequest.timestamp.seconds * 1000) : null;
