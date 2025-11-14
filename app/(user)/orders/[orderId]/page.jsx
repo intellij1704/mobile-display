@@ -430,13 +430,15 @@ const OrderDetailPage = () => {
         setSelectedReturn(null)
     }
 
-    const generatePDF = () => {
+    const generatePDF = async () => {
         const element = document.getElementById("shipping-label-content");
-        const html2pdf = window.html2pdf; // Access html2pdf from the window object
         if (!element) {
             alert("Label content not found")
             return
         }
+
+        // Dynamically import html2pdf and handle potential default export
+        const html2pdf = (await import("html2pdf.js")).default;
 
         // Scroll to top to ensure full content is captured from the beginning
         element.scrollTop = 0
