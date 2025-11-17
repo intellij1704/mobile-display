@@ -137,7 +137,7 @@ export default function Reviews({ productId }) {
                         }}
                       />
                       <span className="font-medium text-gray-800">
-                        {item.rating.toFixed(1)} • {getLabel(item.rating)}
+                        {typeof item.rating === 'number' ? `${item.rating.toFixed(1)} • ${getLabel(item.rating)}` : 'No rating'}
                       </span>
                     </div>
                     <p className="mt-2 text-gray-700">{item.message}</p>

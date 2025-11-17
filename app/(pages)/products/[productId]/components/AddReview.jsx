@@ -20,6 +20,11 @@ function AddReview({ productId, onSuccess }) {
     const handleSubmit = async () => {
         if (message.length > maxChars || !message.trim()) return;
         setIsLoading(true);
+        if (!rating) {
+            toast.error("Please select a rating.");
+            setIsLoading(false);
+            return;
+        }
         try {
             if (!user) {
                 throw new Error("Please sign in to leave a review");
@@ -54,7 +59,7 @@ function AddReview({ productId, onSuccess }) {
         setMessage(text);
     };
 
-    const isSubmitDisabled = isLoading || !!error || !message.trim();
+    const isSubmitDisabled = isLoading || !!error || !message.trim() || !rating;
 
     return (
         <div className="p-6 rounded-xl border border-gray-200 bg-white shadow-sm w-full max-w-md">
@@ -68,7 +73,10 @@ function AddReview({ productId, onSuccess }) {
                     id="product-rating"
                     size="large"
                     value={rating}
-                    onChange={(event, newValue) => setRating(newValue)}
+                    onChange={(event, newValue) => {
+                        // Prevent setting rating to null, default to 1
+                        setRating(newValue === null ? 1 : newValue);
+                    }}
                     precision={0.5}
                     className="[&>span]:text-2xl"
                     sx={{
