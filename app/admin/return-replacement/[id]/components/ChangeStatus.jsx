@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { updateReturnRequestStatus } from "@/lib/firestore/return_requests/write";
+import { sendReturnStatusUpdateEmail } from "../email";
 import toast from "react-hot-toast";
 
-function ChangeReturnRequestStatus({ returnRequest }) {
+function ChangeReturnRequestStatus({ returnRequest, user, order }) {
   const [selectedStatus, setSelectedStatus] = useState(returnRequest?.status || "");
   const [showConfirm, setShowConfirm] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  console.log("User",user)
 
   const returnType = returnRequest?.productDetails?.metadata?.returnType;
   const reqType = returnRequest?.type;
@@ -66,13 +69,20 @@ function ChangeReturnRequestStatus({ returnRequest }) {
 
   const confirmUpdate = async () => {
     closeModal();
+
+    const updatePromise = updateReturnRequestStatus({ id: returnRequest?.id, status: selectedStatus });
+    const emailPromise = sendReturnStatusUpdateEmail(
+      returnRequest?.id,
+      selectedStatus,
+      user?.email,
+      JSON.parse(order?.checkout?.metadata?.address ?? "{}")?.fullName
+    );
+
     try {
-      await toast.promise(
-        updateReturnRequestStatus({ id: returnRequest?.id, status: selectedStatus }),
-        {
-          loading: "Updating...",
-          success: "Successfully updated",
-          error: (e) => e?.message || "Failed to update status",
+      await toast.promise(Promise.all([updatePromise, emailPromise]), {
+        loading: "Updating status...",
+        success: "Status successfully updated..",
+        error: (e) => e?.message || "An error occurred.",
         }
       );
     } catch (error) {

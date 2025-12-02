@@ -169,7 +169,7 @@ function Page() {
                                             {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
                                         </span>
                                     </div>
-                                    <ChangeReturnRequestStatus returnRequest={returnRequest} />
+                                    <ChangeReturnRequestStatus returnRequest={returnRequest} user={user} order={order} />
                                 </div>
                             </div>
                         </div>
