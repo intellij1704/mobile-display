@@ -60,21 +60,7 @@ export default function SeriesListView() {
 }
 
 function Row({ item, index }) {
-  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
-
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this series?")) return
-    setIsDeleting(true)
-    try {
-      await deleteSeries({ id: item?.id, imagePath: item?.imagePath })
-      toast.success("Series deleted successfully")
-    } catch (error) {
-      toast.error((error && error.message) || "Failed to delete series")
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   const handleUpdate = () => {
     router.push(`/admin/series?id=${item?.id}`)
@@ -111,7 +97,6 @@ function Row({ item, index }) {
         <div className="flex gap-2 justify-center items-center">
           <Button
             onClick={handleUpdate}
-            isDisabled={isDeleting}
             isIconOnly
             size="sm"
             color="primary"
@@ -119,17 +104,7 @@ function Row({ item, index }) {
           >
             <Edit2 size={14} />
           </Button>
-          <Button
-            onClick={handleDelete}
-            isLoading={isDeleting}
-            isDisabled={isDeleting}
-            isIconOnly
-            size="sm"
-            color="danger"
-            aria-label={`Delete series ${item?.seriesName}`}
-          >
-            {!isDeleting && <Trash2 size={14} />}
-          </Button>
+    
         </div>
       </td>
     </tr>

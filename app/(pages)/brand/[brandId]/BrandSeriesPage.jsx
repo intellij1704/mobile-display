@@ -113,7 +113,7 @@ export default function BrandSeriesPage() {
                 </div>
             </div>
 
-            <div className=" grid grid-cols-12 gap-4">
+            <div className=" grid grid-cols-12 gap-4 ">
                 <div className="col-span-4 md:col-span-2 flex items-center justify-start">
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
                         Series
@@ -144,7 +144,7 @@ export default function BrandSeriesPage() {
             </div>
 
             {/* Two-column layout */}
-            <div className="grid grid-cols-12 gap-4">
+            <div className="grid grid-cols-12 gap-4 md:mt-2">
                 {/* Left: Series (scrollable list) */}
                 <aside className="col-span-4 md:col-span-2">
                     <div className="h-[70vh] overflow-y-auto pr-1 rounded-md custom-scroll">

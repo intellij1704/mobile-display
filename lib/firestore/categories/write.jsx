@@ -1,6 +1,9 @@
 import { db, storage } from "@/lib/firebase";
 import {
   collection,
+  query,
+  where,
+  getDocs,
   deleteDoc,
   doc,
   getDoc,
@@ -10,6 +13,27 @@ import {
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
+const isCategoryNameExists = async (name, currentId = null) => {
+  const trimmedName = name.trim();
+  const categoriesRef = collection(db, "categories");
+  const q = query(
+    categoriesRef,
+    where("name_lowercase", "==", trimmedName.toLowerCase())
+  );
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    return false;
+  }
+
+  if (currentId) {
+    // For updates, check if the found category is a different one
+    return querySnapshot.docs.some((doc) => doc.id !== currentId);
+  }
+
+  return !querySnapshot.empty;
+};
+
 export const createNewCategory = async ({ data, image }) => {
   if (!image) {
     throw new Error("Image is Required");
@@ -17,6 +41,12 @@ export const createNewCategory = async ({ data, image }) => {
   if (!data?.name) {
     throw new Error("Name is required");
   }
+
+  const nameExists = await isCategoryNameExists(data.name);
+  if (nameExists) {
+    throw new Error(`Category with name "${data.name.trim()}" already exists.`);
+  }
+
   const newId = doc(collection(db, `ids`)).id;
   const imageRef = ref(storage, `categories/${newId}`);
   await uploadBytes(imageRef, image);
@@ -24,6 +54,8 @@ export const createNewCategory = async ({ data, image }) => {
 
   await setDoc(doc(db, `categories/${newId}`), {
     ...data,
+    name: data.name.trim(),
+    name_lowercase: data.name.trim().toLowerCase(),
     id: newId,
     imageURL: imageURL,
     timestampCreate: Timestamp.now(),
@@ -36,6 +68,11 @@ export const updateCategory = async ({ id, data, image }) => {
   }
   if (!id) {
     throw new Error("ID is required");
+  }
+
+  const nameExists = await isCategoryNameExists(data.name, id);
+  if (nameExists) {
+    throw new Error(`Another category with name "${data.name.trim()}" already exists.`);
   }
 
   let imageURL = null;
@@ -56,6 +93,8 @@ export const updateCategory = async ({ id, data, image }) => {
 
   await updateDoc(doc(db, `categories/${id}`), {
     ...data,
+    name: data.name.trim(),
+    name_lowercase: data.name.trim().toLowerCase(),
     imageURL: imageURL,
     timestampUpdate: Timestamp.now(),
   });

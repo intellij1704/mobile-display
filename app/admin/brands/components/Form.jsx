@@ -95,7 +95,7 @@ export default function Form() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 w-full max-w-md mx-auto">
+    <div className="bg-white rounded-xl shadow-sm p-6 w-full max-w-md mx-auto h-full">
       <h1 className="text-xl font-bold text-gray-800 mb-6">
         {id ? "Update Brand" : "Create New Brand"}
       </h1>

@@ -80,7 +80,7 @@ const CategoriesForm = ({ categories, editingCategory, setEditingCategory }) => 
   };
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden w-full max-w-md">
+    <div className="bg-white shadow rounded-lg overflow-hidden h-full w-full max-w-md">
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <h2 className="text-lg font-medium text-gray-900">
           {editingCategory ? 'Edit Category' : 'Create New Category'}
@@ -113,7 +113,19 @@ const CategoriesForm = ({ categories, editingCategory, setEditingCategory }) => 
                         className="sr-only"
                         {...register('image', { 
                           required: !editingCategory && 'Image is required'
-                        })}
+                          ,
+                          validate: {
+                            lessThan2MB: (files) =>
+                              !files || files.length === 0 || files[0].size < 2000000 || 'Max 2MB',
+                            acceptedFormats: (files) =>
+                              !files ||
+                              files.length === 0 ||
+                              ['image/jpeg', 'image/png', 'image/jpg'].includes(
+                                files[0].type
+                              ) ||
+                              'Only PNG, JPG are accepted',
+                          },
+                         })}
                         accept="image/*"
                       />
                     </label>

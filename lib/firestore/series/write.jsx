@@ -1,15 +1,53 @@
 import { db, storage } from "@/lib/firebase"
-import { collection, doc, addDoc, deleteDoc, updateDoc, serverTimestamp } from "firebase/firestore"
+import {
+  collection,
+  doc,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore"
 import { ref, deleteObject } from "firebase/storage"
+
+const isSeriesNameExists = async (seriesName, brandId, currentId = null) => {
+  const trimmedName = seriesName.trim()
+  const seriesRef = collection(db, "series")
+  const q = query(
+    seriesRef,
+    where("brandId", "==", brandId),
+    where("seriesName_lowercase", "==", trimmedName.toLowerCase()),
+  )
+
+  const querySnapshot = await getDocs(q)
+
+  if (querySnapshot.empty) {
+    return false
+  }
+
+  if (currentId) {
+    // For updates, check if the found series is a different one
+    return querySnapshot.docs.some(doc => doc.id !== currentId)
+  }
+
+  return !querySnapshot.empty
+}
 
 export const createNewSeries = async ({ data }) => {
   try {
     if (!data.seriesName || !data.brandId) {
       throw new Error("Series name and brand are required")
     }
+    const nameExists = await isSeriesNameExists(data.seriesName, data.brandId)
+    if (nameExists) {
+      throw new Error(`Series with name "${data.seriesName.trim()}" already exists for this brand.`)
+    }
     const now = serverTimestamp()
     const seriesData = {
       seriesName: data.seriesName.trim(),
+      seriesName_lowercase: data.seriesName.trim().toLowerCase(),
       brandId: data.brandId,
       categoryId: data.categoryId || null,
       imageUrl: data.imageUrl || null,
@@ -35,6 +73,7 @@ export const batchCreateSeries = async (brandId, seriesList, imageEntries = []) 
       const img = imageEntries[idx] || {}
       const seriesData = {
         seriesName: seriesName.trim(),
+        seriesName_lowercase: seriesName.trim().toLowerCase(),
         brandId,
         categoryId: null,
         imageUrl: img.imageUrl || null,
@@ -80,13 +119,21 @@ export const updateSeries = async ({ id, data }) => {
     if (!data || Object.keys(data).length === 0) {
       throw new Error("Update data is required")
     }
+
+    if (data.seriesName && data.brandId) {
+      const nameExists = await isSeriesNameExists(data.seriesName, data.brandId, id)
+      if (nameExists) {
+        throw new Error(`Another series with name "${data.seriesName.trim()}" already exists for this brand.`)
+      }
+    }
+
     const seriesRef = doc(db, "series", id)
     const updatedData = {
       ...data,
       updatedAt: serverTimestamp(),
     }
     if (updatedData.seriesName) {
-      updatedData.seriesName = updatedData.seriesName.trim()
+      updatedData.seriesName_lowercase = updatedData.seriesName.trim().toLowerCase()
     }
     await updateDoc(seriesRef, updatedData)
     return id

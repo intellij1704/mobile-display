@@ -1,17 +1,40 @@
-import { collection, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  query,
+  where,
+  getDocs,
+  serverTimestamp,
+} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const isModelNameExists = async (name, brandId, seriesId, currentId = null) => {
+  const trimmedName = name.trim();
+  const modelsRef = collection(db, "models");
+  const q = query(
+    modelsRef,
+    where("brandId", "==", brandId),
+    where("seriesId", "==", seriesId),
+    where("name_lowercase", "==", trimmedName.toLowerCase())
+  );
+
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    return false;
+  }
+
+  return querySnapshot.docs.some((doc) => doc.id !== currentId);
+};
 
 async function uploadImage(image, modelId) {
   if (!image) return null;
-
-  // Validate image type
-  if (!ALLOWED_IMAGE_TYPES.includes(image.type)) {
-    throw new Error("Invalid image type. Only JPEG, PNG, and WEBP are allowed.");
-  }
 
   // Validate image size
   if (image.size > MAX_IMAGE_SIZE) {
@@ -33,11 +56,21 @@ export async function createNewModel({ data, image }) {
   }
 
   try {
+    const nameExists = await isModelNameExists(data.name, data.brandId, data.seriesId);
+    if (nameExists) {
+      throw new Error(
+        `Model with name "${data.name.trim()}" already exists for this brand and series.`
+      );
+    }
+
+    const now = serverTimestamp();
     const modelData = {
       name: data.name.trim(),
+      name_lowercase: data.name.trim().toLowerCase(),
       brandId: data.brandId,
       seriesId: data.seriesId,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     const docRef = await addDoc(collection(db, "models"), modelData);
@@ -60,12 +93,21 @@ export async function updateModel({ id, data, image }) {
   }
 
   try {
+    if (data.name && data.brandId && data.seriesId) {
+      const nameExists = await isModelNameExists(data.name, data.brandId, data.seriesId, id);
+      if (nameExists) {
+        throw new Error(
+          `Another model with name "${data.name.trim()}" already exists for this brand and series.`
+        );
+      }
+    }
+
     const modelData = {
       name: data.name?.trim(),
       brandId: data.brandId,
       seriesId: data.seriesId,
       imageURL: data.imageURL,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverTimestamp(),
     };
 
     if (image) {
@@ -78,6 +120,10 @@ export async function updateModel({ id, data, image }) {
         delete modelData[key];
       }
     });
+
+    if (modelData.name) {
+      modelData.name_lowercase = modelData.name.toLowerCase();
+    }
 
     await updateDoc(doc(db, "models", id), modelData);
     return { id, ...modelData };

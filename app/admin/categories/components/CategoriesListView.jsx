@@ -16,8 +16,8 @@ const CategoriesListView = ({ categories, handleEdit }) => {
   };
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden w-full max-w-md">
-      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+    <div className="bg-white shadow rounded-lg w-full max-w-md h-full flex flex-col max-h-[80vh] overflow-y-auto">
+      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-medium text-gray-900">Categories</h2>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -26,7 +26,7 @@ const CategoriesListView = ({ categories, handleEdit }) => {
         </div>
       </div>
       
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-gray-200 overflow-y-auto">
         {categories?.length > 0 ? (
           categories.map((category) => (
             <div key={category.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150">
