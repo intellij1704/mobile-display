@@ -357,17 +357,19 @@ const OrderDetailPage = () => {
         "CANCELLED": "cancelled"
     };
 
-    const getShipmozoStatusKey = () => {
+    const getCurrentStatusKey = () => {
         if (isCancelled) return 'cancelled';
-        if (!trackingInfo?.awb_number) return 'pending';
 
-        if (trackingInfo?.current_status) {
-            return shipmozoStatusMap[trackingInfo.current_status] || 'shipped';
+        // Prioritize manual order status if it's more advanced than 'pending'
+        if (order.status && order.status !== 'pending') {
+            return order.status;
         }
-        return 'pending';
-    };
 
-    const shipmozoStatusKey = getShipmozoStatusKey();
+
+
+        // Default to the order status from the database (which would be 'pending' here)
+        return order.status || 'pending';
+    };
 
     const orderStatuses = [{ key: "pending", label: "Order Confirmed", date: orderDate }, { key: "shipped", label: "Shipped", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('shipment picked up'))?.date || null }, { key: "pickup", label: "Picked up", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('shipment picked up'))?.date || null }, { key: "inTransit", label: "In Transit", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('in transit'))?.date || null }, { key: "outForDelivery", label: "Out for Delivery", date: trackingInfo?.scan_detail?.find(s => s.status.toLowerCase().includes('out for delivery'))?.date || null }, { key: "delivered", label: "Delivered", date: order.status === "delivered" ? statusUpdateDate : null },];
 
@@ -386,7 +388,7 @@ const OrderDetailPage = () => {
         return statusMap[status] || 0
     }
 
-    const currentStatusIndex = getStatusIndex(shipmozoStatusKey);
+    const currentStatusIndex = getStatusIndex(getCurrentStatusKey());
     const isDelivered = order.status === "delivered"
 
     const returnWindowEnd = new Date(orderDate?.getTime() + 15 * 24 * 60 * 60 * 1000)
@@ -878,34 +880,34 @@ const OrderDetailPage = () => {
                                                         <p className="text-xs text-gray-500">Courier: {trackingInfo.courier}</p>
                                                     </div>
                                                 )}
-                                                        {isCurrent && trackingInfo?.scan_detail?.length > 0 && (
-                                                            <div className="mt-4 ml-6">
-                                                                <button
-                                                                    onClick={() => setIsTrackingExpanded(!isTrackingExpanded)}
-                                                                    className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                                                                >
-                                                                    {isTrackingExpanded ? 'Hide All Updates' : 'See All Updates'}
-                                                                    <svg className={`w-4 h-4 transition-transform ${isTrackingExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                                    </svg>
-                                                                </button>
-                                                                {isTrackingExpanded && (
-                                                                    <div className="mt-2 p-3 bg-gray-100 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
-                                                                        <div className="space-y-3">
-                                                                            {[...trackingInfo.scan_detail].sort((a, b) => new Date(a.date) - new Date(b.date)).map((scan, scanIndex) => (
-                                                                                <div key={scanIndex} className="text-xs text-gray-700">
-                                                                                    <div className="flex justify-between items-start">
-                                                                                        <p className="font-medium text-gray-800 flex-1 pr-2">{scan.status}</p>
-                                                                                        <p className="text-gray-500 whitespace-nowrap">{formatScanDate(scan.date)}</p>
-                                                                                    </div>
-                                                                                    <p className="text-gray-500">{scan.location}</p>
-                                                                                </div>
-                                                                            ))}
+                                                {isCurrent && trackingInfo?.scan_detail?.length > 0 && (
+                                                    <div className="mt-4 ml-6">
+                                                        <button
+                                                            onClick={() => setIsTrackingExpanded(!isTrackingExpanded)}
+                                                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                                        >
+                                                            {isTrackingExpanded ? 'Hide All Updates' : 'See All Updates'}
+                                                            <svg className={`w-4 h-4 transition-transform ${isTrackingExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        </button>
+                                                        {isTrackingExpanded && (
+                                                            <div className="mt-2 p-3 bg-gray-100 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                                                <div className="space-y-3">
+                                                                    {[...trackingInfo.scan_detail].sort((a, b) => new Date(a.date) - new Date(b.date)).map((scan, scanIndex) => (
+                                                                        <div key={scanIndex} className="text-xs text-gray-700">
+                                                                            <div className="flex justify-between items-start">
+                                                                                <p className="font-medium text-gray-800 flex-1 pr-2">{scan.status}</p>
+                                                                                <p className="text-gray-500 whitespace-nowrap">{formatScanDate(scan.date)}</p>
+                                                                            </div>
+                                                                            <p className="text-gray-500">{scan.location}</p>
                                                                         </div>
-                                                                    </div>
-                                                                )}
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         )}
+                                                    </div>
+                                                )}
 
                                                 {!isLast && (
                                                     <div
