@@ -436,3 +436,32 @@ body {
   margin: 32px 0;
   border-top: 1px solid #e5e7eb;
 }
+
+
+/* ========================= */
+/* 📱 MOBILE RESPONSIVE FIX */
+/* ========================= */
+
+@media (max-width: 640px) {
+  .product-description h1 {
+    font-size: 22px;
+  }
+
+  .product-description h2 {
+    font-size: 19px;
+  }
+
+  .product-description h3 {
+    font-size: 16px;
+  }
+
+  /* Stack images nicely on mobile */
+  .product-description p:has(img) {
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .product-description img {
+    max-width: 45%; /* 2 images per row */
+  }
+}
