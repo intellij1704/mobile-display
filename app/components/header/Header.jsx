@@ -209,7 +209,7 @@ export default function Header() {
       >
         {/* Top Bar */}
         <div
-          className="w-full mx-auto px-4 pt-2 pb-1 md:py-5 md:px-6 lg:px-8 xl:px-28 flex items-center justify-between"
+          className="w-full mx-auto px-4 pt-2 pb-1 md:py-5 md:px-6 lg:px-8 xl:px-20 flex items-center justify-between"
         >
           {/* Logo */}
           <div className="flex-shrink-0">
