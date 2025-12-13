@@ -453,7 +453,7 @@ body {
 }
 
 .product-description img {
-  max-width: 140px; /* control image size */
+  max-width: 450px; /* control image size */
   width: 100%;
   height: auto;
   margin: 0; /* remove vertical stacking margins */
@@ -503,6 +503,6 @@ body {
   }
 
   .product-description img {
-    max-width: 45%; /* 2 images per row */
+    max-width: 85%; /* 2 images per row */
   }
 }

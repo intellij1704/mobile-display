@@ -91,7 +91,7 @@ const CartPage = () => {
               Looks like you haven't added any products yet. Start shopping now!
             </p>
             <Link href="/">
-              <Button className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">Continue Shopping</Button>
+              <button className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">Continue Shopping</button>
             </Link>
           </div>
         ) : (
@@ -156,9 +156,9 @@ const CartPage = () => {
                   <span className="text-red-600">₹{summary.total.toFixed(2)}</span>
                 </div>
                 <Link href="/checkout?type=cart" className="mt-6 block w-full">
-                  <Button className="w-full bg-red-600 text-white py-3 rounded hover:bg-red-700">
+                  <button className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700">
                     Proceed to Checkout
-                  </Button>
+                  </button>
                 </Link>
               </div>
             </div>
@@ -295,80 +295,103 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   )
 
   return (
-    <div className="flex items-center justify-between p-4 bg-white rounded-lg">
-      <div className="flex space-x-4">
-        {/* Image + Quantity */}
-        <div className="flex items-center flex-col gap-2">
-          <img
-            src={imageSrc}
-            alt={product?.title || "Product"}
-            className="w-28 h-auto object-cover rounded"
-          />
-          <div className="flex items-center space-x-5 border border-[#929292]">
-            <button
-              onClick={() => handleUpdate(quantity - 1)}
-              disabled={isUpdating || quantity <= 1}
-              className="w-6 h-6 rounded-l flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
-            >
-              <Minus size={12} />
-            </button>
-            <span className="w-8 text-center text-sm">{quantity}</span>
-            <button
-              onClick={() => handleUpdate(quantity + 1)}
-              disabled={isUpdating}
-              className="w-6 h-6 rounded-r flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-        </div>
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-white rounded-lg">
+  
+  {/* Left Section */}
+  <div className="flex gap-4">
+    
+    {/* Image + Quantity */}
+    <div className="flex items-center flex-col gap-2">
+      <img
+        src={imageSrc}
+        alt={product?.title || "Product"}
+        className="w-24 sm:w-28 h-auto object-cover rounded"
+      />
 
-        {/* Product Info */}
-        <div className="max-w-md">
-          <h3 className="text-sm font-medium text-gray-800">{product?.title || "Product"}</h3>
-          {item?.selectedColor && <p className="text-xs text-gray-500 capitalize">Color: {item.selectedColor}</p>}
-          {item?.selectedQuality && (
-            <p className="text-xs text-gray-500 capitalize">Quality: {item.selectedQuality}</p>
-          )}
+      <div className="flex items-center space-x-5 border border-[#929292]">
+        <button
+          onClick={() => handleUpdate(quantity - 1)}
+          disabled={isUpdating || quantity <= 1}
+          className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+        >
+          <Minus size={12} />
+        </button>
 
-          {/* Price Section */}
-          {hasSale ? (
-            <p className="text-xs text-gray-500">
-              <span className="line-through mr-2">₹{listPrice.toFixed(2)}</span>
-              <span className="text-black font-semibold text-lg">₹{effectivePrice.toFixed(2)}</span>
-              <span className="ml-2 text-green-600 text-sm font-medium">
-                ({Math.round(((listPrice - effectivePrice) / listPrice) * 100)}% OFF)
-              </span>
-            </p>
-          ) : (
-            <p className="font-semibold text-lg text-black">₹{listPrice.toFixed(2)}</p>
-          )}
+        <span className="w-8 text-center text-sm">{quantity}</span>
 
-          {/* Return Fee (per line) */}
-          {item?.returnType && (
-            <p className="text-xs text-gray-500">
-              + ₹{computedReturnFee}{" "}
-              {item.returnType === "easy-return"
-                ? "Easy Return Fee"
-                : item.returnType === "easy-replacement"
-                  ? "Easy Replacement Fee"
-                  : "Self Shipping Fee"}
-            </p>
-          )}
-        </div>
+        <button
+          onClick={() => handleUpdate(quantity + 1)}
+          disabled={isUpdating}
+          className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+        >
+          <Plus size={12} />
+        </button>
       </div>
-
-      {/* Remove Button */}
-      <button onClick={handleRemove} disabled={isRemoving} className="text-gray-400 hover:text-red-500">
-        {isRemoving ? (
-          <CircularProgress size={16} />
-        ) : (
-          <span className="text-xl">
-            <DeleteForever />
-          </span>
-        )}
-      </button>
     </div>
+
+    {/* Product Info */}
+    <div className="flex-1">
+      <h3 className="text-sm font-medium text-gray-800">
+        {product?.title || "Product"}
+      </h3>
+
+      {item?.selectedColor && (
+        <p className="text-xs text-gray-500 capitalize">
+          Color: {item.selectedColor}
+        </p>
+      )}
+
+      {item?.selectedQuality && (
+        <p className="text-xs text-gray-500 capitalize">
+          Quality: {item.selectedQuality}
+        </p>
+      )}
+
+      {/* Price */}
+      {hasSale ? (
+        <p className="text-xs text-gray-500">
+          <span className="line-through mr-2">
+            ₹{listPrice.toFixed(2)}
+          </span>
+          <span className="text-black font-semibold text-lg">
+            ₹{effectivePrice.toFixed(2)}
+          </span>
+          <span className="ml-2 text-green-600 text-sm font-medium">
+            ({Math.round(((listPrice - effectivePrice) / listPrice) * 100)}% OFF)
+          </span>
+        </p>
+      ) : (
+        <p className="font-semibold text-lg text-black">
+          ₹{listPrice.toFixed(2)}
+        </p>
+      )}
+
+      {/* Return Fee */}
+      {item?.returnType && (
+        <p className="text-xs text-gray-500">
+          + ₹{computedReturnFee}{" "}
+          {item.returnType === "easy-return"
+            ? "Easy Return Fee"
+            : item.returnType === "easy-replacement"
+            ? "Easy Replacement Fee"
+            : "Self Shipping Fee"}
+        </p>
+      )}
+    </div>
+  </div>
+
+  {/* Delete Button */}
+  <div className="flex justify-end sm:justify-center">
+    <button
+      onClick={handleRemove}
+      disabled={isRemoving}
+      className="text-gray-400 hover:text-red-500"
+    >
+      {isRemoving ? <CircularProgress size={16} /> : <DeleteForever />}
+    </button>
+  </div>
+</div>
+
   )
 }
 

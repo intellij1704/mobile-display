@@ -128,15 +128,15 @@ export default function ReturnTypeSelector({
       <div
         role="dialog"
         aria-modal="true"
-        className={`fixed left-1/2 top-1/2 z-[101] w-[95vw] max-w-4xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl border border-gray-200 transition-all duration-300 ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"
+        className={`fixed left-1/2 top-1/2 z-[101] w-[95vw] max-w-4xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl border border-gray-200 transition-all duration-300 flex flex-col max-h-[90vh] ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"
           }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100 shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Select Return Type</h2>
-            <p className="text-sm text-gray-600 mt-1">Choose how you'd like to handle returns for this product</p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Select Return Type</h2>
+            <p className="text-xs md:text-sm text-gray-600 mt-1">Choose how you'd like to handle returns for this product</p>
           </div>
           <button
             aria-label="Close"
@@ -148,7 +148,7 @@ export default function ReturnTypeSelector({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 md:p-6 overflow-y-auto">
           <div className="grid md:grid-cols-3 grid-cols-1 gap-4">
             {returnOptions.map((option) => (
               <div
@@ -227,15 +227,15 @@ export default function ReturnTypeSelector({
         <>
           <div className="fixed inset-0 bg-black/70 z-[110]" onClick={closeTerms} />
           <div
-            className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl max-w-2xl w-[90vw] max-h-[80vh] overflow-hidden z-[111] transition-all duration-300 ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"
+            className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl max-w-2xl w-[90vw] max-h-[80vh] overflow-hidden z-[111] transition-all duration-300 flex flex-col ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"
               }`}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
             {/* Terms Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">Terms & Conditions</h3>
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 shrink-0">
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900">Terms & Conditions</h3>
               <button
                 onClick={closeTerms}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
@@ -246,7 +246,7 @@ export default function ReturnTypeSelector({
             </div>
 
             {/* Terms Content */}
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
+            <div className="p-4 md:p-6 overflow-y-auto">
               <div
                 className="text-gray-700 prose prose-sm max-w-none"
                 dangerouslySetInnerHTML={{ __html: selectedTerms }}

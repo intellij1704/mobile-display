@@ -165,9 +165,9 @@ export default function CartDrawer({ isOpen, onClose }) {
               </div>
 
               <Link href="/cart" onClick={onClose} className="block w-full">
-                <Button className="w-full bg-red-600 text-white py-3 rounded hover:bg-red-700">
+                <button className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700">
                   View Cart
-                </Button>
+                </button>
               </Link>
             </div>
           )}
