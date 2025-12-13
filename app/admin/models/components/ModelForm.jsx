@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 
 const INITIAL_FORM_STATE = {
   name: "",
+  slug: "",
   brandId: "",
   seriesId: "",
 };
@@ -33,6 +34,7 @@ export default function ModelForm() {
     if (isEditMode && modelData) {
       setFormData({
         name: modelData.name || "",
+        slug: modelData.slug || "",
         brandId: modelData.brandId || "",
         seriesId: modelData.seriesId || "",
       });
@@ -74,11 +76,16 @@ export default function ModelForm() {
 
       setIsSubmitting(true);
       try {
+        const finalSlug = formData.slug
+          ? formData.slug.trim().toLowerCase().replace(/\s+/g, "-")
+          : formData.name.trim().toLowerCase().replace(/\s+/g, "-");
+
         if (isEditMode) {
           await updateModel({
             id: modelId,
             data: {
               name: formData.name.trim(),
+              slug: finalSlug,
               brandId: formData.brandId,
               seriesId: formData.seriesId,
               imageURL: image ? undefined : imagePreview, // Keep old image if new one isn't selected
@@ -90,6 +97,7 @@ export default function ModelForm() {
           await createNewModel({
             data: {
               name: formData.name.trim(),
+              slug: finalSlug,
               brandId: formData.brandId,
               seriesId: formData.seriesId,
             },
@@ -131,6 +139,23 @@ export default function ModelForm() {
               className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               disabled={isSubmitting || isModelLoading}
             />
+          </div>
+
+          {/* Model Slug */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-gray-700">
+              Model Slug (SEO URL)
+            </label>
+            <input
+              name="slug"
+              type="text"
+              value={formData.slug}
+              onChange={handleInputChange}
+              placeholder="e.g. iphone-14"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              disabled={isSubmitting || isModelLoading}
+            />
+            <p className="text-sm text-gray-500 mt-1">Auto-generated from name if left empty.</p>
           </div>
 
           {/* Brand Selection */}

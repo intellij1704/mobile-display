@@ -54,6 +54,7 @@ export function ProductCard({ product }) {
     }
   }
 
+
   // Fallback if no colors
   if (colors.length === 0 && product?.isVariable && product?.variations && Object.keys(product.variations).length > 0) {
     const variations = Object.values(product.variations);
@@ -71,7 +72,7 @@ export function ProductCard({ product }) {
         <Link href={`/products/${product?.seoSlug || product?.id}`}>
           <img
             src={product?.featureImageURL || "/placeholder.svg"}
-            alt={product?.title}
+            alt={product?.featureImageAlt ? product?.featureImageAlt : product?.title}
             className="w-full h-full  group-hover:scale-105 transition-transform duration-500"
           />
         </Link>
@@ -106,7 +107,7 @@ export function ProductCard({ product }) {
                 </div>
               </div>
 
-              <div className={`flex items-center ${hasDiscount ? 'justify-between' : 'justify-start'} mt-1 ${hasDiscount?'gap-2':'gap-0'}`}>
+              <div className={`flex items-center ${hasDiscount ? 'justify-between' : 'justify-start'} mt-1 ${hasDiscount ? 'gap-2' : 'gap-0'}`}>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] md:text-base font-extralight text-[#4E4D4D] line-through">
                     {displayPrice > displaySalePrice && `₹${displayPrice.toLocaleString("en-IN")}`}

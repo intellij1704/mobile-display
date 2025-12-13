@@ -69,7 +69,7 @@ export default function BestsellerCategories() {
   );
 
   const handleCategoryClick = (category) => {
-    router.push(`/choose-brand?categoryId=${category.id}`);
+    router.push(`/choose-brand?categoryId=${category.slug}`);
   };
 
   return (

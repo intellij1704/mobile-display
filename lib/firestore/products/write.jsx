@@ -74,6 +74,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     seoKeywords: data?.seoKeywords || [],
     sku: data?.sku || "",
     featureImageURL,
+    featureImageAlt: data?.featureImageAlt || "",
     imageList: imageURLList,
     id: newId,
     timestampCreate: Timestamp.now(),
@@ -142,6 +143,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     seoKeywords: data?.seoKeywords || [],
     sku: data?.sku || "",
     featureImageURL,
+    featureImageAlt: data?.featureImageAlt || "",
     imageList: imageURLList,
     timestampUpdate: Timestamp.now(),
   });

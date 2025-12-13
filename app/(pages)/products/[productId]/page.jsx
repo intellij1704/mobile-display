@@ -14,10 +14,13 @@ import WhyUsSection from "@/app/components/WhyUsSection";
 
 // ✅ Dynamic Metadata for SEO
 export async function generateMetadata({ params }) {
-    const { productId } = params;
+    const { productId } = await params;
+
 
     // First try seoSlug, then fallback to Firestore id
     let product = await getProduct({ seoSlug: productId });
+
+    console.log("Format Products",product)
     if (!product) product = await getProduct({ id: productId });
 
     if (!product) {
@@ -45,6 +48,7 @@ export async function generateMetadata({ params }) {
     const url = `${process.env.NEXT_PUBLIC_DOMAIN}/products/${product.seoSlug || product.id}`;
 
     return {
+        metadataBase: new URL(process.env.NEXT_PUBLIC_DOMAIN),
         title,
         description,
         keywords,
@@ -99,8 +103,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function Page({ params, searchParams }) {
-    const { productId } = params;
-    let { color, quality } = searchParams;
+    const { productId } = await params;
+    let { color, quality } = await searchParams;
 
     // ✅ First try by seoSlug, then fallback to Firestore id
     let rawProduct = await getProduct({ seoSlug: productId });

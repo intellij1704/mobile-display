@@ -49,6 +49,24 @@ export async function getModelById(modelId) {
   }
 }
 
+// Get single model by Slug
+export async function getModelBySlug(slug) {
+  try {
+    if (!slug) throw new Error("Slug is required");
+
+    const q = query(collection(db, "models"), where("slug", "==", slug));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) throw new Error("Model not found");
+
+    const modelDoc = snapshot.docs[0];
+    return { id: modelDoc.id, ...modelDoc.data() };
+  } catch (error) {
+    throw new Error(`Failed to fetch model by slug: ${error.message}`);
+  }
+}
+
+
 /* ------------------------- 🔹 React Hooks ------------------------- */
 
 // Hook: Get ALL models
@@ -170,6 +188,39 @@ export function useModelById(modelId) {
       setIsLoading(false);
     }
   }, [modelId]);
+
+  useEffect(() => {
+    fetchModel();
+  }, [fetchModel]);
+
+  return { data, isLoading, error, refetch: fetchModel };
+}
+
+// Hook: Get single model by Slug
+export function useModelBySlug(slug) {
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchModel = useCallback(async () => {
+    if (!slug) {
+      setData(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const model = await getModelBySlug(slug);
+      setData(model);
+      setError(null);
+    } catch (err) {
+      setError(err.message || "Failed to fetch model");
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [slug]);
 
   useEffect(() => {
     fetchModel();

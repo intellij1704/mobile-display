@@ -40,16 +40,25 @@ function ModelsNotFound({ categoryName }) {
 
 export default function BrandListing() {
     const searchParams = useSearchParams()
-    const categoryId = searchParams.get("categoryId")
-    const brandId = searchParams.get("brandId")
+    const categorySlug = searchParams.get("category")
+    const brandSlug = searchParams.get("brand")
+    const categoryIdParam = searchParams.get("categoryId")
+    const brandIdParam = searchParams.get("brandId")
     const initialSeriesId = searchParams.get("seriesId")
 
     const [selectedSeriesId, setSelectedSeriesId] = useState(initialSeriesId || null)
     const [searchQuery, setSearchQuery] = useState("")
 
+    const { data: brands, isLoading: brandsLoading } = useBrands()
+    const { data: categories, isLoading: categoriesLoading } = useCategories()
+
+    const brand = useMemo(() => brands?.find(b => b.slug === brandSlug || b.id === brandIdParam), [brands, brandSlug, brandIdParam])
+    const category = useMemo(() => categories?.find(c => c.slug === categorySlug || c.id === categoryIdParam), [categories, categorySlug, categoryIdParam])
+
+    const brandId = brand?.id
+    const categoryId = category?.id
+
     const { data: series, isLoading: loadingSeries, error: seriesError } = useSeriesByBrand(brandId)
-    const { data: brands } = useBrands()
-    const { data: categories } = useCategories()
     const { data: allModels, isLoading: loadingModels, error: modelsError } = useModelsByBrand(brandId)
 
     const { seriesName } = useMemo(() => {
@@ -57,15 +66,8 @@ export default function BrandListing() {
         return { seriesName: s?.seriesName || "All Models" }
     }, [series, selectedSeriesId])
 
-    const brandName = useMemo(() => {
-        const b = brands?.find((x) => x.id === brandId)
-        return b?.name || brandId || "Brand"
-    }, [brands, brandId])
-
-    const categoryName = useMemo(() => {
-        const c = categories?.find((x) => x.id === categoryId)
-        return c?.name || "Category"
-    }, [categories, categoryId])
+    const brandName = brand?.name || "Brand"
+    const categoryName = category?.name || "Category"
 
     const handleSeriesClick = (id) => {
         setSelectedSeriesId((prev) => (prev === id ? null : id))
@@ -81,7 +83,7 @@ export default function BrandListing() {
         return bySeries.filter((m) => (m.name || "").toLowerCase().includes(q))
     }, [allModels, selectedSeriesId, searchQuery])
 
-    if (loadingSeries)
+    if (loadingSeries || brandsLoading || categoriesLoading)
         return (
             <div className="flex flex-col items-center justify-center py-10 h-screen">
                 <CircularProgress />
@@ -218,7 +220,7 @@ export default function BrandListing() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                 {filteredModels.map((model) => (
                                     <Link
-                                        href={`/product-list?brandId=${brandId}&categoryId=${categoryId}&modelId=${model.id}`}
+                                        href={`/product-list?brand=${brand?.slug ?? brandIdParam}&category=${category?.slug ?? categoryIdParam}&model=${model.slug ?? model.id}`}
                                         key={model.id}
                                         className="group"
                                     >

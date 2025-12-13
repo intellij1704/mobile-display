@@ -20,9 +20,11 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
   const {
     id,
     title,
+
     price: basePrice,
     salePrice: baseSalePrice,
     featureImageURL,
+    featureImageAlt,
     shortDescription,
     bigDeal,
     liveSale,
@@ -314,7 +316,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
               <>
                 <Image
                   src={featureImageURL || "/placeholder.svg"}
-                  alt={title}
+                  alt={featureImageAlt ? featureImageAlt : title}
                   width={200}
                   height={200}
                   className="object-contain p-2 transition-transform duration-500 group-hover:scale-105 w-full h-full"

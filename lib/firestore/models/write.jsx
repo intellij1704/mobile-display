@@ -67,6 +67,7 @@ export async function createNewModel({ data, image }) {
     const modelData = {
       name: data.name.trim(),
       name_lowercase: data.name.trim().toLowerCase(),
+      slug: data.slug,
       brandId: data.brandId,
       seriesId: data.seriesId,
       createdAt: now,
@@ -104,6 +105,7 @@ export async function updateModel({ id, data, image }) {
 
     const modelData = {
       name: data.name?.trim(),
+      slug: data.slug,
       brandId: data.brandId,
       seriesId: data.seriesId,
       imageURL: data.imageURL,

@@ -48,6 +48,7 @@ export const createNewSeries = async ({ data }) => {
     const seriesData = {
       seriesName: data.seriesName.trim(),
       seriesName_lowercase: data.seriesName.trim().toLowerCase(),
+      slug: data.slug,
       brandId: data.brandId,
       categoryId: data.categoryId || null,
       imageUrl: data.imageUrl || null,
@@ -74,6 +75,7 @@ export const batchCreateSeries = async (brandId, seriesList, imageEntries = []) 
       const seriesData = {
         seriesName: seriesName.trim(),
         seriesName_lowercase: seriesName.trim().toLowerCase(),
+        slug: seriesName.trim().toLowerCase().replace(/\s+/g, "-"),
         brandId,
         categoryId: null,
         imageUrl: img.imageUrl || null,

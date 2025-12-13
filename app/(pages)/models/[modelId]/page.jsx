@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCategories } from "@/lib/firestore/categories/read";
 import { AlertCircle } from "lucide-react";
 import { useProductsByModelId } from "@/lib/firestore/products/read";
-import { useModelById } from "@/lib/firestore/models/read";
+import { useModelBySlug } from "@/lib/firestore/models/read";
 import { CircularProgress } from "@mui/material";
 import ProductCard from "../../product/components/ProductCard";
 import { AuthContextProvider } from "@/context/AuthContext";
@@ -17,13 +17,13 @@ export default function ModelDetailsPage() {
         data: model,
         isLoading: loadingModel,
         error: modelError,
-    } = useModelById(modelId);
+    } = useModelBySlug(modelId);
 
     const {
         data: products,
         isLoading: loadingProducts,
         error: productError,
-    } = useProductsByModelId(modelId);
+    } = useProductsByModelId(model?.id);
 
     const { categoriesMap, isLoading: loadingCategories } = useCategories();
 
@@ -42,6 +42,14 @@ export default function ModelDetailsPage() {
         return (
             <p className="text-center text-red-500 py-20">
                 Error: {modelError?.message || productError?.message || "Something went wrong"}
+            </p>
+        );
+    }
+
+    if (!model && !loadingModel) {
+        return (
+            <p className="text-center text-gray-500 py-20">
+                Model not found
             </p>
         );
     }

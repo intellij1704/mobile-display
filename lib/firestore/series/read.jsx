@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { db } from "@/lib/firebase"
-import { collection, query, onSnapshot, where } from "firebase/firestore"
+import { collection, query, onSnapshot, where, getDocs } from "firebase/firestore"
 import { getCategory } from "@/lib/firestore/categories/read_server"
 import { getBrand } from "@/lib/firestore/brands/read_server"
 
@@ -35,6 +35,22 @@ const enrichSeries = async (series) => {
     imagePath: series.imagePath || null, // ✅ enforce imagePath field
     categoryName,
     brandName,
+  }
+}
+
+// ✅ Get single series by Slug
+export async function getSeriesBySlug(slug) {
+  try {
+    if (!slug) throw new Error("Slug is required")
+
+    const q = query(collection(db, "series"), where("slug", "==", slug))
+    const snapshot = await getDocs(q)
+
+    if (snapshot.empty) throw new Error("Series not found")
+    const doc = snapshot.docs[0]
+    return await enrichSeries({ id: doc.id, ...doc.data() })
+  } catch (error) {
+    throw new Error("Failed to fetch series: " + error.message)
   }
 }
 
@@ -78,6 +94,39 @@ export const useSeries = () => {
 
     return () => unsubscribe()
   }, [])
+
+  return { data, isLoading, error }
+}
+
+// ✅ Hook: fetch series by slug
+export const useSeriesBySlug = (slug) => {
+  const [data, setData] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!slug) {
+      setData(null)
+      setIsLoading(false)
+      return
+    }
+
+    const fetchSeries = async () => {
+      setIsLoading(true)
+      try {
+        const series = await getSeriesBySlug(slug)
+        setData(series)
+        setError(null)
+      } catch (err) {
+        setError(err.message || "Failed to fetch series")
+        setData(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSeries()
+  }, [slug])
 
   return { data, isLoading, error }
 }

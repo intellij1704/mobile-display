@@ -21,6 +21,7 @@ export default function SeriesForm() {
 
   const [brandId, setBrandId] = useState("")
   const [seriesInput, setSeriesInput] = useState("")
+  const [slug, setSlug] = useState("")
   const [brands, setBrands] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
@@ -55,6 +56,7 @@ export default function SeriesForm() {
       if (!seriesData) throw new Error("Series not found")
       setBrandId(seriesData.brandId || "")
       setSeriesInput(seriesData.seriesName || "")
+      setSlug(seriesData.slug || "")
       setImagePreview(seriesData.imageUrl || "")
       setExistingImagePath(seriesData.imagePath || "")
       setRemoveExistingImage(false)
@@ -91,6 +93,10 @@ export default function SeriesForm() {
 
       setIsLoading(true)
       try {
+        const finalSlug = slug
+          ? slug.trim().toLowerCase().replace(/\s+/g, "-")
+          : seriesInput.trim().toLowerCase().replace(/\s+/g, "-")
+
         if (isEditMode) {
           let imagePayload = {}
           if (imageFile) {
@@ -105,6 +111,7 @@ export default function SeriesForm() {
             id: seriesId,
             data: {
               seriesName: seriesInput.trim(),
+              slug: finalSlug,
               brandId,
               ...imagePayload,
             },
@@ -118,6 +125,7 @@ export default function SeriesForm() {
           await createNewSeries({
             data: {
               seriesName: seriesInput.trim(),
+              slug: finalSlug,
               brandId,
               categoryId: "",
               ...imagePayload,
@@ -127,6 +135,7 @@ export default function SeriesForm() {
         }
 
         setSeriesInput("")
+        setSlug("")
         setBrandId("")
         setImageFile(null)
         setImagePreview("")
@@ -140,7 +149,7 @@ export default function SeriesForm() {
         setIsLoading(false)
       }
     },
-    [brandId, seriesInput, isEditMode, seriesId, imageFile, removeExistingImage, existingImagePath, router],
+    [brandId, seriesInput, slug, isEditMode, seriesId, imageFile, removeExistingImage, existingImagePath, router],
   )
 
   const handleImageChange = (e) => {
@@ -250,7 +259,21 @@ export default function SeriesForm() {
           )}
         </div>
 
-
+        <div className="flex flex-col gap-2">
+          <label htmlFor="slug" className="text-sm font-medium text-gray-700">
+            Series Slug (SEO URL)
+          </label>
+          <input
+            id="slug"
+            type="text"
+            placeholder="e.g. galaxy-s24"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            disabled={isLoading || (!brandId && !isEditMode)}
+          />
+          <p className="text-xs text-gray-500">Auto-generated from name if left empty.</p>
+        </div>
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">

@@ -77,7 +77,7 @@ export default function BrandListing() {
         {!isLoading && brands && (
           <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-3 md:gap-x-10 md:gap-y-8 gap-y-5 mt-8 mb-5 mx-2 ">
             {displayedBrands.map((brand) => (
-              <Link key={brand.id} href={`/brand/${brand.id}`} className="group">
+              <Link key={brand.id} href={`/brand/${brand.slug}`} className="group">
                 <div className="bg-white md:p-3 p-2 md:rounded-2xl rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 md:hover:-translate-y-3 transition-all duration-300 border border-gray-200 border-solid">
                   <div className="flex items-center justify-center">
                     <Image

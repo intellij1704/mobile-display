@@ -10,8 +10,8 @@ import { ChevronRight } from "lucide-react"
 import { useParams } from "next/navigation"
 
 import { useBrands } from "@/lib/firestore/brands/read"
-import { useSeriesByBrand } from "@/lib/firestore/series/read"
-import { useModelsByBrand } from "@/lib/firestore/models/read"
+import { useSeriesByBrand, useSeriesBySlug } from "@/lib/firestore/series/read"
+import { useModelsByBrand, useModelBySlug } from "@/lib/firestore/models/read"
 import { CircularProgress } from "@mui/material"
 
 function SeriesNotFound({ brandName }) {
@@ -38,24 +38,27 @@ function SeriesNotFound({ brandName }) {
 
 export default function BrandSeriesPage() {
     const params = useParams()
-    const brandId = params?.brandId
+    const brandParam = params?.brandId
 
     const [selectedSeriesId, setSelectedSeriesId] = useState(null)
     const [searchQuery, setSearchQuery] = useState("")
 
+    const { data: brands, isLoading: loadingBrands } = useBrands()
+
+    const brand = useMemo(() => {
+        return brands?.find((b) => b.id === brandParam || b.slug === brandParam)
+    }, [brands, brandParam])
+
+    const brandId = brand?.id
+    const brandName = brand?.name || brandParam || "Brand"
+
     const { data: series, isLoading: loadingSeries, error } = useSeriesByBrand(brandId)
-    const { data: brands } = useBrands()
     const { data: allModels, isLoading: loadingModels } = useModelsByBrand(brandId)
 
     const { seriesName } = useMemo(() => {
         const s = series?.find((x) => x.id === selectedSeriesId)
         return { seriesName: s?.seriesName || "All Models" }
     }, [series, selectedSeriesId])
-
-    const brandName = useMemo(() => {
-        const b = brands?.find((x) => x.id === brandId)
-        return b?.name || brandId || "Brand"
-    }, [brands, brandId])
 
     const handleSeriesClick = (id) => {
         setSelectedSeriesId((prev) => (prev === id ? null : id))
@@ -71,7 +74,7 @@ export default function BrandSeriesPage() {
         return bySeries.filter((m) => (m.name || "").toLowerCase().includes(q))
     }, [allModels, selectedSeriesId, searchQuery])
 
-    if (loadingSeries)
+    if (loadingSeries || loadingBrands)
         return (
             <div className="flex flex-col items-center justify-center py-10 h-screen">
                 <CircularProgress />
@@ -214,7 +217,7 @@ export default function BrandSeriesPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                 {filteredModels.map((model) => (
                                     <Link
-                                        href={`/models/${model.id}`}
+                                        href={`/models/${model.slug ?? model.id}`}
                                         key={model.id}
                                         className="group"
                                     >

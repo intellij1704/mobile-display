@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 ::selection {
-  background-color: #8B5CF6; /* Tailwind violet-500 */
+  background-color: #8b5cf6; /* Tailwind violet-500 */
   color: #fff;
 }
 
@@ -354,9 +354,7 @@ header {
 
 body {
   font-family: "Metropolis", sans-serif;
-
 }
-
 
 @keyframes scaleIn {
   0% {
@@ -371,4 +369,70 @@ body {
 
 .animate-scaleIn {
   animation: scaleIn 0.3s ease-out;
+}
+
+/* Product description */
+
+.product-description {
+  font-family: Montserrat, Arial, sans-serif;
+  color: #111827;
+  line-height: 1.8;
+}
+
+.product-description h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 32px 0 16px;
+}
+
+.product-description h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 28px 0 14px;
+}
+
+.product-description h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 24px 0 12px;
+}
+
+.product-description p {
+  margin-bottom: 14px;
+}
+
+.product-description ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 16px 0;
+}
+
+.product-description li {
+  margin-bottom: 8px;
+}
+
+.product-description a {
+  color: #2563eb;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+/* FIX IMAGE ROW + WRAP */
+.product-description p:has(img) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.product-description img {
+  max-width: 140px; /* control image size */
+  width: 100%;
+  height: auto;
+  margin: 0; /* remove vertical stacking margins */
+  display: block;
+}
+
+.product-description hr {
+  margin: 32px 0;
+  border-top: 1px solid #e5e7eb;
 }

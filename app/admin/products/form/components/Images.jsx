@@ -85,6 +85,19 @@ export default function Images({
             }
           }}
         />
+
+        <div className="mt-1">
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            Alt Text <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Enter alt text for feature image"
+            value={data?.featureImageAlt ?? ""}
+            onChange={(e) => handleData("featureImageAlt", e.target.value)}
+            className="w-full border px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 text-sm"
+          />
+        </div>
       </div>
 
       {/* Product Images */}

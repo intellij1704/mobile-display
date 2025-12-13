@@ -56,6 +56,7 @@ export const createNewCategory = async ({ data, image }) => {
     ...data,
     name: data.name.trim(),
     name_lowercase: data.name.trim().toLowerCase(),
+    slug: data.slug,
     id: newId,
     imageURL: imageURL,
     timestampCreate: Timestamp.now(),
@@ -95,6 +96,7 @@ export const updateCategory = async ({ id, data, image }) => {
     ...data,
     name: data.name.trim(),
     name_lowercase: data.name.trim().toLowerCase(),
+    slug: data.slug,
     imageURL: imageURL,
     timestampUpdate: Timestamp.now(),
   });

@@ -54,7 +54,7 @@ export default function CategoriesPage() {
   const { categoriesList, isLoading } = useCategories();
 
   const handleCategoryClick = (category) => {
-    router.push(`/choose-brand?categoryId=${category.id}`);
+    router.push(`/choose-brand?category=${category.slug}`);
   };
 
   return (

@@ -5,9 +5,10 @@ import { CircularProgress } from "@mui/material";
 import { AlertCircle } from "lucide-react";
 
 import { useSearchParams } from "next/navigation";
-import { useCategories, useCategoryById } from "@/lib/firestore/categories/read";
+import { useCategories, useCategoryBySlug } from "@/lib/firestore/categories/read";
+import { useBrands } from "@/lib/firestore/brands/read";
 import { useProductsByFilters } from "@/lib/firestore/products/read";
-import { useModelById } from "@/lib/firestore/models/read";
+import { useModelBySlug } from "@/lib/firestore/models/read";
 import { AuthContextProvider } from "@/context/AuthContext";
 import ProductCard from "../product/components/ProductCard";
 
@@ -15,17 +16,24 @@ import ProductCard from "../product/components/ProductCard";
 function ProductListContent() {
   const searchParams = useSearchParams();
 
-  const brandId = searchParams.get("brandId");
-  const categoryId = searchParams.get("categoryId");
-  const modelId = searchParams.get("modelId");
+  const brandSlug = searchParams.get("brand");
+  const categorySlug = searchParams.get("category");
+  const modelSlug = searchParams.get("model");
+
+  const { data: brands, isLoading: loadingBrands } = useBrands();
+  const brand = brands?.find((b) => b.slug === brandSlug);
 
   const {
     data: model,
     isLoading: loadingModel,
     error: modelError,
-  } = useModelById(modelId);
+  } = useModelBySlug(modelSlug);
 
-  const { data: category } = useCategoryById(categoryId);
+  const { data: category, isLoading: loadingCategory } = useCategoryBySlug(categorySlug);
+
+  const brandId = brand?.id;
+  const categoryId = category?.id;
+  const modelId = model?.id;
 
   const {
     data: products,
@@ -41,9 +49,9 @@ function ProductListContent() {
 
   const { categoriesMap, isLoading: loadingCategories } = useCategories();
 
-  const loading = loadingModel || loadingProducts || loadingCategories;
+  const loading = loadingModel || loadingProducts || loadingCategories || loadingBrands || loadingCategory;
 
-  if (!brandId || !categoryId || !modelId) {
+  if (!brandSlug || !categorySlug || !modelSlug) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
@@ -63,22 +71,33 @@ function ProductListContent() {
     );
   }
 
-  if (modelError || productError) {
+  // After loading, if any entity is not found, show a proper "Not Found" message.
+  if (!loading && (!brand || !category || !model)) {
     return (
-      <p className="text-center text-red-500 py-20">
-        Error: {modelError?.message || productError?.message || "Something went wrong"}
-      </p>
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+          <h1 className="text-2xl font-bold text-gray-800">Page Not Found</h1>
+          <p className="text-gray-600 mt-2">The combination of brand, category, or model you requested could not be found.</p>
+          <div className="mt-4 text-left text-sm text-gray-500 bg-gray-50 p-3 rounded-md w-full max-w-md mx-auto">
+            {!brand && <p>Invalid brand: <span className="font-mono text-red-500">{brandSlug}</span></p>}
+            {!category && <p>Invalid category: <span className="font-mono text-red-500">{categorySlug}</span></p>}
+            {!model && <p>Invalid model: <span className="font-mono text-red-500">{modelSlug}</span></p>}
+          </div>
+        </div>
+      </div>
     );
   }
 
-  const validProducts = products?.filter((p) => categoriesMap.has(p.categoryId)) || [];
+  // The useProductsByFilters hook already filters products correctly.
+  const validProducts = products || [];
 
   if (validProducts.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-gray-500 mb-4" />
-          <p className="text-gray-600">No categorized products found.</p>
+          <p className="text-gray-600">No products found for this model.</p>
         </div>
       </div>
     );

@@ -197,7 +197,7 @@ export const searchProducts = async (searchTerm) => {
 // ------------------- GET PRODUCTS BY MODEL -------------------
 export function useProductsByModelId(modelId) {
   const { data, error } = useSWRSubscription(
-    ["products-by-model", modelId],
+    modelId ? ["products-by-model", modelId] : null,
     ([_, modelId], { next }) => {
       const q = query(collection(db, "products"), where("modelId", "==", modelId));
       const unsub = onSnapshot(
@@ -229,16 +229,21 @@ export function useProductsByModelId(modelId) {
   return {
     data: data || [],
     error: error?.message,
-    isLoading: data === undefined,
+    isLoading: data === undefined && !!modelId,
   };
 }
 
 // ------------------- GET PRODUCTS BY BRAND, CATEGORY, MODEL -------------------
 export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, lastSnapDoc }) {
   const { data, error } = useSWRSubscription(
-    ["products-by-filters", brandId, categoryId, modelId, pageLimit, lastSnapDoc],
-    ([path, brandId, categoryId, modelId, pageLimit, lastSnapDoc], { next }) => {
+    (brandId && categoryId && modelId) ? ["products-by-filters", brandId, categoryId, modelId, pageLimit, lastSnapDoc] : null,
+    ([_path, brandId, categoryId, modelId, pageLimit, lastSnapDoc], { next }) => {
       const ref = collection(db, "products");
+
+      if (!brandId || !categoryId || !modelId) {
+        return () => {};
+      }
+
       let q = query(
         ref,
         where("brandId", "==", brandId),
@@ -286,8 +291,8 @@ export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, 
   return {
     data: data?.list || [],
     lastSnapDoc: data?.lastSnapDoc,
-    error: error?.message,
-    isLoading: data === undefined,
+    error: error?.message || (!brandId || !categoryId || !modelId ? "Missing filter parameters." : null),
+    isLoading: data === undefined && !!(brandId && categoryId && modelId),
   };
 }
 

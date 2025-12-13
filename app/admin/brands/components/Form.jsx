@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { UploadCloud, X, Loader2, Save, XCircle } from "lucide-react";
 
 export default function Form() {
-  const [brandData, setBrandData] = useState({ name: "" });
+  const [brandData, setBrandData] = useState({ name: "", slug: "" });
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +37,7 @@ export default function Form() {
     if (id) fetchBrand();
     else {
       // Reset form when creating a new brand
-      setBrandData({ name: "" });
+      setBrandData({ name: "", slug: "" });
       setImage(null);
       setImagePreview(null);
     }
@@ -66,15 +66,19 @@ export default function Form() {
     setIsLoading(true);
 
     try {
+      const slug = brandData.slug
+        ? brandData.slug.trim().toLowerCase().replace(/\s+/g, "-")
+        : brandData.name.trim().toLowerCase().replace(/\s+/g, "-");
+      const data = { ...brandData, slug };
       if (id) {
-        await updateBrand({ id, data: brandData, image });
+        await updateBrand({ id, data, image });
         toast.success("Brand updated successfully!");
       } else {
-        await createNewBrand({ data: brandData, image });
+        await createNewBrand({ data, image });
         toast.success("Brand created successfully!");
       }
       // Reset form and navigate
-      setBrandData({ name: "" });
+      setBrandData({ name: "", slug: "" });
       setImage(null);
       setImagePreview(null);
       router.push("/admin/brands");
@@ -87,7 +91,7 @@ export default function Form() {
 
   const handleCancel = () => {
     // Reset form state
-    setBrandData({ name: "" });
+    setBrandData({ name: "", slug: "" });
     setImage(null);
     setImagePreview(null);
     // Navigate back to brands page
@@ -162,6 +166,28 @@ export default function Form() {
             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
           />
+        </div>
+
+        {/* Brand Slug */}
+        <div className="space-y-2">
+          <label
+            htmlFor="slug"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Brand Slug (SEO URL)
+          </label>
+          <input
+            type="text"
+            id="slug"
+            name="slug"
+            value={brandData.slug ?? ""}
+            onChange={handleInputChange}
+            placeholder="e.g. apple-iphone"
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Auto-generated from name if left empty.
+          </p>
         </div>
 
         {/* Form Actions */}

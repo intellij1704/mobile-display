@@ -21,6 +21,7 @@ const CategoriesForm = ({ categories, editingCategory, setEditingCategory }) => 
   useEffect(() => {
     if (editingCategory) {
       setValue('categoryName', editingCategory.name);
+      setValue('categorySlug', editingCategory.slug);
       if (editingCategory.imageURL) {
         setPreviewImage(editingCategory.imageURL);
       }
@@ -37,37 +38,57 @@ const CategoriesForm = ({ categories, editingCategory, setEditingCategory }) => 
     }
   }, [imageFile]);
 
-  const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    try {
-      const categoryData = {
-        name: data.categoryName.trim(),
-      };
-  
-      if (editingCategory) {
-        await updateCategory({
-          id: editingCategory.id, // Make sure to pass the ID here
-          data: categoryData,
-          image: data.image?.[0] // Only pass if new image was selected
-        });
-        toast.success("Category updated successfully!");
-      } else {
-        await createNewCategory({
-          data: categoryData,
-          image: data.image[0]
-        });
-        toast.success("Category created successfully!");
-      }
-  
-      reset();
-      setPreviewImage(null);
-      setEditingCategory(null);
-    } catch (err) {
-      toast.error(err.message || "An error occurred. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+  const generateSlug = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, 'and')            // replace & with 'and'
+    .replace(/[^a-z0-9]+/g, '-')     // remove all non-url chars
+    .replace(/-+/g, '-')             // collapse multiple hyphens
+    .replace(/^-|-$/g, '');          // trim hyphens
+};
+
+
+const onSubmit = async (data) => {
+  setIsSubmitting(true);
+  try {
+    const baseText = data.categorySlug
+      ? data.categorySlug
+      : data.categoryName;
+
+    const slug = generateSlug(baseText);
+
+    const categoryData = {
+      name: data.categoryName.trim(),   // UI name (can contain &)
+      slug,                              // URL-safe slug
+    };
+
+    if (editingCategory) {
+      await updateCategory({
+        id: editingCategory.id,
+        data: categoryData,
+        image: data.image?.[0],
+      });
+      toast.success("Category updated successfully!");
+    } else {
+      await createNewCategory({
+        data: categoryData,
+        image: data.image[0],
+      });
+      toast.success("Category created successfully!");
     }
-  };
+
+    reset();
+    setPreviewImage(null);
+    setEditingCategory(null);
+  } catch (err) {
+    toast.error(err.message || "An error occurred. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
   const handleCancel = () => {
     reset();
     setPreviewImage(null);
@@ -181,6 +202,22 @@ const CategoriesForm = ({ categories, editingCategory, setEditingCategory }) => 
             {errors.categoryName && (
               <p className="mt-1 text-sm text-red-600">{errors.categoryName.message}</p>
             )}
+          </div>
+
+          {/* Category Slug */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Category Slug (SEO URL)
+            </label>
+            <input
+              type="text"
+              {...register('categorySlug')}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              placeholder="e.g. mobile-screen"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Auto-generated from name if left empty.
+            </p>
           </div>
 
           {/* Form Actions */}

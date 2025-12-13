@@ -2,7 +2,7 @@
 "use client";
 
 import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import useSWRSubscription from "swr/subscription";
 
 
@@ -55,5 +55,33 @@ export function useCategoryById(categoryId) {
     data: data,
     error: error?.message,
     isLoading: data === undefined,
+  };
+}
+
+export function useCategoryBySlug(slug) {
+  const { data, error } = useSWRSubscription(
+    slug ? ["categories", slug] : null,
+    ([path, slugValue], { next }) => {
+      const q = query(collection(db, path), where("slug", "==", slugValue));
+      const unsub = onSnapshot(
+        q,
+        (snapshot) => {
+          if (snapshot.empty) {
+            next(null, null);
+          } else {
+            const doc = snapshot.docs[0];
+            next(null, { id: doc.id, ...doc.data() });
+          }
+        },
+        (err) => next(err, null)
+      );
+      return () => unsub();
+    }
+  );
+
+  return {
+    data: data,
+    error: error?.message,
+    isLoading: data === undefined && !!slug,
   };
 }

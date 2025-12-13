@@ -73,10 +73,7 @@ export default function Page() {
         errors.title = "Product Name is required"
         hasError = true
       }
-      if (!data?.shortDescription?.trim()) {
-        errors.shortDescription = "Short Description is required"
-        hasError = true
-      }
+
       if (!data?.categoryId) {
         errors.categoryId = "Category is required"
         hasError = true
