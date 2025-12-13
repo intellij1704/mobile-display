@@ -134,15 +134,21 @@ function SearchModels() {
                 <div className="flex w-full items-center rounded-full border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                     <Dropdown>
                         <DropdownTrigger>
-                            <Button
-                                variant="light"
-                                className="flex items-center px-4 py-2 gap-2 rounded-l-full border-r border-gray-200"
-                                disabled={isLoading}
-                            >
-                                <Menu size={16} />
-                                <span className="text-sm font-medium">{selectedBrand}</span>
-                                <ChevronDown size={16} />
-                            </Button>
+                        <Button
+  variant="light"
+  className="flex items-center px-4 py-2 gap-2 rounded-l-full border-r border-gray-200"
+  disabled={isLoading}
+>
+  {/* ✅ Show on mobile, hide on md+ */}
+  <Menu size={16} className="md:block hidden" />
+
+  <span className="md:text-sm text-[14px] font-medium">
+    {selectedBrand}
+  </span>
+
+  <ChevronDown size={16} />
+</Button>
+
                         </DropdownTrigger>
                         <DropdownMenu
                             aria-label="Brands"
@@ -160,19 +166,26 @@ function SearchModels() {
                         </DropdownMenu>
                     </Dropdown>
 
-                    <Input
-                        placeholder="Search for model..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyDown={handleKeyPress}
-                        onFocus={() => setIsSearchFocused(true)}
-                        className="flex-1 border-none"
-                        classNames={{
-                            inputWrapper: "border-none shadow-none h-12 bg-transparent",
-                            input: "px-4 py-2 text-sm placeholder-gray-400",
-                        }}
-                        isDisabled={isLoading}
-                    />
+              <Input
+  placeholder="Search for model..."
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+  onKeyDown={handleKeyPress}
+  onFocus={() => setIsSearchFocused(true)}
+  className="flex-1 border-none"
+  classNames={{
+    inputWrapper: "border-none shadow-none h-10 md:h-12 bg-transparent",
+    input: `
+      px-3 md:px-4
+      py-2
+      text-xs md:text-sm
+      placeholder:text-xs md:placeholder:text-sm
+      placeholder:text-gray-400
+    `,
+  }}
+  isDisabled={isLoading}
+/>
+
 
                     <Button
                         isIconOnly

@@ -74,7 +74,7 @@ export function ProductCard({ product }) {
           <div
             className="
     relative w-full 
-    h-[150px]
+    h-[130px]
     sm:h-[160px]
     md:h-[180px]
     lg:h-[220px]
