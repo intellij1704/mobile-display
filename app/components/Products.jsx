@@ -73,7 +73,7 @@ export function ProductCard({ product }) {
           <img
             src={product?.featureImageURL || "/placeholder.svg"}
             alt={product?.featureImageAlt ? product?.featureImageAlt : product?.title}
-            className="w-full h-full  group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-contain  group-hover:scale-105 transition-transform duration-500"
           />
         </Link>
         {/* Favorite Button - positioned over the image */}
