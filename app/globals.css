@@ -397,9 +397,37 @@ body {
   margin: 24px 0 12px;
 }
 
+
+.product-description h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 18px 0 10px;
+  color: #111827;
+}
+
+
+
+.product-description h5 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 18px 0 10px;
+  color: #111827;
+}
+
+.product-description h6 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  color: #111827;
+  text-transform: uppercase; /* optional but looks professional */
+}
+
 .product-description p {
   margin-bottom: 14px;
 }
+
+
+
 
 .product-description ul {
   list-style: disc;
@@ -453,6 +481,19 @@ body {
 
   .product-description h3 {
     font-size: 16px;
+  }
+
+    .product-description h4 {
+    font-size: 15px;
+  }
+
+
+   .product-description h5 {
+    font-size: 14px;
+  }
+
+  .product-description h6 {
+    font-size: 13px;
   }
 
   /* Stack images nicely on mobile */
