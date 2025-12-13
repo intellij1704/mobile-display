@@ -23,6 +23,7 @@ const useProductFilters = (
     initialBrandIds,
     initialSeriesIds,
     initialModelIds,
+    initialCategorySlug,
 ) => {
     const [filters, setFilters] = useState({
         category: [],
@@ -37,7 +38,7 @@ const useProductFilters = (
         if (!categoriesList || !brands || !seriesList || !modelsList || isInitialized) return
 
         const selectedCategories = categoriesList
-            .filter((cat) => initialCategoryIds.includes(cat.id))
+            .filter((cat) => initialCategoryIds.includes(cat.id) || (initialCategorySlug && cat.slug === initialCategorySlug))
             .map((cat) => cat.name)
         const selectedBrands = brands.filter((brand) => initialBrandIds.includes(brand.id)).map((brand) => brand.name)
         const selectedSeries = seriesList
@@ -64,6 +65,7 @@ const useProductFilters = (
         initialBrandIds,
         initialSeriesIds,
         initialModelIds,
+        initialCategorySlug,
         isInitialized,
     ])
 
@@ -236,6 +238,7 @@ const ProductsPageContent = () => {
 
     const initialBrandIds = searchParams.get("brandId")?.split(",").filter(Boolean) || []
     const initialCategoryIds = searchParams.get("categoryId")?.split(",").filter(Boolean) || []
+    const initialCategorySlug = searchParams.get("category")
     const initialSeriesIds = searchParams.get("seriesId")?.split(",").filter(Boolean) || []
     const initialModelIds = searchParams.get("modelId")?.split(",").filter(Boolean) || []
 
@@ -257,6 +260,7 @@ const ProductsPageContent = () => {
         initialBrandIds,
         initialSeriesIds,
         initialModelIds,
+        initialCategorySlug,
     )
 
     const { sortOption, setSortOption, sortedProducts } = useProductSorting(filteredProducts)
