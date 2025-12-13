@@ -4,6 +4,7 @@ import FavoriteButton from "./FavoriteButton";
 import { AuthContextProvider } from "@/context/AuthContext";
 import AddToCartButton from "./AddToCartButton";
 import RatingReview from "./RatingReview";
+import Image from "next/image";
 
 export function ProductCard({ product }) {
 
@@ -70,11 +71,33 @@ export function ProductCard({ product }) {
       {/* Product Image Section */}
       <div className="relative w-full h-auto md:h-52 overflow-hidden">
         <Link href={`/products/${product?.seoSlug || product?.id}`}>
-          <img
-            src={product?.featureImageURL || "/placeholder.svg"}
-            alt={product?.featureImageAlt ? product?.featureImageAlt : product?.title}
-            className="w-full h-full object-contain  group-hover:scale-105 transition-transform duration-500"
-          />
+          <div
+            className="
+    relative w-full 
+    h-[150px]
+    sm:h-[160px]
+    md:h-[180px]
+    lg:h-[220px]
+    xl:h-[205px]
+    overflow-hidden
+  "
+          >
+            <Image
+              src={product?.featureImageURL || "/placeholder.svg"}
+              alt={product?.featureImageAlt || product?.title}
+              fill
+              sizes="(max-width: 640px) 100vw,
+           (max-width: 1024px) 50vw,
+           25vw"
+              className="
+      object-contain
+      transition-transform duration-500
+      group-hover:scale-105
+    "
+              priority={false}
+            />
+          </div>
+
         </Link>
         {/* Favorite Button - positioned over the image */}
         <div className="absolute top-1 right-1">
