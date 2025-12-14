@@ -90,9 +90,8 @@ const CartPage = () => {
             <p className="mb-6 max-w-md text-gray-500">
               Looks like you haven't added any products yet. Start shopping now!
             </p>
-            <Link href="/">
-              <button className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">Continue Shopping</button>
-            </Link>
+              <Link href="/product" className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">Continue Shopping</Link>
+         
           </div>
         ) : (
           <div className="flex flex-col gap-8 lg:flex-row">
