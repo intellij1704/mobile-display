@@ -99,7 +99,6 @@ export default function Login() {
               <Link href="/signup" className="hover:underline">Don't have an account? Sign Up</Link>
             </div>
 
-            {/* Login Button */}
             <Button
               type="submit"
               className={`w-full bg-[#FF0D0D] text-white py-6 rounded-md hover:bg-red-500 transition shadow-md  ${isLoading ? "bg-gray-400 cursor-not-allowed" : ""}`}
