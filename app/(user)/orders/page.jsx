@@ -200,7 +200,7 @@ const OrdersPage = () => {
               const lineItems = order?.checkout?.line_items || [];
 
               // Filter out fees
-              
+
               const productItems = lineItems.filter(
                 (item) =>
                   item?.price_data?.product_data?.name !== "COD Fee" &&
@@ -227,7 +227,7 @@ const OrdersPage = () => {
 
               const isCancelPending = order?.cancelRequestId && order?.status !== "cancelled";
 
-              const orderNumber =  order?.status
+              const orderNumber = order?.status
 
               return (
                 <div
@@ -256,6 +256,7 @@ const OrdersPage = () => {
                       const metadata = product?.price_data?.product_data?.metadata || {};
                       const selectedColor = metadata?.selectedColor || "";
                       const selectedQuality = metadata?.selectedQuality || "";
+                      const selectedBrand = metadata?.selectedBrand || "";
 
                       return (
                         <div
@@ -296,6 +297,14 @@ const OrdersPage = () => {
                                 </span>
                               </p>
                             )}
+                            {selectedBrand && (
+                              <p className="text-sm text-gray-600">
+                                Brand:{" "}
+                                <span className="font-medium">
+                                  {selectedBrand}
+                                </span>
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
@@ -332,86 +341,88 @@ const OrdersPage = () => {
       </div>
 
       {/* Cancel Modal */}
-      {!!orderToCancel && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeModal();
-          }}
-        >
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
-            <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
-              onClick={closeModal}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      {
+        !!orderToCancel && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeModal();
+            }}
+          >
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                onClick={closeModal}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Select Reason for Cancellation
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">Choose the best option that describes your reason</p>
-            </div>
-            <div className="space-y-3 mb-6">
-              {cancelReasons.map((reason) => (
-                <label
-                  key={reason.value}
-                  className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-blue-50 border border-gray-200 transition-colors"
-                >
-                  <input
-                    type="radio"
-                    name="cancelReason"
-                    value={reason.value}
-                    checked={selectedReason === reason.value}
-                    onChange={(e) => setSelectedReason(e.target.value)}
-                    className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 focus:ring-2"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{reason.icon}</span>
-                      <p className="font-semibold text-gray-900">{reason.label}</p>
-                    </div>
-                  </div>
-                </label>
-              ))}
-            </div>
-            {selectedReason === "others" && (
-              <textarea
-                className="w-full p-2 border border-gray-300 rounded-md mb-6"
-                placeholder="Please specify the reason"
-                value={customReason}
-                onChange={(e) => setCustomReason(e.target.value)}
-                rows={3}
-              />
-            )}
-            <button
-              className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isCancelling && (selectedReason !== "others" || customReason.trim())
-                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
-                : "bg-gray-300 cursor-not-allowed"
-                }`}
-              disabled={!selectedReason || isCancelling || (selectedReason === "others" && !customReason.trim())}
-              onClick={handleCancelConfirm}
-            >
-              {isCancelling ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Submitting...
+              </button>
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </div>
-              ) : (
-                "Submit Cancel Request"
+                <h2 className="text-xl font-bold text-gray-900">
+                  Select Reason for Cancellation
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">Choose the best option that describes your reason</p>
+              </div>
+              <div className="space-y-3 mb-6">
+                {cancelReasons.map((reason) => (
+                  <label
+                    key={reason.value}
+                    className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-blue-50 border border-gray-200 transition-colors"
+                  >
+                    <input
+                      type="radio"
+                      name="cancelReason"
+                      value={reason.value}
+                      checked={selectedReason === reason.value}
+                      onChange={(e) => setSelectedReason(e.target.value)}
+                      className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{reason.icon}</span>
+                        <p className="font-semibold text-gray-900">{reason.label}</p>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              {selectedReason === "others" && (
+                <textarea
+                  className="w-full p-2 border border-gray-300 rounded-md mb-6"
+                  placeholder="Please specify the reason"
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  rows={3}
+                />
               )}
-            </button>
+              <button
+                className={`w-full py-3 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg ${selectedReason && !isCancelling && (selectedReason !== "others" || customReason.trim())
+                  ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02]"
+                  : "bg-gray-300 cursor-not-allowed"
+                  }`}
+                disabled={!selectedReason || isCancelling || (selectedReason === "others" && !customReason.trim())}
+                onClick={handleCancelConfirm}
+              >
+                {isCancelling ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Submitting...
+                  </div>
+                ) : (
+                  "Submit Cancel Request"
+                )}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </main>
+        )
+      }
+    </main >
   );
 };
 

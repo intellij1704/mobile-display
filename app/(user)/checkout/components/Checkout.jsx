@@ -250,6 +250,7 @@ function ContactAndAddress({ userData, user, productList }) {
         if (product.isVariable && product.variations?.length > 0) {
             const selectedColor = item.selectedColor
             const selectedQuality = item.selectedQuality
+            const selectedBrand = item.selectedBrand
             const matchingVariation = product.variations.find(v => {
                 const attrs = v.attributes || {}
                 let match = true
@@ -258,6 +259,9 @@ function ContactAndAddress({ userData, user, productList }) {
                 }
                 if (selectedQuality) {
                     match = match && attrs.Quality === selectedQuality
+                }
+                if (selectedBrand) {
+                    match = match && attrs.Brand === selectedBrand
                 }
                 return match
             })
@@ -353,7 +357,7 @@ function ContactAndAddress({ userData, user, productList }) {
                 }
             } else { // Online payment mode
                 if (displayCouponP > 0) {
-                     lines.push({
+                    lines.push({
                         label: `Coupon Discount for ${getCategoryName(cat)} (${displayCouponP}%)`,
                         amount: -(catSum * (displayCouponP / 100)),
                     });
@@ -380,7 +384,7 @@ function ContactAndAddress({ userData, user, productList }) {
 
     const returnFees = useMemo(() => {
         return productList?.reduce((sum, item) => {
-            if (item?.returnType === "easy-return"){
+            if (item?.returnType === "easy-return") {
                 const itemSubtotal = (item?.quantity || 0) * getItemPrice(item)
                 return sum + 160 + 0.05 * itemSubtotal
             }
@@ -397,7 +401,7 @@ function ContactAndAddress({ userData, user, productList }) {
 
     const subtotalAfterDiscount = Math.max(0, totalPrice - discount)
     const shippingCharge = subtotalAfterDiscount >= minFreeDelivery ? 0 : shippingExtraCharges
-    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0 
+    const airExpressFee = deliveryType === "express" ? airExpressDeliveryCharge : 0
 
     const total = subtotalAfterDiscount + shippingCharge + airExpressFee + returnFees + replacementFees
     const advance =
@@ -606,10 +610,10 @@ function ContactAndAddress({ userData, user, productList }) {
             (o) => o.offerType !== "Prepaid Offer" && o.categories?.some((c) => allCategories.includes(c)),
         )
         .sort((a, b) => b.discountPercentage - a.discountPercentage)?.[0]
-    
+
     const bestPrepaidOffer = (prepaidOffers || [])
         .filter((o) => o.categories?.some((c) => allCategories.includes(c)))
-        .sort((a,b) => b.discountPercentage - a.discountPercentage)?.[0]
+        .sort((a, b) => b.discountPercentage - a.discountPercentage)?.[0]
 
 
     const loadingSummary = offersLoading && step === "summary"
@@ -902,6 +906,7 @@ function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) 
     const quantity = item.quantity || 1;
     const selectedColor = item.selectedColor;
     const selectedQuality = item.selectedQuality;
+    const selectedBrand = item.selectedBrand;
     const returnType = item.returnType;
     const categoryName = getCategoryName(product.categoryId);
     const price = getItemPrice(item) * quantity;
@@ -909,6 +914,7 @@ function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) 
     let variantInfo = '';
     if (selectedColor) variantInfo += ` - ${selectedColor}`;
     if (selectedQuality) variantInfo += ` - ${selectedQuality}`;
+    if (selectedBrand) variantInfo += ` - ${selectedBrand}`;
 
     return (
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
@@ -931,6 +937,7 @@ function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) 
                             <p><span className="font-medium text-gray-700">Qty:</span> {quantity}</p>
                             <p><span className="font-medium text-gray-700">Category:</span> {categoryName}</p>
                             <p><span className="font-medium text-gray-700">Return Type:</span> {returnType}</p>
+
                         </div>
                     </div>
                 </div>

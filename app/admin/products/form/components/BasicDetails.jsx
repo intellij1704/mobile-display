@@ -206,7 +206,7 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
           value={data?.shortDescription ?? ""}
           onChange={(e) => handleData("shortDescription", e.target.value)}
           placeholder="Enter Short Description"
-          rows={2}
+          rows={3}
         >
         </textarea>
 
@@ -305,7 +305,7 @@ export default function BasicDetails({ data, handleData, variantImages, setVaria
                       }`}
                   >
                     <option value="">Select Attribute Name</option>
-                    {["Color", "Quality"].map((preset) => (
+                    {["Color", "Quality", 'Brand'].map((preset) => (
                       <option key={preset} value={preset}>
                         {preset}
                       </option>

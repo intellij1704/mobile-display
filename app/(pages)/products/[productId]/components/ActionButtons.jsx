@@ -11,7 +11,7 @@ import AddToCartButton from "@/app/components/AddToCartButton"
 import ReturnTypeSelector from "@/app/components/ReturnTypeSelector"
 import { useUser } from "@/lib/firestore/user/read"
 
-export default function ActionButtons({ product, selectedColor, selectedQuality, selectedVariation }) {
+export default function ActionButtons({ product, selectedColor, selectedQuality, selectedVariation, selectedBrand }) {
   const { data, error, isLoading } = useSpecialOffers()
   const { user } = useAuth()
   const { data: userData, isLoading: isLoadingUser } = useUser({ uid: user?.uid })
@@ -24,8 +24,10 @@ export default function ActionButtons({ product, selectedColor, selectedQuality,
   // Compute colors and qualities from attributes
   const colors = product?.attributes?.find(a => a.name === "Color")?.values || [];
   const qualities = product?.attributes?.find(a => a.name === "Quality")?.values || [];
+  const brands = product?.attributes?.find(a => a.name === "Brand")?.values || [];
   const hasColorOptions = colors.length > 0;
   const hasQualityOptions = qualities.length > 0;
+  const hasBrandOptions = brands.length > 0;
   const isActuallyVariable = product?.isVariable && product.variations?.length > 0;
 
   const mrp = parseFloat(selectedVariation?.price) || 0
@@ -63,11 +65,16 @@ export default function ActionButtons({ product, selectedColor, selectedQuality,
       toast.error("Please select a quality")
       return false
     }
+    if (isActuallyVariable && hasBrandOptions && !selectedBrand) {
+      toast.error("Please select a brand")
+      return false
+    }
     if (isActuallyVariable) {
       const selectedVar = product.variations.find(v => {
         const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
         const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
-        return colorMatch && qualityMatch
+        const brandMatch = !hasBrandOptions || v.attributes.Brand === selectedBrand
+        return colorMatch && qualityMatch && brandMatch
       })
       if (!selectedVar) {
         toast.error("This combination is not available.")
@@ -121,6 +128,7 @@ export default function ActionButtons({ product, selectedColor, selectedQuality,
           productId: product?.id,
           ...(selectedColor ? { color: selectedColor } : {}),
           ...(selectedQuality ? { quality: selectedQuality } : {}),
+          ...(selectedBrand ? { brand: selectedBrand } : {}),
           ...(choice?.id ? { returnType: choice.id } : {})
         })}`
       );
@@ -193,8 +201,10 @@ export default function ActionButtons({ product, selectedColor, selectedQuality,
               type="large"
               selectedColor={selectedColor}
               selectedQuality={selectedQuality}
+              selectedBrand={selectedBrand}
               isVariable={isActuallyVariable && hasColorOptions}
               hasQualityOptions={hasQualityOptions}
+              hasBrandOptions={hasBrandOptions}
               className="flex-1 bg-black text-white py-5 rounded-lg text-center"
               productPrice={salePrice || mrp}
             />

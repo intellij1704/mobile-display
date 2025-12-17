@@ -17,8 +17,10 @@ export default function AddToCartButton({
   type = "large",
   selectedColor,
   selectedQuality,
+  selectedBrand,
   isVariable,
   hasQualityOptions,
+  hasBrandOptions,
   className,
   productPrice, // new: used to compute Easy Return fee
 }) {
@@ -33,9 +35,10 @@ export default function AddToCartButton({
       (item) =>
         item?.id === productId &&
         (!isVariable || item?.selectedColor === selectedColor) &&
-        (!hasQualityOptions || item?.selectedQuality === selectedQuality),
+        (!hasQualityOptions || item?.selectedQuality === selectedQuality) &&
+        (!hasBrandOptions || item?.selectedBrand === selectedBrand),
     )
-  }, [data?.carts, productId, isVariable, hasQualityOptions, selectedColor, selectedQuality])
+  }, [data?.carts, productId, isVariable, hasQualityOptions, hasBrandOptions, selectedColor, selectedQuality, selectedBrand])
 
   const validateSelections = () => {
     if (isVariable && !selectedColor && !isAdded) {
@@ -46,10 +49,15 @@ export default function AddToCartButton({
       toast.error("Please select a quality!")
       return false
     }
+    if (hasBrandOptions && !selectedBrand && !isAdded) {
+      toast.error("Please select a brand!")
+      return false
+    }
     if (product?.isVariable && !isAdded) {
       const selVar = product.variations.find(v => 
         ( !isVariable || v.attributes.Color === selectedColor ) &&
-        ( !hasQualityOptions || v.attributes.Quality === selectedQuality )
+        ( !hasQualityOptions || v.attributes.Quality === selectedQuality ) &&
+        ( !hasBrandOptions || v.attributes.Brand === selectedBrand )
       )
       if (!selVar) {
         toast.error("This combination is not available.")
@@ -75,7 +83,8 @@ export default function AddToCartButton({
             !(
               item?.id === productId &&
               (!isVariable || item?.selectedColor === selectedColor) &&
-              (!hasQualityOptions || item?.selectedQuality === selectedQuality)
+              (!hasQualityOptions || item?.selectedQuality === selectedQuality) &&
+              (!hasBrandOptions || item?.selectedBrand === selectedBrand)
             ),
         )
         await updateCarts({ list: newList, uid: user?.uid })
@@ -104,6 +113,7 @@ export default function AddToCartButton({
             quantity: 1,
             ...(isVariable && { selectedColor }),
             ...(hasQualityOptions && { selectedQuality }),
+            ...(hasBrandOptions && { selectedBrand }),
             // Store return meta
             returnType: choice.id, // 'easy-return' | 'easy-replacement' | 'self-shipping'
             returnFee: choice.fee,

@@ -104,7 +104,7 @@ export async function generateMetadata({ params }) {
 
 export default async function Page({ params, searchParams }) {
     const { productId } = await params;
-    let { color, quality } = await searchParams;
+    let { color, quality, brand } = await searchParams;
 
     // ✅ First try by seoSlug, then fallback to Firestore id
     let rawProduct = await getProduct({ seoSlug: productId });
@@ -123,8 +123,10 @@ export default async function Page({ params, searchParams }) {
     // Compute attributes
     const colors = product?.attributes?.find(attr => attr.name === "Color")?.values || [];
     const qualities = product?.attributes?.find(attr => attr.name === "Quality")?.values || [];
+    const brands = product?.attributes?.find(attr => attr.name === "Brand")?.values || [];
     const hasColorOptions = colors.length > 0;
     const hasQualityOptions = qualities.length > 0;
+    const hasBrandOptions = brands.length > 0;
 
     // For variable products, auto-select if only one option for attribute
     if (product.isVariable && product.variations?.length > 0) {
@@ -133,6 +135,9 @@ export default async function Page({ params, searchParams }) {
         }
         if (hasQualityOptions && qualities.length === 1 && !quality) {
             quality = qualities[0];
+        }
+        if (hasBrandOptions && brands.length === 1 && !brand) {
+            brand = brands[0];
         }
     }
 
@@ -185,7 +190,7 @@ export default async function Page({ params, searchParams }) {
             <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                 {/* Images */}
                 <div className="flex justify-center">
-                    <Photos product={product} selectedColor={color} selectedQuality={quality} />
+                    <Photos product={product} selectedColor={color} selectedQuality={quality} selectedBrand={brand} />
                 </div>
 
                 {/* Product Details */}
@@ -194,6 +199,7 @@ export default async function Page({ params, searchParams }) {
                         product={product}
                         selectedColor={color}
                         selectedQuality={quality}
+                        selectedBrand={brand}
                     />
                 </div>
             </section>

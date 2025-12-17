@@ -121,6 +121,9 @@ const ShippingLabel = ({ selectedReturn, orderId, returnId, orderDate, addressDa
                         {selectedReturn?.productDetails?.metadata?.selectedQuality && (
                             <div>Quality: {selectedReturn?.productDetails?.metadata?.selectedQuality}</div>
                         )}
+                        {selectedReturn?.productDetails?.metadata?.selectedBrand && (
+                            <div>Brand: {selectedReturn?.productDetails?.metadata?.selectedBrand}</div>
+                        )}
                         <div>Return Type: {selectedReturn?.productDetails?.metadata?.returnType}</div>
 
                         <div>Reason: {selectedReturn?.reason}</div>
@@ -654,6 +657,14 @@ const OrderDetailPage = () => {
                                                                 <span className="text-gray-700">{product.metadata.selectedQuality}</span>
                                                             </div>
                                                         )}
+                                                        {
+                                                            product.metadata?.selectedBrand && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-gray-500">Brand:</span>
+                                                                    <span className="text-gray-700">{product.metadata.selectedBrand}</span>
+                                                                </div>
+                                                            )
+                                                        }
                                                         <div className="flex items-center gap-1">
                                                             <span className="text-gray-500">Qty:</span>
                                                             <span className="text-gray-700">{item.quantity}</span>

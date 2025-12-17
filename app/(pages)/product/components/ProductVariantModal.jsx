@@ -26,12 +26,21 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     product?.attributes?.find(attr => attr.name === "Quality")?.values || [],
     [product])
 
+  const brands = useMemo(() =>
+    product?.attributes?.find(attr => attr.name === "Brand")?.values || [],
+    [product])
+
+
+
   const hasColorOptions = colors.length > 0
   const hasQualityOptions = qualities.length > 0
+  const hasBrandOptions = brands.length > 0
+
   const isActuallyVariable = product?.isVariable && product.variations?.length > 0
 
   const [selectedColor, setSelectedColor] = useState("")
   const [selectedQuality, setSelectedQuality] = useState("")
+  const [selectedBrand, setSelectedBrand] = useState("")
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showReturnSelector, setShowReturnSelector] = useState(false)
   const [actionType, setActionType] = useState("") // "cart" or "buy"
@@ -47,6 +56,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
       let initialColor = ""
       let initialQuality = ""
+      let initialBrand = ""
 
       // If there's only one option for an attribute, auto-select it.
       // This ensures single-color products are selected by default.
@@ -56,22 +66,27 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
       if (qualities.length === 1) {
         initialQuality = qualities[0]
       }
+      if (brands.length === 1) {
+        initialBrand = brands[0]
+      }
 
       setSelectedColor(initialColor)
       setSelectedQuality(initialQuality)
+      setSelectedBrand(initialBrand)
 
     } else {
       setAnimate(false)
       // Reset selections when modal closes for a clean state on next open
       setSelectedColor("")
       setSelectedQuality("")
+      setSelectedBrand("")
     }
-  }, [isOpen, product, colors, qualities])
+  }, [isOpen, product, colors, qualities, brands])
 
   // Clear error when selections change
   useEffect(() => {
     setError("")
-  }, [selectedColor, selectedQuality])
+  }, [selectedColor, selectedQuality, selectedBrand])
 
   const selectedVariation = useMemo(() => {
     // For non-variable products, create a mock variation from the base product
@@ -88,9 +103,10 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     return product.variations.find(v => {
       const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
       const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
-      return colorMatch && qualityMatch
+      const brandMatch = !hasBrandOptions || v.attributes.Brand === selectedBrand
+      return colorMatch && qualityMatch && brandMatch
     })
-  }, [selectedColor, selectedQuality, product, hasColorOptions, hasQualityOptions, isActuallyVariable])
+  }, [selectedColor, selectedQuality, selectedBrand, product, hasColorOptions, hasQualityOptions, hasBrandOptions, isActuallyVariable])
 
   // Compute the lowest variation for initial display
   const lowestVariation = useMemo(() => {
@@ -169,9 +185,15 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
         if (item?.selectedQuality) return false
       }
 
+      if (hasBrandOptions) {
+        if (item?.selectedBrand !== selectedBrand) return false
+      } else {
+        if (item?.selectedBrand) return false
+      }
+
       return true
     })
-  }, [userData?.carts, product.id, selectedColor, selectedQuality, hasColorOptions, hasQualityOptions])
+  }, [userData?.carts, product.id, selectedColor, selectedQuality, selectedBrand, hasColorOptions, hasQualityOptions, hasBrandOptions])
 
   const validateSelections = () => {
     if (isActuallyVariable && hasColorOptions && !selectedColor) {
@@ -180,6 +202,10 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     }
     if (isActuallyVariable && hasQualityOptions && !selectedQuality) {
       setError("Please select a quality!")
+      return false
+    }
+    if (isActuallyVariable && hasBrandOptions && !selectedBrand) {
+      setError("Please select a brand!")
       return false
     }
     if (isActuallyVariable && !selectedVariation) {
@@ -221,6 +247,12 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
           if (cartItem?.selectedQuality) return true
         }
 
+        if (hasBrandOptions) {
+          if (cartItem?.selectedBrand !== selectedBrand) return true
+        } else {
+          if (cartItem?.selectedBrand) return true
+        }
+
         return false
       })
 
@@ -237,7 +269,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
     } finally {
       setIsLoading(false)
     }
-  }, [userData?.carts, product.id, selectedColor, selectedQuality, hasColorOptions, hasQualityOptions, user?.uid])
+  }, [userData?.carts, product.id, selectedColor, selectedQuality, selectedBrand, hasColorOptions, hasQualityOptions, hasBrandOptions, user?.uid])
 
   const handleBuyNow = () => {
     if (!validateSelections()) return
@@ -263,6 +295,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
               quantity: 1,
               ...(hasColorOptions && { selectedColor }),
               ...(hasQualityOptions && { selectedQuality }),
+              ...(hasBrandOptions && { selectedBrand }),
               returnType: choice.id,
               returnFee: choice.fee,
             },
@@ -304,6 +337,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
           productId: product?.id,
           ...(selectedColor ? { color: selectedColor } : {}),
           ...(selectedQuality ? { quality: selectedQuality } : {}),
+          ...(selectedBrand ? { brand: selectedBrand } : {}),
           ...(choice?.id ? { returnType: choice.id } : {})
         }).toString()}`);
 
@@ -508,11 +542,10 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
                           {/* Color circle */}
                           <span
-                            className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-in-out ${
-                              isSelected
-                                ? "border-black ring-2 ring-black/30 shadow-md scale-105"
-                                : "border-gray-300 hover:border-gray-500"
-                            }`}
+                            className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-in-out ${isSelected
+                              ? "border-black ring-2 ring-black/30 shadow-md scale-105"
+                              : "border-gray-300 hover:border-gray-500"
+                              }`}
                             style={{ backgroundColor: colorStyle }}
                           >
                             {isSelected && (
@@ -525,9 +558,8 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                           </span>
 
                           <span
-                            className={`block text-xs text-center mt-1 transition-colors duration-200 ${
-                              isSelected ? "font-semibold text-black" : "text-gray-600"
-                            }`}
+                            className={`block text-xs text-center mt-1 transition-colors duration-200 ${isSelected ? "font-semibold text-black" : "text-gray-600"
+                              }`}
                           >
                             {color}
                           </span>
@@ -554,11 +586,10 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                         <label
                           key={quality}
                           className={`relative border rounded-xl px-4 py-3 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 w-fit min-w-[120px] max-w-[180px]
-                          ${
-                            isSelected
+                          ${isSelected
                               ? "border-[#BB0300] bg-red-50 shadow-sm"
                               : "border-gray-300 bg-white hover:border-gray-400"
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -578,9 +609,8 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
 
                           {/* Title */}
                           <span
-                            className={`text-sm font-semibold text-center ${
-                              isSelected ? "text-black" : "text-gray-800"
-                            }`}
+                            className={`text-sm font-semibold text-center ${isSelected ? "text-black" : "text-gray-800"
+                              }`}
                           >
                             {quality}
                           </span>
@@ -590,6 +620,55 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                   </div>
                   <p className="text-xs sm:text-sm text-gray-600 font-medium capitalize">
                     Selected quality: <span className="text-gray-900 font-semibold">{selectedQuality || "None"}</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Brand Selection */}
+              {isActuallyVariable && hasBrandOptions && (
+                <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-5">
+                  <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
+                    Select Brand
+                  </h4>
+                  <div className="flex flex-wrap gap-3 items-start justify-start">
+                    {brands.map((brand) => {
+                      const isSelected = selectedBrand === brand;
+                      return (
+                        <label
+                          key={brand}
+                          className={`relative border rounded-xl px-4 py-3 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 w-fit min-w-[120px] max-w-[180px]
+                          ${isSelected
+                              ? "border-[#BB0300] bg-red-50 shadow-sm"
+                              : "border-gray-300 bg-white hover:border-gray-400"
+                            }`}
+                        >
+                          <input
+                            type="radio"
+                            name="brand"
+                            value={brand}
+                            checked={isSelected}
+                            onChange={(e) => setSelectedBrand(e.target.value)}
+                            className="sr-only"
+                          />
+
+                          {isSelected && (
+                            <span className="absolute -top-2 -right-2 bg-[#BB0300] text-white rounded-full p-[2px]">
+                              <Check size={12} strokeWidth={3} />
+                            </span>
+                          )}
+
+                          <span
+                            className={`text-sm font-semibold text-center ${isSelected ? "text-black" : "text-gray-800"
+                              }`}
+                          >
+                            {brand}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-600 font-medium capitalize">
+                    Selected brand: <span className="text-gray-900 font-semibold">{selectedBrand || "None"}</span>
                   </p>
                 </div>
               )}

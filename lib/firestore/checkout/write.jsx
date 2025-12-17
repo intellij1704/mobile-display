@@ -73,11 +73,13 @@ export const createCheckoutOnlineAndGetId = async ({
       if (product.isVariable && product.variations?.length > 0) {
         const selectedColor = item.selectedColor;
         const selectedQuality = item.selectedQuality;
+        const selectedBrand = item.selectedBrand;
         const matchingVariation = product.variations.find((v) => {
           const attrs = v.attributes || {};
           let match = true;
           if (selectedColor) match = match && attrs.Color === selectedColor;
           if (selectedQuality) match = match && attrs.Quality === selectedQuality;
+          if (selectedBrand) match = match && attrs.Brand === selectedBrand;
           return match;
         });
         return matchingVariation
@@ -226,6 +228,7 @@ export const createCheckoutOnlineAndGetId = async ({
             productId: item?.product?.id ?? "",
             selectedColor: item?.selectedColor || "",
             selectedQuality: item?.selectedQuality || "",
+            selectedBrand: item?.selectedBrand || "",
             returnType: item?.returnType || "",
             returnFee: item?.returnFee || 0,
           },
@@ -346,11 +349,13 @@ export const createCheckoutCODAndGetId = async ({
       if (product.isVariable && product.variations?.length > 0) {
         const selectedColor = item.selectedColor;
         const selectedQuality = item.selectedQuality;
+        const selectedBrand = item.selectedBrand;
         const matchingVariation = product.variations.find((v) => {
           const attrs = v.attributes || {};
           let match = true;
           if (selectedColor) match = match && attrs.Color === selectedColor;
           if (selectedQuality) match = match && attrs.Quality === selectedQuality;
+          if (selectedBrand) match = match && attrs.Brand === selectedBrand;
           return match;
         });
         return matchingVariation
@@ -475,6 +480,7 @@ export const createCheckoutCODAndGetId = async ({
             productId: item?.product?.id ?? "",
             selectedColor: item?.selectedColor || "",
             selectedQuality: item?.selectedQuality || "",
+            selectedBrand: item?.selectedBrand || "",
             returnType: item?.returnType || "",
             returnFee: item?.returnFee || 0,
           },

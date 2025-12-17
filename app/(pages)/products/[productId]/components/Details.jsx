@@ -12,13 +12,16 @@ import { addDays, format } from "date-fns";
 import ColorSelector from "./ColorSelector";
 import QualitySelector from "./QualitySelector";
 import ActionButtons from "./ActionButtons";
+import BrandsSelector from "./BrandsSelector";
 
-async function Details({ product, selectedColor, selectedQuality }) {
+async function Details({ product, selectedColor, selectedQuality, selectedBrand }) {
   // Compute colors and qualities from attributes
   const colors = product?.attributes?.find(a => a.name === "Color")?.values || [];
   const qualities = product?.attributes?.find(a => a.name === "Quality")?.values || [];
+  const brands = product?.attributes?.find(a => a.name === "Brand")?.values || [];
   const hasColorOptions = colors.length > 0;
   const hasQualityOptions = qualities.length > 0;
+  const hasBrandOptions = brands.length > 0;
   const isActuallyVariable = product?.isVariable && product.variations?.length > 0;
 
   const selectedVariation = useMemo(() => {
@@ -37,9 +40,10 @@ async function Details({ product, selectedColor, selectedQuality }) {
     return product.variations.find(v => {
       const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor
       const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality
-      return colorMatch && qualityMatch
+      const brandMatch = !hasBrandOptions || v.attributes.Brand === selectedBrand
+      return colorMatch && qualityMatch && brandMatch
     })
-  }, [selectedColor, selectedQuality, product, hasColorOptions, hasQualityOptions, isActuallyVariable])
+  }, [selectedColor, selectedQuality, selectedBrand, product, hasColorOptions, hasQualityOptions, hasBrandOptions, isActuallyVariable])
 
   // Compute the lowest variation for initial display
   const lowestVariation = useMemo(() => {
@@ -147,6 +151,21 @@ async function Details({ product, selectedColor, selectedQuality }) {
         />
       </div>
 
+ 
+      {/* Brand Selection */}
+      {isActuallyVariable && hasBrandOptions && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-4">Select Brand</h3>
+          <BrandsSelector
+            brands={brands}
+            selectedBrand={selectedBrand}
+            productId={product.id}
+            currentColor={selectedColor}
+            currentQuality={selectedQuality}
+          />
+        </div>
+      )}
+
       {/* Color Selection */}
       {isActuallyVariable && hasColorOptions && (
         <div>
@@ -156,6 +175,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
             selectedColor={selectedColor}
             productId={product.id}
             currentQuality={selectedQuality}
+            currentBrand={selectedBrand}
           />
         </div>
       )}
@@ -169,6 +189,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
             selectedQuality={selectedQuality}
             productId={product.id}
             currentColor={selectedColor}
+            currentBrand={selectedBrand}
           />
         </div>
       )}
@@ -183,6 +204,7 @@ async function Details({ product, selectedColor, selectedQuality }) {
           product={product}
           selectedColor={selectedColor}
           selectedQuality={selectedQuality}
+          selectedBrand={selectedBrand}
           selectedVariation={displayVariation}
         />
       </AuthContextProvider>

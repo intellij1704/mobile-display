@@ -40,7 +40,7 @@ function Page() {
 
   useEffect(() => {
     const fetchOrderDetail = async () => {
-      try { 
+      try {
         const shipmozoOrderId = order?.shipmozoOrderId;
         if (!shipmozoOrderId) {
           console.warn("⚠️ Shipmozo Order ID missing for order:", orderId);
@@ -114,7 +114,7 @@ function Page() {
         }
       } catch (error) {
         console.error("❌ Error fetching Shipmozo order details:", error.message);
-        setShipmozoStatus("Error"); 
+        setShipmozoStatus("Error");
       }
     };
 
@@ -361,9 +361,8 @@ function Page() {
                   <div>
                     <p className="text-sm font-medium text-gray-500">Delivery Type</p>
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        isExpressDelivery ? "bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-sm" : "bg-green-100 text-green-800"
-                      }`}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${isExpressDelivery ? "bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-sm" : "bg-green-100 text-green-800"
+                        }`}
                     >
                       {isExpressDelivery ? "Express Delivery" : "Standard Delivery"}
                     </span>
@@ -381,11 +380,11 @@ function Page() {
                       </span>
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${trackingInfo?.current_status
-                            ? "bg-blue-100 text-blue-800 border border-blue-200" // For detailed tracking status
-                            : shipmozoStatus === "NEW ORDER" ? "bg-yellow-100 text-yellow-800 border border-yellow-200" // For new orders
-                            : shipmozoStatus === "Error" || shipmozoStatus === "N/A" 
-                            ? "bg-gray-100 text-gray-800 border border-gray-200" // For errors or no status
-                            : "bg-teal-100 text-teal-800 border border-teal-200" // Default for other statuses
+                          ? "bg-blue-100 text-blue-800 border border-blue-200" // For detailed tracking status
+                          : shipmozoStatus === "NEW ORDER" ? "bg-yellow-100 text-yellow-800 border border-yellow-200" // For new orders
+                            : shipmozoStatus === "Error" || shipmozoStatus === "N/A"
+                              ? "bg-gray-100 text-gray-800 border border-gray-200" // For errors or no status
+                              : "bg-teal-100 text-teal-800 border border-teal-200" // Default for other statuses
                           }`}
                       >
                         Shipmozo: {trackingInfo?.current_status || shipmozoStatus || "NA"}
@@ -472,6 +471,11 @@ function Page() {
                             {metadata.selectedColor && (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                 Color: {metadata.selectedColor}
+                              </span>
+                            )}
+                            {metadata.selectedBrand && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Brand: {metadata.selectedBrand}
                               </span>
                             )}
                             {metadata.returnType && (

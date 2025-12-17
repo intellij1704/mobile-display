@@ -5,7 +5,7 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 
 // Custom arrow components
@@ -41,7 +41,7 @@ const NextArrow = ({ onClick }) => (
     </button>
 );
 
-function Photos({ product, selectedColor, selectedQuality }) {
+function Photos({ product, selectedColor, selectedQuality, selectedBrand }) {
     const defaultImage = "/prodduct.png";
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
@@ -52,12 +52,21 @@ function Photos({ product, selectedColor, selectedQuality }) {
     const mainSliderRef = useRef(null);
     const thumbnailSliderRef = useRef(null);
 
+    const hasColorOptions = product?.attributes?.find(a => a.name === "Color")?.values.length > 0;
+    const hasQualityOptions = product?.attributes?.find(a => a.name === "Quality")?.values.length > 0;
+    const hasBrandOptions = product?.attributes?.find(a => a.name === "Brand")?.values.length > 0;
+
     // Find selected variation if variable
-    const selectedVariation = product?.isVariable && selectedColor && selectedQuality
-        ? product.variations?.find(v =>
-            v.attributes.Color === selectedColor && v.attributes.Quality === selectedQuality
-        )
-        : null;
+    const selectedVariation = useMemo(() => {
+        if (!product?.isVariable || !product.variations?.length) return null;
+
+        return product.variations.find(v => {
+            const colorMatch = !hasColorOptions || v.attributes.Color === selectedColor;
+            const qualityMatch = !hasQualityOptions || v.attributes.Quality === selectedQuality;
+            const brandMatch = !hasBrandOptions || v.attributes.Brand === selectedBrand;
+            return colorMatch && qualityMatch && brandMatch;
+        });
+    }, [product, selectedColor, selectedQuality, selectedBrand, hasColorOptions, hasQualityOptions, hasBrandOptions]);
 
     // Determine images to display: prefer variation images, fallback to color variantImages or default
     let images = [];
@@ -155,7 +164,7 @@ function Photos({ product, selectedColor, selectedQuality }) {
 
     useEffect(() => {
         resetSlider();
-    }, [selectedColor, selectedQuality, resetSlider]);
+    }, [selectedColor, selectedQuality, selectedBrand, resetSlider]);
 
     const handleWheel = useCallback((e) => {
         e.stopPropagation();

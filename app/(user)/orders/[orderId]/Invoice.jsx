@@ -1,8 +1,8 @@
 import React from 'react';
 import { getStorage } from "firebase-admin/storage";
 import { admin, adminDB } from '@/lib/firebase_admin';
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 const Invoice = ({ order, orderId, addressData, products, companyDetails, title, invoiceId, type = 'order' }) => {
     const getOrderDate = (timestamp) => {
@@ -179,6 +179,7 @@ export const getInvoiceAsBuffer = async (orderData, { title, invoiceId, type = '
         phone: '+91-1234567890',
     };
 
+
     // Re-serialize and de-serialize to convert plain JS date strings to Firestore Timestamps if needed
     const sanitizedOrderData = JSON.parse(
         JSON.stringify(orderData, (key, value) => {
@@ -224,8 +225,8 @@ export const getInvoiceAsBuffer = async (orderData, { title, invoiceId, type = '
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(),
         headless: chromium.headless,
-        ignoreHTTPSErrors: true,
     });
+
     const page = await browser.newPage();
 
     // Set the content of the page

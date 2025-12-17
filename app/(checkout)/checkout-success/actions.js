@@ -46,7 +46,7 @@ const fetchCheckout = async (checkoutId) => {
 };
 
 // Helper to get item price considering variations
-const getItemPrice = (product, selectedColor, selectedQuality) => {
+const getItemPrice = (product, selectedColor, selectedQuality, selectedBrand) => {
     if (!product) return 0;
     if (product.isVariable && product.variations?.length > 0) {
         const matchingVariation = product.variations.find((v) => {
@@ -57,6 +57,9 @@ const getItemPrice = (product, selectedColor, selectedQuality) => {
             }
             if (selectedQuality) {
                 match = match && attrs.Quality === selectedQuality;
+            }
+            if (selectedBrand) {
+                match = match && attrs.Brand === selectedBrand;
             }
             return match;
         });
@@ -331,9 +334,10 @@ const processOrder = async ({ checkout }) => {
 
         const selectedColor = item?.price_data?.product_data?.metadata?.selectedColor || null;
         const selectedQuality = item?.price_data?.product_data?.metadata?.selectedQuality || null;
+        const selectedBrand = item?.price_data?.product_data?.metadata?.selectedBrand || null;
         const quantity = item?.quantity || 1;
 
-        const price = getItemPrice(product, selectedColor, selectedQuality);
+        const price = getItemPrice(product, selectedColor, selectedQuality, selectedBrand);
         const total = price * quantity;
 
         products.push({
@@ -344,6 +348,7 @@ const processOrder = async ({ checkout }) => {
             title: product.title,
             selectedColor,
             selectedQuality,
+            selectedBrand,
         });
     }
 

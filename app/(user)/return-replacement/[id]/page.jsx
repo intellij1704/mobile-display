@@ -204,33 +204,33 @@ const ReturnDetailPage = () => {
 
     // Security check: Ensure the logged-in user is the one who created the return request.
     // This check is performed after data loading to ensure we have the returnRequest object.
-if (returnRequest && user && returnRequest.userId !== user.uid) {
-    return (
-        <div className="min-h-screen flex flex-col justify-center items-center bg-gray-100 p-4">
-            <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md w-full">
-                <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-red-100 mb-6">
-                    <ShieldAlert className="h-12 w-12 text-red-600" />
+    if (returnRequest && user && returnRequest.userId !== user.uid) {
+        return (
+            <div className="min-h-screen flex flex-col justify-center items-center bg-gray-100 p-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md w-full">
+                    <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-red-100 mb-6">
+                        <ShieldAlert className="h-12 w-12 text-red-600" />
+                    </div>
+
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Access Denied</h1>
+
+                    <p className="text-gray-600 mb-8">
+                        This return request belongs to another user.
+                        For security reasons, only the user who created this request
+                        can view or manage it.
+                        Please log in with the correct account or return to the homepage.
+                    </p>
+
+                    <button
+                        onClick={() => router.push('/')}
+                        className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                    >
+                        Return to Homepage
+                    </button>
                 </div>
-
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">Access Denied</h1>
-
-                <p className="text-gray-600 mb-8">
-                    This return request belongs to another user.  
-                    For security reasons, only the user who created this request  
-                    can view or manage it.  
-                    Please log in with the correct account or return to the homepage.
-                </p>
-
-                <button
-                    onClick={() => router.push('/')}
-                    className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg"
-                >
-                    Return to Homepage
-                </button>
             </div>
-        </div>
-    );
-}
+        );
+    }
 
 
     const createdDate = new Date(returnRequest.createdAt.seconds * 1000);
@@ -240,6 +240,9 @@ if (returnRequest && user && returnRequest.userId !== user.uid) {
     const orderDate = order?.timestampCreate?.toDate()
 
     const returnType = returnRequest.type;
+    const selectedColor = product?.metadata?.selectedColor;
+    const selectedQuality = product?.metadata?.selectedQuality;
+    const selectedBrand = product?.metadata?.selectedBrand;
     const returnStatus = returnRequest.status;
 
     const formatDate = (date) => {
@@ -430,6 +433,26 @@ if (returnRequest && user && returnRequest.userId !== user.uid) {
                                                     <span className="text-gray-500">Return Type:</span>
                                                     <span className="text-gray-700 capitalize">{returnType}</span>
                                                 </div>
+                                                {selectedColor && (
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-gray-500">Color:</span>
+                                                        <span className="text-gray-700 capitalize">{selectedColor}</span>
+                                                    </div>
+                                                )}
+
+                                                {selectedQuality && (
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-gray-500">Quality:</span>
+                                                        <span className="text-gray-700 capitalize">{selectedQuality}</span>
+                                                    </div>
+                                                )}
+
+                                                {selectedBrand && (
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-gray-500">Brand:</span>
+                                                        <span className="text-gray-700 capitalize">{selectedBrand}</span>
+                                                    </div>
+                                                )}
 
                                             </div>
 

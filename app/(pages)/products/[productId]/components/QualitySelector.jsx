@@ -9,6 +9,7 @@ export default function QualitySelector({
   selectedQuality: initialQuality,
   productId,
   currentColor,
+  currentBrand,
 }) {
   const router = useRouter();
   const [selectedQuality, setSelectedQuality] = useState(initialQuality);
@@ -24,12 +25,13 @@ export default function QualitySelector({
       if (quality) url.searchParams.set("quality", quality);
       else url.searchParams.delete("quality");
       if (currentColor) url.searchParams.set("color", currentColor);
+      if (currentBrand) url.searchParams.set("brand", currentBrand);
 
         router.push(`${url.pathname}?${url.searchParams.toString()}`, {
           scroll: false,
         });
     },
-    [router, currentColor]
+    [router, currentColor, currentBrand]
   );
 
   const formatQualityName = (quality) => {

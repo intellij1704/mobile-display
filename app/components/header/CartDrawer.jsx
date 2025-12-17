@@ -13,7 +13,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import toast from "react-hot-toast"
 
 const getUniqueId = (item) =>
-  `${item.id}-${item.selectedColor || ""}-${item.selectedQuality || ""}`
+  `${item.id}-${item.selectedColor || ""}-${item.selectedQuality || ""}-${item.selectedBrand || ""}`
 
 export default function CartDrawer({ isOpen, onClose }) {
   const { user } = useAuth()
@@ -185,15 +185,16 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
 
   // Find variation if product is variable
   const variation = useMemo(() => {
-    if (product?.isVariable && product?.variations && item?.selectedColor) {
+    if (product?.isVariable && product?.variations) {
       return product.variations.find(
         (v) =>
-          v.attributes?.Color?.toLowerCase() === item.selectedColor?.toLowerCase() &&
-          (!item.selectedQuality || v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase())
+          (!item.selectedColor || v.attributes?.Color?.toLowerCase() === item.selectedColor?.toLowerCase()) &&
+          (!item.selectedQuality || v.attributes?.Quality?.toLowerCase() === item.selectedQuality?.toLowerCase()) &&
+          (!item.selectedBrand || v.attributes?.Brand?.toLowerCase() === item.selectedBrand?.toLowerCase())
       )
     }
     return null
-  }, [product, item.selectedColor, item.selectedQuality])
+  }, [product, item.selectedColor, item.selectedQuality, item.selectedBrand])
 
   // Pricing - Prioritize stored item values, then variation, then product
   const listPrice = useMemo(() => {
@@ -256,7 +257,8 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
           !(
             d?.id === item?.id &&
             d?.selectedColor === item?.selectedColor &&
-            d?.selectedQuality === item?.selectedQuality
+            d?.selectedQuality === item?.selectedQuality &&
+            d?.selectedBrand === item?.selectedBrand
           )
       )
       await updateCarts({ list: newList, uid: user?.uid })
@@ -279,7 +281,8 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
           if (
             d?.id === item?.id &&
             d?.selectedColor === item?.selectedColor &&
-            d?.selectedQuality === item?.selectedQuality
+            d?.selectedQuality === item?.selectedQuality &&
+            d?.selectedBrand === item?.selectedBrand
           ) {
             const next = { ...d, quantity: qty }
             if (d.returnType === "easy-return") {
@@ -343,6 +346,12 @@ const CartDrawerItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
         {item?.selectedQuality && (
           <p className="text-xs text-gray-500 capitalize">
             Quality: {item.selectedQuality}
+          </p>
+        )}
+
+        {item?.selectedBrand && (
+          <p className="text-xs text-gray-500 capitalize">
+            Brand: {item.selectedBrand}
           </p>
         )}
 
