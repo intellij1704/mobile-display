@@ -22,6 +22,7 @@ export const getProduct = async ({ id, seoSlug }) => {
         query(
           collection(db, "products"),
           where("seoSlug", "==", seoSlug),
+          where("status", "==", "published"),
           limit(1)
         )
       );
@@ -59,6 +60,7 @@ export const getBestSellingProducts = async (limitCount = 10) => {
       query(
         collection(db, "products"),
         where("bestSelling", "==", true),
+        where("status", "==", "published"),
         orderBy("timestampCreate", "desc"),
         limit(limitCount)
       )
@@ -80,6 +82,7 @@ export const getTopPickProducts = async (limitCount = 10) => {
       query(
         collection(db, "products"),
         where("isTopPick", "==", true),
+        where("status", "==", "published"),
         orderBy("timestampCreate", "desc"),
         limit(limitCount)
       )
@@ -98,7 +101,11 @@ export const getTopPickProducts = async (limitCount = 10) => {
 export const getProducts = async () => {
   try {
     const list = await getDocs(
-      query(collection(db, "products"), orderBy("timestampCreate", "desc"))
+      query(
+        collection(db, "products"),
+        where("status", "==", "published"),
+        orderBy("timestampCreate", "desc")
+      )
     );
     return list.docs.map((snap) => ({
       id: snap.id,
@@ -110,6 +117,22 @@ export const getProducts = async () => {
   }
 };
 
+// ✅ Get all products for the admin panel (includes drafts)
+export const getAllProductsForAdmin = async () => {
+  try {
+    const list = await getDocs(
+      query(collection(db, "products"), orderBy("timestampCreate", "desc"))
+    );
+    return list.docs.map((snap) => ({
+      id: snap.id,
+      ...snap.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching all products for admin:", error);
+    return [];
+  }
+};
+
 // ✅ Get products by category
 export const getProductsByCategory = async ({ categoryId }) => {
   try {
@@ -117,6 +140,7 @@ export const getProductsByCategory = async ({ categoryId }) => {
       query(
         collection(db, "products"),
         where("categoryId", "==", categoryId),
+        where("status", "==", "published"),
         orderBy("timestampCreate", "desc")
       )
     );

@@ -33,7 +33,7 @@ export default function SearchResults({
             className="search-result-item"
           >
             <Link
-              href={`/products/${product.id}`}
+              href={`/products/${product.seoSlug || product.id}`}
               className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors"
               onClick={handleSearchResultClick}
             >
@@ -44,9 +44,7 @@ export default function SearchResults({
                 <div className="text-sm font-medium text-gray-900">
                   {product.title || product.name}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {product.brand} • {product.series}
-                </div>
+
               </div>
             </Link>
           </li>

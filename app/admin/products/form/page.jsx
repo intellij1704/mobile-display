@@ -52,20 +52,22 @@ export default function Page() {
     }))
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (status = 'published') => {
     setIsLoading(true)
     let hasError = false;
     const errors = {}
 
     try {
       // Image validations
-      if (!featureImage && !data?.featureImageURL) {
-        toast.error("Feature Image is required.")
-        return
-      }
-      if (imageList.length === 0 && (!data?.imageList || data.imageList.length === 0)) {
-        toast.error("At least one product image is required.")
-        return
+      if (status !== 'draft') {
+        if (!featureImage && !data?.featureImageURL) {
+          toast.error("Feature Image is required.")
+          return
+        }
+        if (imageList.length === 0 && (!data?.imageList || data.imageList.length === 0)) {
+          toast.error("At least one product image is required.")
+          return
+        }
       }
 
       // Basic presence checks with per-field errors
@@ -74,21 +76,23 @@ export default function Page() {
         hasError = true
       }
 
-      if (!data?.categoryId) {
-        errors.categoryId = "Category is required"
-        hasError = true
-      }
-      if (!data?.brandId) {
-        errors.brandId = "Brand is required"
-        hasError = true
-      }
-      if (!data?.seriesId) {
-        errors.seriesId = "Series is required"
-        hasError = true
-      }
-      if (!data?.modelId) {
-        errors.modelId = "Model is required"
-        hasError = true
+      if (status !== 'draft') {
+        if (!data?.categoryId) {
+          errors.categoryId = "Category is required"
+          hasError = true
+        }
+        if (!data?.brandId) {
+          errors.brandId = "Brand is required"
+          hasError = true
+        }
+        if (!data?.seriesId) {
+          errors.seriesId = "Series is required"
+          hasError = true
+        }
+        if (!data?.modelId) {
+          errors.modelId = "Model is required"
+          hasError = true
+        }
       }
 
       if (hasError) {
@@ -98,93 +102,95 @@ export default function Page() {
       }
 
       // Variable vs simple validation
-      if (data?.isVariable) {
-        const attrs = data?.attributes ?? []
-        const vars = data?.variations ?? []
+      if (status !== 'draft') {
+        if (data?.isVariable) {
+          const attrs = data?.attributes ?? []
+          const vars = data?.variations ?? []
 
-        if (attrs.length === 0) {
-          toast.error("Add at least one attribute for variable products.")
-          return
-        }
-
-        // Attribute validation: name + values + duplicate names
-        const names = attrs.map((a) => (a?.name || "").trim().toLowerCase()).filter(Boolean)
-        const dupNames = names.filter((n, i) => names.indexOf(n) !== i)
-        const hasEmptyName = attrs.some((a) => !a?.name?.trim())
-        const hasEmptyValues = attrs.some((a) => (a?.values ?? []).length === 0)
-
-        if (hasEmptyName || hasEmptyValues || dupNames.length > 0) {
-          toast.error("Attributes must have unique names and at least one value.")
-          return
-        }
-
-        if ((attrs ?? []).some((a) => a.usedForVariations) && vars.length === 0) {
-          toast.error("Please generate variations before submitting.")
-          return
-        }
-
-        // Variation validation
-        let variationsHaveErrors = false;
-        vars.forEach((v) => {
-          const varErrors = {}
-          const price = Number(v?.price)
-          const salePrice = Number(v?.salePrice)
-          const stock = Number(v?.stock)
-
-          if (v?.price === "" || isNaN(price) || price <= 0) {
-            varErrors.price = "Valid regular price is required"
-            console.log(" Price error")
-            variationsHaveErrors = true;
+          if (attrs.length === 0) {
+            toast.error("Add at least one attribute for variable products.")
+            return
           }
-     
-          if ((v?.salePrice !== "" && v?.salePrice != null) && (!isNaN(salePrice) && salePrice >= price)) {
-            varErrors.salePrice = "Sale price must be less than regular price"
-            console.log(" Sale price error")
-            variationsHaveErrors = true;
-          } else if ((v?.salePrice !== "" && v?.salePrice != null) && isNaN(salePrice)) {
-            varErrors.salePrice = "Sale price must be a valid number"
-            console.log(" Sale price error")
-            variationsHaveErrors = true;
+
+          // Attribute validation: name + values + duplicate names
+          const names = attrs.map((a) => (a?.name || "").trim().toLowerCase()).filter(Boolean)
+          const dupNames = names.filter((n, i) => names.indexOf(n) !== i)
+          const hasEmptyName = attrs.some((a) => !a?.name?.trim())
+          const hasEmptyValues = attrs.some((a) => (a?.values ?? []).length === 0)
+
+          if (hasEmptyName || hasEmptyValues || dupNames.length > 0) {
+            toast.error("Attributes must have unique names and at least one value.")
+            return
           }
-          if (Object.keys(varErrors).length > 0) {
-            errors[v.id] = varErrors
+
+          if ((attrs ?? []).some((a) => a.usedForVariations) && vars.length === 0) {
+            toast.error("Please generate variations before submitting.")
+            return
           }
-        })
 
-        if (variationsHaveErrors) {
-          toast.error("Please fill required fields and ensure sale prices are valid for each variation.")
-          setValidationErrors(errors)
-          return
-        }
-      } else {
-        // Simple product validation
-        let simpleProductHasError = false;
-        const price = Number(data?.price)
-        const salePrice = Number(data?.salePrice)
-        const stock = Number(data?.stock)
+          // Variation validation
+          let variationsHaveErrors = false;
+          vars.forEach((v) => {
+            const varErrors = {}
+            const price = Number(v?.price)
+            const salePrice = Number(v?.salePrice)
+            const stock = Number(v?.stock)
 
-        if (data?.price === "" || isNaN(price) || price <= 0) {
-          errors.price = "Valid price is required"
-          simpleProductHasError = true;
-        }
-    
-        if ((data?.salePrice !== "" && data?.salePrice != null) && (!isNaN(salePrice) && salePrice >= price)) {
-          errors.salePrice = "Sale price must be less than price"
-          simpleProductHasError = true;
-        } else if ((data?.salePrice !== "" && data?.salePrice != null) && isNaN(salePrice)) {
-          errors.salePrice = "Sale price must be a valid number"
-          simpleProductHasError = true;
-        }
+            if (v?.price === "" || isNaN(price) || price <= 0) {
+              varErrors.price = "Valid regular price is required"
+              console.log(" Price error")
+              variationsHaveErrors = true;
+            }
 
-        if (simpleProductHasError) {
-          toast.error("Please fill required fields and ensure sale price is valid.")
-          setValidationErrors(errors)
-          return
+            if ((v?.salePrice !== "" && v?.salePrice != null) && (!isNaN(salePrice) && salePrice >= price)) {
+              varErrors.salePrice = "Sale price must be less than regular price"
+              console.log(" Sale price error")
+              variationsHaveErrors = true;
+            } else if ((v?.salePrice !== "" && v?.salePrice != null) && isNaN(salePrice)) {
+              varErrors.salePrice = "Sale price must be a valid number"
+              console.log(" Sale price error")
+              variationsHaveErrors = true;
+            }
+            if (Object.keys(varErrors).length > 0) {
+              errors[v.id] = varErrors
+            }
+          })
+
+          if (variationsHaveErrors) {
+            toast.error("Please fill required fields and ensure sale prices are valid for each variation.")
+            setValidationErrors(errors)
+            return
+          }
+        } else {
+          // Simple product validation
+          let simpleProductHasError = false;
+          const price = Number(data?.price)
+          const salePrice = Number(data?.salePrice)
+          const stock = Number(data?.stock)
+
+          if (data?.price === "" || isNaN(price) || price <= 0) {
+            errors.price = "Valid price is required"
+            simpleProductHasError = true;
+          }
+
+          if ((data?.salePrice !== "" && data?.salePrice != null) && (!isNaN(salePrice) && salePrice >= price)) {
+            errors.salePrice = "Sale price must be less than price"
+            simpleProductHasError = true;
+          } else if ((data?.salePrice !== "" && data?.salePrice != null) && isNaN(salePrice)) {
+            errors.salePrice = "Sale price must be a valid number"
+            simpleProductHasError = true;
+          }
+
+          if (simpleProductHasError) {
+            toast.error("Please fill required fields and ensure sale price is valid.")
+            setValidationErrors(errors)
+            return
+          }
         }
       }
 
       const action = id ? updateProduct : createNewProduct
-      await action({ data, featureImage, imageList, variantImages })
+      await action({ data: { ...data, status }, featureImage, imageList, variantImages })
 
       setData({})
       setFeatureImage(null)
@@ -243,7 +249,17 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-4">
+        <Button
+          isLoading={isLoading}
+          isDisabled={isLoading}
+          type="button"
+          onClick={() => handleSubmit('draft')}
+          variant="bordered"
+          className="border-1 border-[#313131] text-[#313131] px-6 py-2 rounded-lg text-sm"
+        >
+          Save as Draft
+        </Button>
         <Button
           isLoading={isLoading}
           isDisabled={isLoading}
@@ -251,7 +267,7 @@ export default function Page() {
           variant="primary"
           className="bg-[#313131] text-white px-6 py-2 rounded-lg text-sm"
         >
-          {id ? "Update" : "Create"}
+          {id ? "Update & Publish" : "Publish Product"}
         </Button>
       </div>
     </form>

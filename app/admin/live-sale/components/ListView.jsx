@@ -114,6 +114,7 @@ export default function ProductListView() {
     } = useProducts({
         pageLimit,
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
+        status: "published",
     });
 
     // Memoized filtered and sorted products
@@ -147,7 +148,7 @@ export default function ProductListView() {
                         aValue = getMinEffectivePrice(a);
                         bValue = getMinEffectivePrice(b);
                         break;
-                
+
                 }
 
                 if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -258,7 +259,7 @@ export default function ProductListView() {
                                         )}
                                     </button>
                                 </th>
-                             
+
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -378,7 +379,7 @@ function ProductRow({ item, index, router, checked, onToggle, getPriceDisplay })
             <td className="px-6 py-4 whitespace-nowrap">
                 {getPriceDisplay(item)}
             </td>
-   
+
         </tr>
     );
 }

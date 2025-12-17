@@ -37,10 +37,11 @@ export default function ProductListView() {
     useEffect(() => {
         const fetchTotal = async () => {
             const ref = collection(db, "products");
-            let q = query(ref);
+            const constraints = [where("status", "==", "published")];
             if (selectedCategory !== "all") {
-                q = query(ref, where("categoryId", "==", selectedCategory));
+                constraints.push(where("categoryId", "==", selectedCategory));
             }
+            const q = query(ref, ...constraints);
             const snap = await getDocs(q);
             setTotalProducts(snap.size);
         };
@@ -50,10 +51,11 @@ export default function ProductListView() {
     useEffect(() => {
         if (searchQuery) {
             searchProducts(searchQuery).then((products) => {
+                let publishedProducts = products.filter(p => p.status !== 'draft');
                 if (selectedCategory !== "all") {
-                    products = products.filter((p) => p.categoryId === selectedCategory);
+                    publishedProducts = publishedProducts.filter((p) => p.categoryId === selectedCategory);
                 }
-                setSearchedProducts(products);
+                setSearchedProducts(publishedProducts);
             });
         } else {
             setSearchedProducts([]);
@@ -69,10 +71,13 @@ export default function ProductListView() {
             setIsLoading(true);
             try {
                 const ref = collection(db, "products");
-                let q = query(ref, orderBy("timestampCreate", "desc"), limit(pageLimit));
+                const constraints = [where("status", "==", "published")];
                 if (selectedCategory !== "all") {
-                    q = query(q, where("categoryId", "==", selectedCategory));
+                    constraints.push(where("categoryId", "==", selectedCategory));
                 }
+                constraints.push(orderBy("timestampCreate", "desc"), limit(pageLimit));
+
+                let q = query(ref, ...constraints);
                 if (lastSnapDocList.length > 0) {
                     q = query(q, startAfter(lastSnapDocList[lastSnapDocList.length - 1]));
                 }
@@ -99,10 +104,11 @@ export default function ProductListView() {
         setIsLoadingAll(true);
         try {
             const ref = collection(db, "products");
-            let q = query(ref);
+            const constraints = [where("status", "==", "published")];
             if (selectedCategory !== "all") {
-                q = query(ref, where("categoryId", "==", selectedCategory));
+                constraints.push(where("categoryId", "==", selectedCategory));
             }
+            const q = query(ref, ...constraints);
             const snapshot = await getDocs(q);
             const products = snapshot.docs.map((doc) => ({
                 id: doc.id,

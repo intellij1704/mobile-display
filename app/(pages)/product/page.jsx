@@ -197,7 +197,7 @@ const ProductsPageContent = () => {
     const loaderRef = useRef(null)
     const isLoadingRef = useRef(false)
 
-    const { data: fetchedProducts = [], isLoading, error } = useProducts({ pageLimit: limit })
+    const { data: fetchedProducts = [], isLoading, error } = useProducts({ pageLimit: limit, status: "published" })
     const { categoriesList } = useCategories()
     const { data: brands } = useBrands()
     const { data: seriesList } = useSeries()

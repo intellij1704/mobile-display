@@ -112,6 +112,7 @@ export default function ProductListView() {
     } = useProducts({
         pageLimit,
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
+        status: "published",
     });
 
     // Memoized filtered and sorted products

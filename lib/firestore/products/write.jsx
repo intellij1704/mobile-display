@@ -6,18 +6,26 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 // ✅ Create Product
 export const createNewProduct = async ({ data, featureImage, imageList, variantImages }) => {
   if (!data?.title) throw new Error("Title is required");
-  if (!featureImage) throw new Error("Feature Image is required");
-  if (data?.isVariable) {
-    if (!data?.variations || data?.variations.length === 0)
-      throw new Error("Variations are required for variable products");
-  } else {
-    if (!data?.price) throw new Error("Price is required for simple products");
+
+  const isDraft = data?.status === 'draft';
+
+  if (!isDraft) {
+    if (!featureImage) throw new Error("Feature Image is required");
+    if (data?.isVariable) {
+      if (!data?.variations || data?.variations.length === 0)
+        throw new Error("Variations are required for variable products");
+    } else {
+      if (!data?.price) throw new Error("Price is required for simple products");
+    }
   }
 
   // Upload feature image
-  const featureImageRef = ref(storage, `products/${featureImage?.name}`);
-  await uploadBytes(featureImageRef, featureImage);
-  const featureImageURL = await getDownloadURL(featureImageRef);
+  let featureImageURL = null;
+  if (featureImage) {
+    const featureImageRef = ref(storage, `products/${featureImage?.name}`);
+    await uploadBytes(featureImageRef, featureImage);
+    featureImageURL = await getDownloadURL(featureImageRef);
+  }
 
   // Upload gallery images
   let imageURLList = [];
@@ -28,7 +36,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     imageURLList.push(url);
   }
 
-  if (imageURLList.length === 0) throw new Error("At least one product image is required");
+  if (!isDraft && imageURLList.length === 0) throw new Error("At least one product image is required");
 
   // Handle variations
   if (data?.isVariable) {
@@ -85,11 +93,16 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
 export const updateProduct = async ({ data, featureImage, imageList, variantImages }) => {
   if (!data?.title) throw new Error("Title is required");
   if (!data?.id) throw new Error("ID is required");
-  if (data?.isVariable) {
-    if (!data?.variations || data?.variations.length === 0)
-      throw new Error("Variations are required for variable products");
-  } else {
-    if (!data?.price) throw new Error("Price is required for simple products");
+
+  const isDraft = data?.status === 'draft';
+
+  if (!isDraft) {
+    if (data?.isVariable) {
+      if (!data?.variations || data?.variations.length === 0)
+        throw new Error("Variations are required for variable products");
+    } else {
+      if (!data?.price) throw new Error("Price is required for simple products");
+    }
   }
 
   // Feature image update
@@ -99,7 +112,8 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
   }
-  if (!featureImageURL) throw new Error("Feature Image is required");
+
+  if (!isDraft && !featureImageURL) throw new Error("Feature Image is required");
 
   // Image list update
   let imageURLList = data?.imageList ?? [];
@@ -110,7 +124,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     imageURLList.push(url);
   }
 
-  if (imageURLList.length === 0) throw new Error("At least one product image is required");
+  if (!isDraft && imageURLList.length === 0) throw new Error("At least one product image is required");
 
   // Handle variations
   if (data?.isVariable) {

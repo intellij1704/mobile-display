@@ -1,6 +1,7 @@
 "use client";
 
 import { useProducts } from "@/lib/firestore/products/read";
+import { getAllProductsForAdmin } from "@/lib/firestore/products/read_server";
 import { deleteProduct } from "@/lib/firestore/products/write";
 import { Edit2, Trash2, Search, ChevronLeft, ChevronRight, Download, FileText, File, ArrowUp, ArrowDown } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ export default function ProductListView() {
     const [isLoadingAll, setIsLoadingAll] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+    const [statusFilter, setStatusFilter] = useState("all");
     // Helper functions
     const getMinEffectivePrice = (product) => {
         if (!product.isVariable) {
@@ -108,16 +110,8 @@ export default function ProductListView() {
     const fetchAllProductsInternal = useCallback(async () => {
         setIsLoadingAll(true);
         try {
-            const ref = collection(db, "products");
-            const q = query(ref);
-            const snapshot = await getDocs(q);
-            const products = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-                attributes: doc.data().attributes || [],
-                variations: doc.data().variations || [],
-            }));
-            return products;
+            // Use the new function to get all products, including drafts
+            return await getAllProductsForAdmin();
         } catch (error) {
             console.error("Error fetching all products:", error);
             toast.error("Failed to load products");
@@ -141,6 +135,7 @@ export default function ProductListView() {
     } = useProducts({
         pageLimit,
         lastSnapDoc: lastSnapDocList.length === 0 ? null : lastSnapDocList[lastSnapDocList.length - 1],
+        status: statusFilter,
     });
 
     // Memoized filtered and sorted products
@@ -344,6 +339,18 @@ export default function ProductListView() {
             <div className="flex flex-col md:flex-row justify-between gap-4">
                 <h1 className="text-2xl font-bold text-gray-800">Product Management</h1>
 
+                <div className="flex items-center gap-2">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -425,6 +432,7 @@ export default function ProductListView() {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <button onClick={() => handleSort('price')} className="flex items-center gap-1">
                                         Price
@@ -451,7 +459,7 @@ export default function ProductListView() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center">
+                                    <td colSpan={6} className="px-6 py-8 text-center">
                                         <div className="h-screen w-full flex flex-col justify-center items-center bg-gray-100">
                                             <CircularProgress size={50} thickness={4} color="primary" />
                                             <p className="mt-4 text-gray-600 font-medium">Please Wait...</p>
@@ -563,6 +571,13 @@ function ProductRow({ item, index, router, getPriceDisplay, getTotalStock }) {
                         )}
                     </div>
                 </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                {item.status === 'draft' ? (
+                    <span className="px-2 py-1 text-xs font-semibold text-orange-700 bg-orange-100 rounded-full">Draft</span>
+                ) : (
+                    <span className="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">Published</span>
+                )}
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
                 {getPriceDisplay(item)}

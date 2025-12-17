@@ -17,12 +17,16 @@ import { useEffect, useState } from "react";
 import useSWRSubscription from "swr/subscription";
 
 // ------------------- GET MULTIPLE PRODUCTS -------------------
-export function useProducts({ pageLimit, lastSnapDoc }) {
+export function useProducts({ pageLimit, lastSnapDoc, status }) {
   const { data, error } = useSWRSubscription(
-    ["products", pageLimit, lastSnapDoc],
-    ([path, pageLimit, lastSnapDoc], { next }) => {
+    ["products", pageLimit, lastSnapDoc, status],
+    ([path, pageLimit, lastSnapDoc, status], { next }) => {
       const ref = collection(db, path);
-      let q = query(ref, limit(pageLimit ?? 10));
+      let q = query(ref);
+      if (status && status !== 'all') {
+        q = query(q, where("status", "==", status));
+      }
+      q = query(q, limit(pageLimit ?? 10));
 
       if (lastSnapDoc) {
         q = query(q, startAfter(lastSnapDoc));
@@ -156,24 +160,29 @@ export const searchProducts = async (searchTerm) => {
     const ref = collection(db, "products");
     const lowerSearchTerm = searchTerm.trim().toLowerCase();
 
-    const q = query(ref);
+    // ✅ Only fetch published products
+    const q = query(ref, where("status", "==", "published"));
     const snapshot = await getDocs(q);
 
     const products = snapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        variations:
-          doc.data().variations?.map((v) => ({
-            ...v,
-            id: v.id || doc(collection(db, "products")).id,
-          })) || [],
-        seoSlug: doc.data().seoSlug || "",
-        seoDescription: doc.data().seoDescription || "",
-        seoKeywords: doc.data().seoKeywords || [],
-        schemaData: doc.data().schemaData || {},
-        sku: doc.data().sku || "",
-      }))
+      .map((docSnap) => {
+        const data = docSnap.data();
+
+        return {
+          id: docSnap.id,
+          ...data,
+          variations:
+            data.variations?.map((v) => ({
+              ...v,
+              id: v.id || doc(collection(db, "products")).id,
+            })) || [],
+          seoSlug: data.seoSlug || "",
+          seoDescription: data.seoDescription || "",
+          seoKeywords: data.seoKeywords || [],
+          schemaData: data.schemaData || {},
+          sku: data.sku || "",
+        };
+      })
       .filter((product) =>
         [
           product.title?.toLowerCase(),
@@ -199,7 +208,7 @@ export function useProductsByModelId(modelId) {
   const { data, error } = useSWRSubscription(
     modelId ? ["products-by-model", modelId] : null,
     ([_, modelId], { next }) => {
-      const q = query(collection(db, "products"), where("modelId", "==", modelId));
+      const q = query(collection(db, "products"), where("modelId", "==", modelId), where("status", "==", "published"));
       const unsub = onSnapshot(
         q,
         (snap) =>
@@ -241,7 +250,7 @@ export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, 
       const ref = collection(db, "products");
 
       if (!brandId || !categoryId || !modelId) {
-        return () => {};
+        return () => { };
       }
 
       let q = query(
@@ -249,6 +258,7 @@ export function useProductsByFilters({ brandId, categoryId, modelId, pageLimit, 
         where("brandId", "==", brandId),
         where("categoryId", "==", categoryId),
         where("modelId", "==", modelId),
+        where("status", "==", "published"),
         limit(pageLimit ?? 10)
       );
 
