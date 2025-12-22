@@ -78,6 +78,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
   await setDoc(doc(db, `products/${newId}`), {
     ...data,
     seoSlug: data?.seoSlug || generatedSlug,
+    metaTitle: data?.metaTitle || "",
     seoDescription: data?.seoDescription || "",
     seoKeywords: data?.seoKeywords || [],
     sku: data?.sku || "",
@@ -153,6 +154,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
   await setDoc(doc(db, `products/${data?.id}`), {
     ...data,
     seoSlug: data?.seoSlug || generatedSlug,
+    metaTitle: data?.metaTitle || "",
     seoDescription: data?.seoDescription || "",
     seoKeywords: data?.seoKeywords || [],
     sku: data?.sku || "",

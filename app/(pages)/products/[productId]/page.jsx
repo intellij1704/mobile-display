@@ -20,7 +20,7 @@ export async function generateMetadata({ params }) {
     // First try seoSlug, then fallback to Firestore id
     let product = await getProduct({ seoSlug: productId });
 
-    console.log("Format Products",product)
+    console.log("Format Products", product)
     if (!product) product = await getProduct({ id: productId });
 
     if (!product) {
@@ -38,7 +38,7 @@ export async function generateMetadata({ params }) {
     }
 
     const title =
-        product.seoTitle ||
+        product?.metaTitle ||
         `${product.title} - Elevate Visual Brilliance With Genuine Replacement - Cash On Delivery`;
     const description =
         product.seoDescription ||
@@ -179,7 +179,7 @@ export default async function Page({ params, searchParams }) {
     };
 
     return (
-        <main className="p-4 w-full max-w-7xl mx-auto md:pt-10 ">
+        <main className="p-4 w-full max-w-7xl mx-auto md:pt-10 overflow-x-hidden ">
             {/* ✅ Inject Schema.org JSON-LD */}
             <script
                 type="application/ld+json"

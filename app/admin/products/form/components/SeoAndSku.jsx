@@ -12,7 +12,7 @@ export default function SeoAndSku({ data, handleData }) {
                     onChange={(e) => handleData("sku", e.target.value)}
                     className="w-full border rounded-md px-3 py-2"
                     placeholder="Enter SKU"
-                    
+
                 />
             </div>
 
@@ -24,6 +24,20 @@ export default function SeoAndSku({ data, handleData }) {
                     value={data?.seoSlug || ""}
                     onChange={(e) => handleData("seoSlug", e.target.value)}
                     placeholder="auto-generated if empty"
+                    className="w-full border rounded-md px-3 py-2"
+                />
+            </div>
+
+
+
+            {/* SEO Meta Title */}
+            <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">SEO Meta Title</label>
+                <input
+                    type="text"
+                    value={data?.metaTitle || ""}
+                    onChange={(e) => handleData("metaTitle", e.target.value)}
+                    placeholder="Write a catchy title for better SEO"
                     className="w-full border rounded-md px-3 py-2"
                 />
             </div>

@@ -11,9 +11,19 @@ import {
 } from "firebase/firestore";
 import useSWR from "swr";
 
+/**
+ * Helper to safely format currency values
+ * Fixes floating point issues like 6845.799999999999
+ */
+const formatAmount = (value) => {
+  if (!value || isNaN(value)) return 0;
+  return Number(value.toFixed(2)); // ✅ round to 2 decimals
+};
+
 export const getOrdersCounts = async ({ date }) => {
-  const ref = collection(db, `orders`);
-  let q = query(ref, where("status", "==", "delivered")); // ✅ only delivered orders
+  const ref = collection(db, "orders");
+
+  let q = query(ref, where("status", "==", "delivered"));
 
   if (date) {
     const fromDate = new Date(date);
@@ -30,31 +40,41 @@ export const getOrdersCounts = async ({ date }) => {
     );
   }
 
-  const data = await getAggregateFromServer(q, {
-    deliveredRevenue: sum("payment.amount"), // ✅ revenue of delivered
-    totalOrders: count(), // ✅ count of delivered
+  const snapshot = await getAggregateFromServer(q, {
+    deliveredRevenue: sum("payment.amount"),
+    totalOrders: count(),
   });
 
+  const data = snapshot.data();
+
+  const result = {
+    totalOrders: data.totalOrders || 0,
+    deliveredRevenue: formatAmount(data.deliveredRevenue || 0), // ✅ FIXED
+  };
+
   if (date) {
-    const d = new Date(date); // ensure always Date object
+    const d = new Date(date);
     return {
-      date: `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`, // ✅ formatted
-      ...data.data(),
+      date: `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`,
+      ...result,
     };
   }
-  return data.data();
+
+  return result;
 };
 
 const getTotalOrdersCounts = async (dates) => {
-  const promisesList = dates?.map((d) => getOrdersCounts({ date: d })) || [];
-  return Promise.all(promisesList);
+  const list = dates?.map((d) => getOrdersCounts({ date: d })) || [];
+  return Promise.all(list);
 };
 
 export function useOrdersCounts() {
-  const { data, error, isLoading } = useSWR("ordrs_counts", () =>
+  const { data, error, isLoading } = useSWR("orders_counts", () =>
     getOrdersCounts({ date: null })
   );
-  if (error) console.log(error?.message);
+
+  if (error) console.error(error.message);
+
   return { data, error, isLoading };
 }
 
@@ -63,9 +83,13 @@ export function useOrdersCountsByTotalDays({ dates }) {
     ["orders_count", dates],
     ([, dates]) =>
       getTotalOrdersCounts(
-        dates?.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+        dates?.sort(
+          (a, b) => new Date(a).getTime() - new Date(b).getTime()
+        )
       )
   );
-  if (error) console.log(error?.message);
+
+  if (error) console.error(error.message);
+
   return { data, error, isLoading };
 }
