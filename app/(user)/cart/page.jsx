@@ -13,6 +13,7 @@ import { Minus, Plus } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import toast from "react-hot-toast"
+import GTMViewCart from "@/app/components/GTM_DataLayer/GTMViewCart"
 
 const getUniqueId = (item) => {
   return `${item.id}-${item.selectedColor || ""}-${item.selectedQuality || ""}-${item.selectedBrand || ""}`
@@ -25,6 +26,7 @@ const CartPage = () => {
 
   // Track per-line (originalSubtotal, discounted subtotal, quantity, returnFee)
   const [cartSubtotals, setCartSubtotals] = useState({})
+  const [gtmItems, setGtmItems] = useState({});
 
   // Keep parent-subtotal map updated by children
   const onSubtotalUpdate = useCallback((uniqueId, subtotal, quantity, originalSubtotal, returnFee) => {
@@ -34,12 +36,24 @@ const CartPage = () => {
     }))
   }, [])
 
+  const onGtmItemUpdate = useCallback((uniqueId, itemData) => {
+    setGtmItems(prev => ({
+      ...prev,
+      [uniqueId]: itemData
+    }));
+  }, []);
+
   const onRemove = useCallback((uniqueId) => {
     setCartSubtotals((prev) => {
       const updated = { ...prev }
       delete updated[uniqueId]
       return updated
-    })
+    });
+    setGtmItems(prev => {
+      const updated = { ...prev };
+      delete updated[uniqueId];
+      return updated;
+    });
   }, [])
 
   // Compute total return/replacement fees from children's computed values (accurate on initial render and updates)
@@ -58,6 +72,9 @@ const CartPage = () => {
       }
     }
 
+
+
+
     const originalTotal = Object.values(cartSubtotals).reduce((sum, { originalSubtotal }) => sum + (originalSubtotal || 0), 0)
     const subtotal = Object.values(cartSubtotals).reduce((sum, { subtotal }) => sum + (subtotal || 0), 0)
     const savings = originalTotal - subtotal
@@ -66,6 +83,8 @@ const CartPage = () => {
 
     return { subtotal, savings, savingsPercent, total }
   }, [cartSubtotals, totalReturnReplacementFees, data?.carts])
+
+  const gtmCartItems = useMemo(() => Object.values(gtmItems), [gtmItems]);
 
   const summary = useMemo(() => calculateSummary(), [calculateSummary])
   const freeShippingThreshold = shippingData?.minFreeDeliveryAmount || 0
@@ -90,11 +109,18 @@ const CartPage = () => {
             <p className="mb-6 max-w-md text-gray-500">
               Looks like you haven't added any products yet. Start shopping now!
             </p>
-              <Link href="/product" className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">Continue Shopping</Link>
-         
+            <Link href="/product" className="bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-700">Continue Shopping</Link>
+
           </div>
         ) : (
           <div className="flex flex-col gap-8 lg:flex-row">
+            {gtmCartItems.length > 0 && (
+              <GTMViewCart
+                cartItems={gtmCartItems}
+                cartTotal={summary.total}
+              />
+            )}
+
             {/* Cart Items */}
             <div className="w-full lg:w-2/3">
               <div className="border-dashed border-2 border-[#0000001b] rounded-md p-3 mb-10">
@@ -124,6 +150,7 @@ const CartPage = () => {
                     user={user}
                     data={data}
                     onSubtotalUpdate={onSubtotalUpdate}
+                    onGtmItemUpdate={onGtmItemUpdate}
                     onRemove={onRemove}
                   />
                 ))}
@@ -168,7 +195,7 @@ const CartPage = () => {
   )
 }
 
-const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
+const CartItem = ({ item, user, data, onSubtotalUpdate, onGtmItemUpdate, onRemove }) => {
   const [isRemoving, setIsRemoving] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const { data: product } = useProduct({ productId: item?.id })
@@ -235,11 +262,59 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   // Report subtotals and returnFee to parent
   useEffect(() => {
     onSubtotalUpdate(uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee)
-  }, [uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee, onSubtotalUpdate])
+  }, [uniqueId, subtotal, quantity, originalSubtotal, computedReturnFee, onSubtotalUpdate]);
+
+  useEffect(() => {
+    if (product) {
+      onGtmItemUpdate(uniqueId, {
+        id: product.id,
+        title: product.title,
+        sku: product.sku || product.id,
+        price: effectivePrice,
+        quantity: quantity,
+        categoryId: product.categoryId,
+        brandId: product.brandId,
+        isVariable: product.isVariable,
+      });
+    }
+  }, [product, effectivePrice, quantity, uniqueId, onGtmItemUpdate]);
+
 
   const handleRemove = useCallback(async () => {
-    if (!confirm("Remove this item from cart?")) return
-    setIsRemoving(true)
+    if (!confirm("Remove this item from cart?")) return;
+
+    setIsRemoving(true);
+
+    /* ---------------------------
+       GA4 REMOVE FROM CART
+    ---------------------------- */
+    window.dataLayer = window.dataLayer || [];
+
+    window.dataLayer.push({ ecommerce: null }); // GA4 best practice
+
+    window.dataLayer.push({
+      event: "remove_from_cart",
+      ecommerce: {
+        currency: "INR",
+        value: Number(effectivePrice) * Number(quantity),
+        items: [
+          {
+            item_id: item?.id,
+            item_name: product?.title || item?.title,
+            sku: item?.sku || item?.id,
+            price: Number(effectivePrice),
+            quantity: Number(quantity),
+            item_category: "Mobile Spare Parts",
+            item_brand: "Mobile Display",
+            product_type: product?.isVariable ? "variable" : "simple",
+          },
+        ],
+      },
+    });
+
+    /* ---------------------------
+       FIRESTORE UPDATE
+    ---------------------------- */
     try {
       const newList = data?.carts?.filter(
         (d) =>
@@ -248,17 +323,28 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
             d?.selectedColor === item?.selectedColor &&
             d?.selectedQuality === item?.selectedQuality &&
             d?.selectedBrand === item?.selectedBrand
-          ),
-      )
-      await updateCarts({ list: newList, uid: user?.uid })
-      toast.success("Item removed from cart")
-      onRemove(uniqueId)
+          )
+      );
+
+      await updateCarts({ list: newList, uid: user?.uid });
+
+      toast.success("Item removed from cart");
+      onRemove(uniqueId);
     } catch (error) {
-      toast.error(error?.message || "Failed to remove item")
+      toast.error(error?.message || "Failed to remove item");
     } finally {
-      setIsRemoving(false)
+      setIsRemoving(false);
     }
-  }, [data?.carts, item, user?.uid, uniqueId, onRemove])
+  }, [
+    data?.carts,
+    item,
+    user?.uid,
+    uniqueId,
+    onRemove,
+    effectivePrice,
+    quantity,
+    product,
+  ]);
 
   const handleUpdate = useCallback(
     async (newQuantity) => {
@@ -297,108 +383,110 @@ const CartItem = ({ item, user, data, onSubtotalUpdate, onRemove }) => {
   )
 
   return (
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-white rounded-lg">
-  
-  {/* Left Section */}
-  <div className="flex gap-4">
-    
-    {/* Image + Quantity */}
-    <div className="flex items-center flex-col gap-2">
-      <img
-        src={imageSrc}
-        alt={product?.title || "Product"}
-        className="w-24 sm:w-28 h-auto object-cover rounded"
-      />
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-white rounded-lg">
 
-      <div className="flex items-center space-x-5 border border-[#929292]">
+      {/* Left Section */}
+      <div className="flex gap-4">
+
+        {/* Image + Quantity */}
+        <div className="flex items-center flex-col gap-2">
+          <img
+            src={imageSrc}
+            alt={product?.title || "Product"}
+            className="w-24 sm:w-28 h-auto object-cover rounded"
+          />
+
+          <div className="flex items-center space-x-5 border border-[#929292]">
+            <button
+              onClick={() => handleUpdate(quantity - 1)}
+              disabled={isUpdating || quantity <= 1}
+              className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+            >
+              <Minus size={12} />
+            </button>
+
+            <span className="w-8 text-center text-sm">{quantity}</span>
+
+            <button
+              onClick={() => handleUpdate(quantity + 1)}
+              disabled={isUpdating}
+              className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+        </div>
+
+        {/* Product Info */}
+        <div className="flex-1">
+          <h3 className="text-sm font-medium text-gray-800">
+            {product?.title || "Product"}
+          </h3>
+
+          {item?.selectedColor && (
+            <p className="text-xs text-gray-500 capitalize">
+              Color: {item.selectedColor}
+            </p>
+          )}
+
+          {item?.selectedQuality && (
+            <p className="text-xs text-gray-500 capitalize">
+              Quality: {item.selectedQuality}
+            </p>
+          )}
+
+          {item?.selectedBrand && (
+            <p className="text-xs text-gray-500 capitalize">
+              Brand: {item.selectedBrand}
+            </p>
+          )}
+
+          {/* Price */}
+          {hasSale ? (
+            <p className="text-xs text-gray-500">
+              <span className="line-through mr-2">
+                ₹{listPrice.toFixed(2)}
+              </span>
+              <span className="text-black font-semibold text-lg">
+                ₹{effectivePrice.toFixed(2)}
+              </span>
+              <span className="ml-2 text-green-600 text-sm font-medium">
+                ({Math.round(((listPrice - effectivePrice) / listPrice) * 100)}% OFF)
+              </span>
+            </p>
+          ) : (
+            <p className="font-semibold text-lg text-black">
+              ₹{listPrice.toFixed(2)}
+            </p>
+          )}
+
+          {/* Return Fee */}
+          {item?.returnType && (
+            <p className="text-xs text-gray-500">
+              + ₹{computedReturnFee}{" "}
+              {item.returnType === "easy-return"
+                ? "Easy Return Fee"
+                : item.returnType === "easy-replacement"
+                  ? "Easy Replacement Fee"
+                  : "Self Shipping Fee"}
+            </p>
+          )}
+        </div>
+      </div>
+
+
+
+      {/* Delete Button */}
+      <div className="flex justify-end sm:justify-center">
         <button
-          onClick={() => handleUpdate(quantity - 1)}
-          disabled={isUpdating || quantity <= 1}
-          className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+          onClick={handleRemove}
+          disabled={isRemoving}
+          className="text-gray-400 hover:text-red-500"
         >
-          <Minus size={12} />
-        </button>
-
-        <span className="w-8 text-center text-sm">{quantity}</span>
-
-        <button
-          onClick={() => handleUpdate(quantity + 1)}
-          disabled={isUpdating}
-          className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
-        >
-          <Plus size={12} />
+          {isRemoving ? <CircularProgress size={16} /> : <DeleteForever />}
         </button>
       </div>
     </div>
-
-    {/* Product Info */}
-    <div className="flex-1">
-      <h3 className="text-sm font-medium text-gray-800">
-        {product?.title || "Product"}
-      </h3>
-
-      {item?.selectedColor && (
-        <p className="text-xs text-gray-500 capitalize">
-          Color: {item.selectedColor}
-        </p>
-      )}
-
-      {item?.selectedQuality && (
-        <p className="text-xs text-gray-500 capitalize">
-          Quality: {item.selectedQuality}
-        </p>
-      )}
-
-      {item?.selectedBrand && (
-        <p className="text-xs text-gray-500 capitalize">
-          Brand: {item.selectedBrand}
-        </p>
-      )}
-
-      {/* Price */}
-      {hasSale ? (
-        <p className="text-xs text-gray-500">
-          <span className="line-through mr-2">
-            ₹{listPrice.toFixed(2)}
-          </span>
-          <span className="text-black font-semibold text-lg">
-            ₹{effectivePrice.toFixed(2)}
-          </span>
-          <span className="ml-2 text-green-600 text-sm font-medium">
-            ({Math.round(((listPrice - effectivePrice) / listPrice) * 100)}% OFF)
-          </span>
-        </p>
-      ) : (
-        <p className="font-semibold text-lg text-black">
-          ₹{listPrice.toFixed(2)}
-        </p>
-      )}
-
-      {/* Return Fee */}
-      {item?.returnType && (
-        <p className="text-xs text-gray-500">
-          + ₹{computedReturnFee}{" "}
-          {item.returnType === "easy-return"
-            ? "Easy Return Fee"
-            : item.returnType === "easy-replacement"
-            ? "Easy Replacement Fee"
-            : "Self Shipping Fee"}
-        </p>
-      )}
-    </div>
-  </div>
-
-  {/* Delete Button */}
-  <div className="flex justify-end sm:justify-center">
-    <button
-      onClick={handleRemove}
-      disabled={isRemoving}
-      className="text-gray-400 hover:text-red-500"
-    >
-      {isRemoving ? <CircularProgress size={16} /> : <DeleteForever />}
-    </button>
-  </div>
-</div>
 
   )
 }

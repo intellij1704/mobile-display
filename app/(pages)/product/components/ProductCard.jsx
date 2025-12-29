@@ -176,6 +176,18 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
         return
       }
 
+      // Find item to remove for GTM
+      const itemToRemove = userData.carts.find((cartItem) => {
+        if (!effectiveIsVariable && !effectiveHasQualityOptions) {
+          return cartItem?.id === id
+        }
+        const matchesId = cartItem?.id === id
+        if (!matchesId) return false
+        const matchesColor = !effectiveIsVariable || !selectedColor || cartItem?.selectedColor === selectedColor
+        const matchesQuality = !effectiveHasQualityOptions || !selectedQuality || cartItem?.selectedQuality === selectedQuality
+        return matchesColor && matchesQuality
+      })
+
       // Filter out the matching item(s)
       const newList = userData.carts.filter((cartItem) => {
         // For non-variable products, remove all items with matching ID
@@ -202,6 +214,25 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
       }
 
       await updateCarts({ list: newList, uid: user?.uid })
+
+      if (itemToRemove) {
+        window.dataLayer = window.dataLayer || []
+        window.dataLayer.push({
+          event: "remove_from_cart",
+          ecommerce: {
+            currency: "INR",
+            value: minEffective * (itemToRemove.quantity || 1),
+            items: [
+              {
+                item_id: id,
+                item_name: title,
+                price: minEffective,
+                quantity: itemToRemove.quantity || 1,
+              },
+            ],
+          },
+        })
+      }
       toast.success("Item removed from cart")
     } catch (error) {
       console.error("Error removing item from cart:", error)
@@ -209,7 +240,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     } finally {
       setIsRemoving(false)
     }
-  }, [userData?.carts, id, selectedColor, selectedQuality, user?.uid, effectiveIsVariable, effectiveHasQualityOptions])
+  }, [userData?.carts, id, selectedColor, selectedQuality, user?.uid, effectiveIsVariable, effectiveHasQualityOptions, minEffective, title])
 
   const handleVariantConfirm = (color, quality) => {
     setTempColor(color)
@@ -240,6 +271,25 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
           uid: user?.uid,
         })
         toast.success("Item added to cart")
+
+        window.dataLayer = window.dataLayer || []
+        window.dataLayer.push({
+          event: "add_to_cart",
+          ecommerce: {
+            currency: "INR",
+            value: minEffective,
+            items: [
+              {
+                item_id: product.id,
+                item_name: product.title,
+                price: minEffective,
+                quantity: 1,
+                item_category: product.categoryName,
+                item_brand: product.brand,
+              },
+            ],
+          },
+        })
       } else if (actionType === "buy") {
         // const checkoutId = await createCheckoutCODAndGetId({
         //   uid: user?.uid,
@@ -380,15 +430,15 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
           <div className="mt-1 md:mt-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-base md:text-lg font-bold text-gray-900">
+                <span className="text-base md:text-md font-bold text-gray-900">
                   {effectivePriceDisplay}
                 </span>
                 {hasDiscount && (
                   <>
-                    <span className="text-xs md:text-sm text-gray-500 line-through">
+                    <span className="text-xs md:text-xs text-gray-500 line-through">
                       {originalPriceDisplay}
                     </span>
-                    <span className="text-[10px] md:text-xs font-medium bg-green-100 text-green-600 px-1 py-0.5 rounded">
+                    <span className="text-[10px]  font-medium bg-green-100 text-green-600 px-1 py-0.5 rounded">
                       {discountPercentage}% OFF
                     </span>
                   </>

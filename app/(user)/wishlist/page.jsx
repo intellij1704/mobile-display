@@ -11,6 +11,8 @@ import { Button } from "@nextui-org/react";
 import { FaTrashAlt } from "react-icons/fa";
 import ReturnTypeSelector from "@/app/components/ReturnTypeSelector";
 import ProductVariantModal from "@/app/(pages)/product/components/ProductVariantModal";
+import { getBrand } from "@/lib/firestore/brands/read_server";
+import { getCategory } from "@/lib/firestore/categories/read_server";
 
 const WishlistPage = () => {
     const { user } = useAuth();
@@ -161,6 +163,43 @@ const WishlistItem = ({ favoriteItem, user, userData }) => {
             ];
             await updateCarts({ uid: user?.uid, list: updatedCart });
             toast.success("Added to cart");
+
+            // GTM add_to_cart event
+            if (product) {
+                let categoryName = product?.categoryName || "Mobile Spare Parts";
+                let brandName = product?.brand || "Mobile Display";
+
+                try {
+                    if (product.categoryId) {
+                        const cat = await getCategory({ id: product.categoryId });
+                        if (cat?.name) categoryName = cat.name;
+                    }
+                    if (product.brandId) {
+                        const brand = await getBrand({ id: product.brandId });
+                        if (brand?.name) brandName = brand.name;
+                    }
+                } catch (error) {
+                    console.error("GTM add_to_cart data fetch error", error);
+                }
+
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push({
+                    event: "add_to_cart",
+                    ecommerce: {
+                        currency: "INR",
+                        value: currentPrice,
+                        items: [{
+                            item_id: product.id,
+                            item_name: product.title,
+                            sku: product.sku || product.id,
+                            price: currentPrice,
+                            quantity: 1,
+                            item_category: categoryName,
+                            item_brand: brandName,
+                        }],
+                    },
+                });
+            }
         } catch (error) {
             toast.error(error?.message || "Something went wrong");
         } finally {

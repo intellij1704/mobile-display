@@ -7,7 +7,7 @@
 
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
 import { ChevronLeft } from "lucide-react"
@@ -17,6 +17,7 @@ import { useAuth } from "@/context/AuthContext"
 import { createCheckoutCODAndGetId, createCheckoutOnlineAndGetId } from "@/lib/firestore/checkout/write"
 import { useSpecialOffers } from "@/lib/firestore/specialOffers/read"
 import { useCategories } from "@/lib/firestore/categories/read"
+import { useBrands } from "@/lib/firestore/brands/read"
 import { useShippingSettings } from "@/lib/firestore/shipping/read"
 import { useUser } from "@/lib/firestore/user/read"
 import { updateAddresses } from "@/lib/firestore/user/write"
@@ -53,10 +54,43 @@ export function SectionCard({ title, children, footer, className = "" }) {
     )
 }
 
+// Pricing logic helper (moved outside component for stability)
+const getItemPrice = (item) => {
+    const product = item?.product
+    if (!product) return 0
+    if (product.isVariable && product.variations?.length > 0) {
+        const selectedColor = item.selectedColor
+        const selectedQuality = item.selectedQuality
+        const selectedBrand = item.selectedBrand
+        const matchingVariation = product.variations.find(v => {
+            const attrs = v.attributes || {}
+            let match = true
+            if (selectedColor) {
+                match = match && attrs.Color === selectedColor
+            }
+            if (selectedQuality) {
+                match = match && attrs.Quality === selectedQuality
+            }
+            if (selectedBrand) {
+                match = match && attrs.Brand === selectedBrand
+            }
+            return match
+        })
+        if (matchingVariation) {
+            return parseFloat(matchingVariation.salePrice || matchingVariation.price) || 0
+        }
+        return 0
+    } else {
+        return parseFloat(product.salePrice || product.price) || 0
+    }
+}
+
 // ---------- Contact + Address ----------
 function ContactAndAddress({ userData, user, productList }) {
     const router = useRouter()
     const { categoriesMap } = useCategories()
+    const { data: brands, isLoading: brandsLoading } = useBrands();
+
     const { data: specialOffers, isLoading: offersLoading } = useSpecialOffers()
     const { data: shippingData } = useShippingSettings()
 
@@ -85,6 +119,7 @@ function ContactAndAddress({ userData, user, productList }) {
     const [selectedAddressId, setSelectedAddressId] = useState(null)
     const [editingAddressId, setEditingAddressId] = useState(null)
     const [isAddingNew, setIsAddingNew] = useState(false)
+    const dataLayerPushed = useRef(false);
 
     const addresses = userData?.addresses || []
 
@@ -239,39 +274,14 @@ function ContactAndAddress({ userData, user, productList }) {
         return category ? category.name : "Unknown Category"
     }
 
+    const getBrandName = (brandId) => {
+        const brand = brands?.find((b) => b.id === brandId)
+        return brand ? brand.name : "Unknown Brand"
+    }
+
     const canApplyCoupon = (coupon) => {
         const couponCategories = coupon?.categories || []
         return couponCategories.some((cat) => cartCategorySet.has(cat))
-    }
-
-    const getItemPrice = (item) => {
-        const product = item?.product
-        if (!product) return 0
-        if (product.isVariable && product.variations?.length > 0) {
-            const selectedColor = item.selectedColor
-            const selectedQuality = item.selectedQuality
-            const selectedBrand = item.selectedBrand
-            const matchingVariation = product.variations.find(v => {
-                const attrs = v.attributes || {}
-                let match = true
-                if (selectedColor) {
-                    match = match && attrs.Color === selectedColor
-                }
-                if (selectedQuality) {
-                    match = match && attrs.Quality === selectedQuality
-                }
-                if (selectedBrand) {
-                    match = match && attrs.Brand === selectedBrand
-                }
-                return match
-            })
-            if (matchingVariation) {
-                return parseFloat(matchingVariation.salePrice || matchingVariation.price) || 0
-            }
-            return 0
-        } else {
-            return parseFloat(product.salePrice || product.price) || 0
-        }
     }
 
     const totalPrice = useMemo(() => {
@@ -374,7 +384,7 @@ function ContactAndAddress({ userData, user, productList }) {
             }
         }
         return { discountLines: lines, discount: d }
-    }, [allCategories, productList, couponPMap, categoryMaxPrepaid, paymentMode])
+    }, [allCategories, productList, couponPMap, categoryMaxPrepaid, paymentMode, categoriesMap])
 
     const { minFreeDelivery, shippingExtraCharges, airExpressDeliveryCharge } = {
         minFreeDelivery: shippingData?.minFreeDeliveryAmount || 499,
@@ -446,6 +456,35 @@ function ContactAndAddress({ userData, user, productList }) {
     const estimatedDelivery = getEstimatedDelivery()
 
     const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null
+
+
+    useEffect(() => {
+        if (productList && productList.length > 0 && !brandsLoading && brands && categoriesMap && !dataLayerPushed.current) {
+            const items = productList.map((item) => {
+                const price = getItemPrice(item)
+                return {
+                    item_id: item.product.id,
+                    item_name: item.product.title,
+                    price: price,
+                    quantity: item.quantity || 1,
+                    item_category: getCategoryName(item.product.categoryId),
+                    item_variant: [item.selectedColor, item.selectedQuality].filter(Boolean).join(" - "),
+                    item_brand: getBrandName(item.product.brandId),
+                }
+            })
+
+            window.dataLayer = window.dataLayer || []
+            window.dataLayer.push({
+                event: "begin_checkout",
+                ecommerce: {
+                    currency: "INR",
+                    value: total,
+                    items: items,
+                },
+            })
+            dataLayerPushed.current = true;
+        }
+    }, [productList, brandsLoading, brands, categoriesMap, total])
 
     // Load Razorpay SDK
     const loadRazorpay = async () => {
@@ -676,7 +715,7 @@ function ContactAndAddress({ userData, user, productList }) {
                                             item={item}
                                             estimatedDelivery={estimatedDelivery}
                                             getCategoryName={getCategoryName}
-                                            getItemPrice={getItemPrice}
+                                            getBrandName={getBrandName}
                                         />
                                     ))}
                                 </div>
@@ -901,13 +940,14 @@ function CouponsBox({ appliedCoupons, appliedOffers, couponError, onRemove, onOp
     )
 }
 
-function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) {
+function ProductRow({ item, estimatedDelivery, getCategoryName, getBrandName }) {
     const product = item.product;
     const quantity = item.quantity || 1;
     const selectedColor = item.selectedColor;
     const selectedQuality = item.selectedQuality;
     const selectedBrand = item.selectedBrand;
     const returnType = item.returnType;
+    const brandName = getBrandName(product.brandId);
     const categoryName = getCategoryName(product.categoryId);
     const price = getItemPrice(item) * quantity;
 
@@ -936,6 +976,7 @@ function ProductRow({ item, estimatedDelivery, getCategoryName, getItemPrice }) 
                         <div className="text-sm text-gray-600 space-y-0.5">
                             <p><span className="font-medium text-gray-700">Qty:</span> {quantity}</p>
                             <p><span className="font-medium text-gray-700">Category:</span> {categoryName}</p>
+                            <p><span className="font-medium text-gray-700">Brand:</span> {brandName}</p>
                             <p><span className="font-medium text-gray-700">Return Type:</span> {returnType}</p>
 
                         </div>

@@ -12,6 +12,8 @@ import { useUser } from "@/lib/firestore/user/read"
 import { updateCarts } from "@/lib/firestore/user/write"
 import { createCheckoutCODAndGetId } from "@/lib/firestore/checkout/write"
 import ReturnTypeSelector from "@/app/components/ReturnTypeSelector"
+import { getBrand } from "@/lib/firestore/brands/read_server"
+import { getCategory } from "@/lib/firestore/categories/read_server"
 
 export default function ProductVariantModal({ product, isOpen, onClose }) {
   const router = useRouter()
@@ -223,53 +225,119 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
   }
 
   const handleRemoveFromCart = useCallback(async () => {
-    if (!confirm("Remove this item from cart?")) return
+    if (!confirm("Remove this item from cart?")) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
+
+    const itemToRemove = userData.carts.find(cartItem => {
+      if (cartItem?.id !== product.id) return false;
+      if (hasColorOptions && cartItem?.selectedColor !== selectedColor) return false;
+      if (hasQualityOptions && cartItem?.selectedQuality !== selectedQuality) return false;
+      if (hasBrandOptions && cartItem?.selectedBrand !== selectedBrand) return false;
+      return true;
+    });
+    const quantityToRemove = itemToRemove?.quantity || 1;
+
+    /* --------------------------------
+       GA4 REMOVE FROM CART (IMMEDIATE)
+    --------------------------------- */
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null });
+
+    let categoryName = product?.categoryName || "Mobile Spare Parts";
+    let brandName = product?.brand || "Mobile Display";
+    try {
+      if (product?.categoryId) {
+        const cat = await getCategory({ id: product.categoryId });
+        if (cat?.name) categoryName = cat.name;
+      }
+      if (product?.brandId) {
+        const brand = await getBrand({ id: product.brandId });
+        if (brand?.name) brandName = brand.name;
+      }
+    } catch (error) {
+      console.error("GTM remove_from_cart data fetch error", error);
+    }
+
+    window.dataLayer.push({
+      event: "remove_from_cart",
+      ecommerce: {
+        currency: "INR",
+        value: Number(currentPrice) * Number(quantityToRemove),
+        items: [
+          {
+            item_id: product?.id,
+            item_name: product?.title,
+            sku: product?.sku || product?.id,
+            price: Number(currentPrice),
+            quantity: Number(quantityToRemove),
+            item_category: categoryName,
+            item_brand: brandName,
+            product_type: product?.isVariable ? "variable" : "simple",
+          },
+        ],
+      },
+    });
+
+    /* --------------------------------
+       CART UPDATE (Firestore)
+    --------------------------------- */
     try {
       if (!userData?.carts) {
-        toast.error("Cart is empty")
-        return
+        toast.error("Cart is empty");
+        return;
       }
 
       const newList = userData.carts.filter((cartItem) => {
-        if (cartItem?.id !== product.id) return true
+        if (cartItem?.id !== product.id) return true;
 
         if (hasColorOptions) {
-          if (cartItem?.selectedColor !== selectedColor) return true
-        } else {
-          if (cartItem?.selectedColor) return true
+          if (cartItem?.selectedColor !== selectedColor) return true;
+        } else if (cartItem?.selectedColor) {
+          return true;
         }
 
         if (hasQualityOptions) {
-          if (cartItem?.selectedQuality !== selectedQuality) return true
-        } else {
-          if (cartItem?.selectedQuality) return true
+          if (cartItem?.selectedQuality !== selectedQuality) return true;
+        } else if (cartItem?.selectedQuality) {
+          return true;
         }
 
         if (hasBrandOptions) {
-          if (cartItem?.selectedBrand !== selectedBrand) return true
-        } else {
-          if (cartItem?.selectedBrand) return true
+          if (cartItem?.selectedBrand !== selectedBrand) return true;
+        } else if (cartItem?.selectedBrand) {
+          return true;
         }
 
-        return false
-      })
+        return false;
+      });
 
       if (newList.length === userData.carts.length) {
-        toast.error("Item not found in cart")
-        return
+        toast.error("Item not found in cart");
+        return;
       }
 
-      await updateCarts({ list: newList, uid: user?.uid })
-      toast.success("Item removed from cart")
+      await updateCarts({ list: newList, uid: user?.uid });
+      toast.success("Item removed from cart");
     } catch (error) {
-      console.error("Error removing item from cart:", error)
-      toast.error(error?.message || "Failed to remove item")
+      console.error("Error removing item from cart:", error);
+      toast.error(error?.message || "Failed to remove item");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [userData?.carts, product.id, selectedColor, selectedQuality, selectedBrand, hasColorOptions, hasQualityOptions, hasBrandOptions, user?.uid])
+  }, [
+    userData?.carts,
+    product,
+    selectedColor,
+    selectedQuality,
+    selectedBrand,
+    hasColorOptions,
+    hasQualityOptions,
+    hasBrandOptions,
+    user?.uid,
+    currentPrice,
+  ]);
+
 
   const handleBuyNow = () => {
     if (!validateSelections()) return
@@ -303,6 +371,42 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
           uid: user?.uid,
         })
         toast.success("Item added to cart")
+
+        // GTM add_to_cart event
+        let categoryName = product?.categoryName || "Mobile Spare Parts";
+        let brandName = product?.brand || "Mobile Display";
+
+        try {
+          if (product?.categoryId) {
+            const cat = await getCategory({ id: product.categoryId });
+            if (cat?.name) categoryName = cat.name;
+          }
+          if (product?.brandId) {
+            const brand = await getBrand({ id: product.brandId });
+            if (brand?.name) brandName = brand.name;
+          }
+        } catch (error) {
+          console.error("GTM Data Fetch Error for add_to_cart:", error);
+        }
+
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          event: "add_to_cart",
+          ecommerce: {
+            currency: "INR",
+            value: currentPrice,
+            items: [{
+              item_id: product.id,
+              item_name: product.title,
+              sku: product.sku || product.id,
+              price: currentPrice,
+              quantity: 1,
+              item_category: categoryName,
+              item_brand: brandName,
+            }],
+          },
+        });
+
         onClose()
       } else if (actionType === "buy") {
         // Buy now

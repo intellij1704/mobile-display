@@ -10,6 +10,8 @@ import { updateCarts } from "@/lib/firestore/user/write"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import ReturnTypeSelector from "./ReturnTypeSelector"
+import { getBrand } from "@/lib/firestore/brands/read_server"
+import { getCategory } from "@/lib/firestore/categories/read_server"
 
 export default function AddToCartButton({
   product,
@@ -122,6 +124,43 @@ export default function AddToCartButton({
         uid: user?.uid,
       })
       toast.success("Item added to cart")
+
+      // GTM add_to_cart event
+      let categoryName = product?.categoryName || "Mobile Spare Parts";
+      let brandName = product?.brand || "Mobile Display";
+
+      try {
+        if (product?.categoryId) {
+          const cat = await getCategory({ id: product.categoryId });
+          if (cat?.name) categoryName = cat.name;
+        }
+        if (product?.brandId) {
+          const brand = await getBrand({ id: product.brandId });
+          if (brand?.name) brandName = brand.name;
+        }
+      } catch (error) {
+        console.error("GTM Data Fetch Error", error);
+      }
+
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "add_to_cart",
+        ecommerce: {
+          currency: "INR",
+          value: productPrice || product?.price,
+          items: [
+            {
+              item_id: product?.id,
+              item_name: product?.title,
+              sku: product?.sku || product?.id,
+              price: productPrice || product?.price,
+              quantity: 1,
+              item_category: categoryName,
+              item_brand: brandName,
+            },
+          ],
+        },
+      });
     } catch (err) {
       toast.error(err?.message || "Failed to add to cart")
     } finally {

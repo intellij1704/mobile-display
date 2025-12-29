@@ -11,6 +11,7 @@ import CompatibilitySection from "./components/CompatibilitySection";
 import WarrantyPolicySection from "./components/WarrantyPolicySection";
 import { notFound } from "next/navigation";
 import WhyUsSection from "@/app/components/WhyUsSection";
+import GTMProductView from "@/app/components/GTM_DataLayer/GTMProductView";
 
 // ✅ Dynamic Metadata for SEO
 export async function generateMetadata({ params }) {
@@ -120,6 +121,8 @@ export default async function Page({ params, searchParams }) {
         timestampUpdate: rawProduct.timestampUpdate?.toDate().toISOString(),
     };
 
+
+    console.log(product)
     // Compute attributes
     const colors = product?.attributes?.find(attr => attr.name === "Color")?.values || [];
     const qualities = product?.attributes?.find(attr => attr.name === "Quality")?.values || [];
@@ -237,6 +240,10 @@ export default async function Page({ params, searchParams }) {
                     </AuthContextProvider>
                 </div>
             </section>
+
+            <GTMProductView product={product}
+                effectivePrice={effectivePrice}
+                isInStock={isInStock} />
 
             {/* Related Products */}
             <section className="mt-10">
