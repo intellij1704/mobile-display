@@ -2,6 +2,7 @@
 import { db, storage } from "@/lib/firebase";
 import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, Timestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes, deleteObject } from "firebase/storage";
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper: Delete Image from Storage
 const deleteImageFromStorage = async (url) => {
@@ -43,49 +44,6 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     }
   }
 
-  // Upload feature image
-  let featureImageURL = null;
-  if (featureImage) {
-    const featureImageRef = ref(storage, `products/${data?.id}/${data?.seoSlug}.${featureImage.type.split("/")[1]}`);
-    await uploadBytes(featureImageRef, featureImage);
-    featureImageURL = await getDownloadURL(featureImageRef);
-  }
-
-  // Upload gallery images
-  let imageURLList = [];
-  for (const image of imageList || []) {
-    const imageRef = ref(storage, `products/${data.id}/gallery/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
-    await uploadBytes(imageRef, image);
-    const url = await getDownloadURL(imageRef);
-    imageURLList.push(url);
-  }
-
-  if (!isDraft && imageURLList.length === 0) throw new Error("At least one product image is required");
-
-  // Handle variations
-  if (data?.isVariable) {
-    data.variations = data.variations ?? [];
-    for (const varr of data.variations) {
-      let imgURLs = [];
-      for (const image of variantImages[varr.id] || []) {
-        const imageRef = ref(storage, `products/${data.id}/variants/${varr.id}/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
-        await uploadBytes(imageRef, image);
-        const url = await getDownloadURL(imageRef);
-        imgURLs.push(url);
-      }
-      varr.imageURLs = imgURLs;
-    }
-    data.price = null;
-    data.salePrice = null;
-  } else {
-    data.attributes = [];
-    data.variations = [];
-  }
-
-  const generatedSlug = data?.title?.toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
   // Generate a unique 5-digit ID
   let newId;
   let isUnique = false;
@@ -99,9 +57,53 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     }
   }
 
+  const generatedSlug = data?.title?.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const finalSlug = data?.seoSlug || generatedSlug;
+
+  // Upload feature image
+  let featureImageURL = null;
+  if (featureImage) {
+    const featureImageRef = ref(storage, `products/${newId}/${finalSlug}.${featureImage.type.split("/")[1]}`);
+    await uploadBytes(featureImageRef, featureImage);
+    featureImageURL = await getDownloadURL(featureImageRef);
+  }
+
+  // Upload gallery images
+  let imageURLList = [];
+  for (const image of imageList || []) {
+    const imageRef = ref(storage, `products/${newId}/gallery/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
+    await uploadBytes(imageRef, image);
+    const url = await getDownloadURL(imageRef);
+    imageURLList.push(url);
+  }
+
+  if (!isDraft && imageURLList.length === 0) throw new Error("At least one product image is required");
+
+  // Handle variations
+  if (data?.isVariable) {
+    data.variations = data.variations ?? [];
+    for (const varr of data.variations) {
+      let imgURLs = [];
+      for (const image of variantImages[varr.id] || []) {
+        const imageRef = ref(storage, `products/${newId}/variants/${varr.id}/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
+        await uploadBytes(imageRef, image);
+        const url = await getDownloadURL(imageRef);
+        imgURLs.push(url);
+      }
+      varr.imageURLs = imgURLs;
+    }
+    data.price = null;
+    data.salePrice = null;
+  } else {
+    data.attributes = [];
+    data.variations = [];
+  }
+
   await setDoc(doc(db, `products/${newId}`), {
     ...data,
-    seoSlug: data?.seoSlug || generatedSlug,
+    seoSlug: finalSlug,
     metaTitle: data?.metaTitle || "",
     seoDescription: data?.seoDescription || "",
     seoKeywords: data?.seoKeywords || [],
@@ -130,6 +132,11 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     }
   }
 
+  const generatedSlug = data?.title?.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const finalSlug = data?.seoSlug || generatedSlug;
+
   // Fetch old data to identify removed images
   const productRef = doc(db, `products/${data?.id}`);
   const oldDocSnap = await getDoc(productRef);
@@ -138,7 +145,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
   // Feature image update
   let featureImageURL = data?.featureImageURL ?? null;
   if (featureImage) {
-    const featureImageRef = ref(storage, `products/${featureImage?.name}`);
+    const featureImageRef = ref(storage, `products/${data?.id}/${finalSlug}.${featureImage.type.split("/")[1]}`);
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
   }
@@ -148,7 +155,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
   // Image list update
   let imageURLList = data?.imageList ?? [];
   for (const image of imageList || []) {
-    const imageRef = ref(storage, `products/${image?.name}`);
+    const imageRef = ref(storage, `products/${data.id}/gallery/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
     await uploadBytes(imageRef, image);
     const url = await getDownloadURL(imageRef);
     imageURLList.push(url);
@@ -162,7 +169,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     for (const varr of data.variations) {
       let imgURLs = varr.imageURLs ?? [];
       for (const image of variantImages[varr.id] || []) {
-        const imageRef = ref(storage, `products/${varr.id}_${image?.name}`);
+        const imageRef = ref(storage, `products/${data.id}/variants/${varr.id}/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
         await uploadBytes(imageRef, image);
         const url = await getDownloadURL(imageRef);
         imgURLs.push(url);
@@ -189,13 +196,9 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     await Promise.all(urlsToDelete.map((url) => deleteImageFromStorage(url)));
   }
 
-  const generatedSlug = data?.title?.toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
   await setDoc(doc(db, `products/${data?.id}`), {
     ...data,
-    seoSlug: data?.seoSlug || generatedSlug,
+    seoSlug: finalSlug,
     metaTitle: data?.metaTitle || "",
     seoDescription: data?.seoDescription || "",
     seoKeywords: data?.seoKeywords || [],
