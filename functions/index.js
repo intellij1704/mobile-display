@@ -42,7 +42,7 @@ export const convertToAvif = onObjectFinalized(
 
     // Convert to AVIF
     await sharp(tempFilePath)
-      .avif({ quality: 40 })
+      .avif({ quality: 30 })
       .toFile(tempAvifPath);
 
     // Upload converted image
