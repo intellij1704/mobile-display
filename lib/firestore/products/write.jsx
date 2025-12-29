@@ -65,7 +65,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
   // Upload feature image
   let featureImageURL = null;
   if (featureImage) {
-    const featureImageRef = ref(storage, `products/${newId}/${finalSlug}.${featureImage.type.split("/")[1]}`);
+    const featureImageRef = ref(storage, `products/${newId}/${finalSlug}-${uuidv4()}.${featureImage.type.split("/")[1]}`);
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
   }
@@ -145,10 +145,12 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
   // Feature image update
   let featureImageURL = data?.featureImageURL ?? null;
   if (featureImage) {
-    const featureImageRef = ref(storage, `products/${data?.id}/${finalSlug}.${featureImage.type.split("/")[1]}`);
+    const featureImageRef = ref(storage, `products/${data?.id}/${finalSlug}-${uuidv4()}.${featureImage.type.split("/")[1]}`);
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
   }
+
+
 
   if (!isDraft && !featureImageURL) throw new Error("Feature Image is required");
 
