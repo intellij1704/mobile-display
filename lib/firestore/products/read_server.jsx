@@ -11,13 +11,54 @@ import {
   limit,
 } from "firebase/firestore";
 
-// ✅ Get single product by ID or seoSlug (seoSlug takes priority)
+/* ---------------------------------------------
+   Helper: convert PNG/JPG → AVIF
+--------------------------------------------- */
+const toAvif = (url) => {
+  if (!url || typeof url !== "string") return url;
+  return url.replace(/\.(png|jpg|jpeg)(\?.*)?$/i, ".avif$2");
+};
+
+/* ---------------------------------------------
+   Normalize product document
+--------------------------------------------- */
+const normalizeProduct = (snap) => {
+  const data = snap.data();
+
+  return {
+    id: snap.id,
+
+    // spread base fields EXCEPT images
+    ...data,
+
+    // ✅ MAIN IMAGE
+    featureImageURL: toAvif(data?.featureImageURL),
+
+    // ✅ IMAGE GALLERY
+    imageList: (data?.imageList || [])
+      .map(toAvif)
+      .filter(Boolean),
+
+    // ✅ VARIATIONS
+    variations: (data?.variations || []).map((v) => ({
+      ...v,
+      id: v.id || doc(collection(db, "products")).id,
+      imageURLs: (v.imageURLs || []).map(toAvif),
+    })),
+
+    // ✅ QUALITIES
+    qualities: data?.qualities || [],
+  };
+};
+
+/* ---------------------------------------------
+   Get single product
+--------------------------------------------- */
 export const getProduct = async ({ id, seoSlug }) => {
   try {
     let snap;
 
     if (seoSlug) {
-      // Fetch by seoSlug
       const list = await getDocs(
         query(
           collection(db, "products"),
@@ -26,27 +67,17 @@ export const getProduct = async ({ id, seoSlug }) => {
           limit(1)
         )
       );
-
       if (list.empty) return null;
       snap = list.docs[0];
     } else if (id) {
-      // Fetch by id
-      snap = await getDoc(doc(db, `products/${id}`));
-      if (!snap.exists()) return null;
+      const docSnap = await getDoc(doc(db, "products", id));
+      if (!docSnap.exists()) return null;
+      snap = docSnap;
     } else {
       throw new Error("Either id or seoSlug must be provided");
     }
 
-    return {
-      id: snap.id,
-      ...snap.data(),
-      variations:
-        snap.data()?.variations?.map((v) => ({
-          ...v,
-          id: v.id || doc(col(db, "products")).id,
-        })) || [],
-      qualities: snap.data()?.qualities || [],
-    };
+    return normalizeProduct(snap);
   } catch (error) {
     console.error("Error fetching product:", error);
     return null;
