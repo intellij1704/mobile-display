@@ -1,7 +1,31 @@
 // Path: src/lib/firestore/products/write.js
 import { db, storage } from "@/lib/firebase";
 import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, Timestamp, updateDoc, where, writeBatch } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getDownloadURL, ref, uploadBytes, deleteObject } from "firebase/storage";
+
+// Helper: Delete Image from Storage
+const deleteImageFromStorage = async (url) => {
+  if (!url) return;
+  try {
+    const imageRef = ref(storage, url);
+    await deleteObject(imageRef);
+  } catch (error) {
+    console.error(`Failed to delete image: ${url}`, error);
+  }
+};
+
+// Helper: Extract all image URLs from product data
+const extractAllImageUrls = (data) => {
+  const urls = [];
+  if (data?.featureImageURL) urls.push(data.featureImageURL);
+  if (data?.imageList?.length) urls.push(...data.imageList);
+  if (data?.variations?.length) {
+    data.variations.forEach((v) => {
+      if (v.imageURLs?.length) urls.push(...v.imageURLs);
+    });
+  }
+  return urls;
+};
 
 // ✅ Create Product
 export const createNewProduct = async ({ data, featureImage, imageList, variantImages }) => {
@@ -22,7 +46,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
   // Upload feature image
   let featureImageURL = null;
   if (featureImage) {
-    const featureImageRef = ref(storage, `products/${featureImage?.name}`);
+    const featureImageRef = ref(storage, `products/${data?.id}/${data?.seoSlug}.${featureImage.type.split("/")[1]}`);
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
   }
@@ -30,7 +54,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
   // Upload gallery images
   let imageURLList = [];
   for (const image of imageList || []) {
-    const imageRef = ref(storage, `products/${image?.name}`);
+    const imageRef = ref(storage, `products/${data.id}/gallery/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
     await uploadBytes(imageRef, image);
     const url = await getDownloadURL(imageRef);
     imageURLList.push(url);
@@ -44,7 +68,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     for (const varr of data.variations) {
       let imgURLs = [];
       for (const image of variantImages[varr.id] || []) {
-        const imageRef = ref(storage, `products/${varr.id}_${image?.name}`);
+        const imageRef = ref(storage, `products/${data.id}/variants/${varr.id}/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
         await uploadBytes(imageRef, image);
         const url = await getDownloadURL(imageRef);
         imgURLs.push(url);
@@ -106,6 +130,11 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     }
   }
 
+  // Fetch old data to identify removed images
+  const productRef = doc(db, `products/${data?.id}`);
+  const oldDocSnap = await getDoc(productRef);
+  const oldData = oldDocSnap.exists() ? oldDocSnap.data() : null;
+
   // Feature image update
   let featureImageURL = data?.featureImageURL ?? null;
   if (featureImage) {
@@ -147,6 +176,19 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     data.variations = [];
   }
 
+  // Cleanup: Delete images that are no longer in the new data
+  if (oldData) {
+    const oldUrls = extractAllImageUrls(oldData);
+    const newUrls = extractAllImageUrls({
+      ...data,
+      featureImageURL,
+      imageList: imageURLList,
+    });
+
+    const urlsToDelete = oldUrls.filter((url) => !newUrls.includes(url));
+    await Promise.all(urlsToDelete.map((url) => deleteImageFromStorage(url)));
+  }
+
   const generatedSlug = data?.title?.toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
@@ -168,7 +210,16 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
 // ✅ Delete Product
 export const deleteProduct = async ({ id }) => {
   if (!id) throw new Error("ID is required");
-  await deleteDoc(doc(db, `products/${id}`));
+
+  const productRef = doc(db, `products/${id}`);
+  const productSnap = await getDoc(productRef);
+
+  if (productSnap.exists()) {
+    const urls = extractAllImageUrls(productSnap.data());
+    await Promise.all(urls.map((url) => deleteImageFromStorage(url)));
+  }
+
+  await deleteDoc(productRef);
 };
 
 // Bulk update price By category (Percentage Change)

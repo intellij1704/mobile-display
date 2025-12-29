@@ -151,7 +151,7 @@ async function Details({ product, selectedColor, selectedQuality, selectedBrand 
         />
       </div>
 
- 
+
       {/* Brand Selection */}
       {isActuallyVariable && hasBrandOptions && (
         <div>
