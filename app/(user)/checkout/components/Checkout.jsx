@@ -25,6 +25,7 @@ import CouponsDrawer from "./CouponsDrawer"
 import AddressSection from "./AddressSection"
 import FeesLines from "./FeesLines"
 import PaymentMode from "./PaymentMode"
+import { data } from "jquery"
 
 // ---------- UI Helpers ----------
 export function Spinner() {
@@ -497,6 +498,157 @@ function ContactAndAddress({ userData, user, productList }) {
         })
     }
 
+    const hashString = async (str) => {
+        if (!str) return "";
+        const msgBuffer = new TextEncoder().encode(str.trim().toLowerCase());
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    };
+
+    async function trackPurchase(checkoutId, paymentMethod, paymentMethodTitle) {
+        const items = productList.map(item => ({
+            item_id: item.product.id,
+            item_name: item.product.title,
+            sku: item.product.id,
+            price: getItemPrice(item),
+            stocklevel: null,
+            stockstatus: "instock",
+            google_business_vertical: "retail",
+            item_category: getCategoryName(item.product.categoryId),
+            id: item.product.id,
+            quantity: item.quantity || 1
+        }));
+
+        const email = selectedAddress?.email || "";
+        const phone = selectedAddress?.mobile || "";
+        const firstName = selectedAddress?.fullName?.split(" ")[0] || "";
+        const lastName = selectedAddress?.fullName?.split(" ").slice(1).join(" ") || "";
+
+        const [emailHash, phoneHash, firstNameHash, lastNameHash] = await Promise.all([
+            hashString(email),
+            hashString(phone),
+            hashString(firstName),
+            hashString(lastName)
+        ]);
+
+        const userDetails = {
+            pagePostType: "page",
+            pagePostType2: "single-page",
+            customerTotalOrders: userData?.orders?.length || 0,
+            customerTotalOrderValue: userData?.orders?.reduce((acc, o) => acc + (o.total || 0), 0) || 0,
+            customerFirstName: firstName,
+            customerLastName: lastName,
+            customerBillingFirstName: firstName,
+            customerBillingLastName: lastName,
+            customerBillingCompany: "",
+            customerBillingAddress1: selectedAddress?.streetAddress || "",
+            customerBillingAddress2: selectedAddress?.landmark || "",
+            customerBillingCity: selectedAddress?.city || "",
+            customerBillingState: selectedAddress?.state || "",
+            customerBillingPostcode: selectedAddress?.pinCode || "",
+            customerBillingCountry: selectedAddress?.country || "IN",
+            customerBillingEmail: email,
+            customerBillingEmailHash: emailHash,
+            customerBillingPhone: phone,
+            customerShippingFirstName: firstName,
+            customerShippingLastName: lastName,
+            customerShippingCompany: "",
+            customerShippingAddress1: selectedAddress?.streetAddress || "",
+            customerShippingAddress2: selectedAddress?.landmark || "",
+            customerShippingCity: selectedAddress?.city || "",
+            customerShippingState: selectedAddress?.state || "",
+            customerShippingPostcode: selectedAddress?.pinCode || "",
+            customerShippingCountry: selectedAddress?.country || "IN",
+            cartContent: {
+                totals: {
+                    applied_coupons: appliedCoupons,
+                    discount_total: discount,
+                    subtotal: totalPrice,
+                    total: total
+                },
+                items: items
+            },
+            orderData: {
+                attributes: {
+                    date: new Date().toISOString(),
+                    order_number: checkoutId,
+                    order_key: checkoutId,
+                    payment_method: paymentMethod,
+                    payment_method_title: paymentMethodTitle,
+                    shipping_method: deliveryType === "express" ? "Express Delivery" : "Standard Delivery",
+                    status: "processing",
+                    coupons: appliedCoupons.join(",")
+                },
+                totals: {
+                    currency: "INR",
+                    discount_total: discount,
+                    discount_tax: 0,
+                    shipping_total: shippingCharge + airExpressFee,
+                    shipping_tax: 0,
+                    cart_tax: 0,
+                    total: total,
+                    total_tax: 0,
+                    total_discount: discount,
+                    subtotal: totalPrice,
+                    tax_totals: []
+                },
+                customer: {
+                    id: user?.uid || "guest",
+                    billing: {
+                        first_name: firstName,
+                        first_name_hash: firstNameHash,
+                        last_name: lastName,
+                        last_name_hash: lastNameHash,
+                        company: "",
+                        address_1: selectedAddress?.streetAddress || "",
+                        address_2: selectedAddress?.landmark || "",
+                        city: selectedAddress?.city || "",
+                        state: selectedAddress?.state || "",
+                        postcode: selectedAddress?.pinCode || "",
+                        country: selectedAddress?.country || "IN",
+                        email: email,
+                        emailhash: emailHash,
+                        email_hash: emailHash,
+                        phone: phone,
+                        phone_hash: phoneHash
+                    },
+                    shipping: {
+                        first_name: firstName,
+                        last_name: lastName,
+                        company: "",
+                        address_1: selectedAddress?.streetAddress || "",
+                        address_2: selectedAddress?.landmark || "",
+                        city: selectedAddress?.city || "",
+                        state: selectedAddress?.state || "",
+                        postcode: selectedAddress?.pinCode || "",
+                        country: selectedAddress?.country || "IN"
+                    }
+                },
+                items: items
+            },
+            new_customer: !userData?.orders || userData?.orders?.length === 0
+        };
+
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push(userDetails);
+
+        window.dataLayer.push({
+            event: "purchase",
+            ecommerce: {
+                currency: "INR",
+                transaction_id: checkoutId,
+                affiliation: "Mobile Display",
+                value: total,
+                tax: 0,
+                shipping: shippingCharge + airExpressFee,
+                coupon: appliedCoupons.join(","),
+                items: items
+            },
+            "gtm.uniqueEventId": Date.now()
+        });
+    }
+
     async function handlePlaceOrder() {
         if (!selectedAddress) {
             toast.error("Please select a delivery address")
@@ -544,6 +696,7 @@ function ContactAndAddress({ userData, user, productList }) {
                     appliedOffers: serializedAppliedOffers,
                 })
                 successPath = "/checkout-success"
+                await trackPurchase(checkoutData.checkoutId, "cod", "Cash on delivery");
             } else {
                 checkoutData = await createCheckoutOnlineAndGetId({
                     uid: user?.uid,
@@ -581,7 +734,8 @@ function ContactAndAddress({ userData, user, productList }) {
                 name: "Mobile Display",
                 description: paymentMode === "cod" ? "Advance Payment for COD Order" : "Full Payment for Order",
                 order_id: razorpayOrderId,
-                handler: function (response) {
+                handler: async function (response) {
+                    await trackPurchase(checkoutId, "online", "Online Payment");
                     router.push(`${successPath}?checkout_id=${checkoutId}&razorpay_payment_id=${response.razorpay_payment_id}&razorpay_order_id=${response.razorpay_order_id}&razorpay_signature=${response.razorpay_signature}`)
                 },
                 prefill: {
