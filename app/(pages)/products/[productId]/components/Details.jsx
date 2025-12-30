@@ -80,7 +80,7 @@ async function Details({ product, selectedColor, selectedQuality, selectedBrand 
     },
     {
       id: 2,
-      title: "Phoner Guarantee",
+      title: "Mobile Display Guarantee",
       description: "Assured quality parts",
       icon: "/icon/guarantee-icon.svg",
     },

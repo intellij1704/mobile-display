@@ -106,20 +106,20 @@ export default function ContactUs() {
               <span className="w-6 h-6 flex-shrink-0">
                 <img src="/call-icon.svg" alt="call" className="w-full h-full object-contain" />
               </span>
-              <span className="text-base">+1012 3456 789</span>
+              <span className="text-base"><a href="tel:+919433562200">+91-9433562200</a></span>
             </li>
             <li className="flex items-center gap-4">
               <span className="w-6 h-6 flex-shrink-0">
                 <img src="/email-icon.svg" alt="email" className="w-full h-full object-contain" />
               </span>
-              <span className="text-base">demo@gmail.com</span>
+              <span className="text-base"><a href="mailto:mobiledisplaykol@gmail.com">mobiledisplaykol@gmail.com</a></span>
             </li>
             <li className="flex items-start gap-4">
               <span className="w-6 h-6 mt-1 flex-shrink-0">
                 <img src="/map.svg" alt="map" className="w-full h-full object-contain" />
               </span>
               <span className="text-base leading-relaxed">
-                132 Dartmouth Street<br />Boston, Massachusetts 02156<br />United States
+                BA-38, Salt Lake Rd, Sector-1, Bidhannagar, Kolkata – 700064
               </span>
             </li>
           </ul>
@@ -251,8 +251,8 @@ export default function ContactUs() {
           {formStatus.message && (
             <p
               className={`text-center mt-4 font-medium ${formStatus.type === "success"
-                  ? "text-green-600"
-                  : "text-red-600"
+                ? "text-green-600"
+                : "text-red-600"
                 }`}
             >{formStatus.message}</p>
           )}
@@ -265,7 +265,10 @@ export default function ContactUs() {
           width="100%"
           height="100%"
           className="rounded-lg"
-          src="https://maps.google.com/maps?q=132+Dartmouth+Street,Boston,Massachusetts&output=embed"
+          allowFullScreen=""
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          src="https://www.google.com/maps?q=1st%20Floor,%20BA-38,%20Salt%20Lake%20Rd,%20near%20PNB,%20BA%20Block,%20Sector%201,%20Bidhannagar,%20Kolkata,%20West%20Bengal%20700064&output=embed"
           style={{ filter: "grayscale(0) contrast(1.2) opacity(100%)" }}
         ></iframe>
       </div>
