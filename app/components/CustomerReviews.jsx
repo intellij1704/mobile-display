@@ -6,35 +6,49 @@ import Link from "next/link";
 
 const reviews = [
     {
-        name: "Ashley Cook",
-        rating: 4.5,
+        name: "Rahul Verma",
+        designation: "Mobile Repair Technician, Delhi",
+        rating: 5.0,
         message:
-            "I’ve tried many platforms, but Mobile Display stands out for its attention to detail and clean aesthetics. Highly recommend!",
-        image: "/user.png",
+            "Consistent quality displays and proper testing warranty. Very reliable for daily repair work.",
     },
     {
-        name: "Harry Maguire",
-        rating: 4.5,
+        name: "Sneha Gupta",
+        designation: "Customer, Kolkata",
+        rating: 5.0,
         message:
-            "I’ve tried many platforms, but Mobile Display stands out for its attention to detail and clean aesthetics. Highly recommend!",
-        image: "/user.png",
+            "Display fit perfectly and delivery was quick. Clear instructions helped a lot.",
     },
     {
-        name: "Harry Maguire",
-        rating: 4.5,
+        name: "Imran Khan",
+        designation: "Shop Owner, Delhi",
+        rating: 4.7,
         message:
-            "I’ve tried many platforms, but Mobile Display stands out for its attention to detail and clean aesthetics. Highly recommend!",
-        image: "/user.png",
+            "Good pricing for bulk orders and smooth replacement process. Works well for professionals.",
     },
     {
-        name: "Harry Maguire",
+        name: "Pooja Mehta",
+        designation: "Customer, Kolkata",
         rating: 4.5,
         message:
-            "I’ve tried many platforms, but Mobile Display stands out for its attention to detail and clean aesthetics. Highly recommend!",
-        image: "/user.png",
+            "Cash on Delivery made it easy to order. Packaging was safe and the product worked fine.",
     },
-    // Add more reviews as needed
+    {
+        name: "Amit Chatterjee",
+        designation: "Repairer, Kolkata",
+        rating: 5.0,
+        message:
+            "Parts are genuine and quality checks are trustworthy. Much better than local suppliers.",
+    },
+    {
+        name: "Rakesh Singh",
+        designation: "Accessories Dealer, Lucknow",
+        rating: 5.0,
+        message:
+            "Professional handling, timely dispatch, and clear return policy. Highly dependable.",
+    },
 ];
+
 
 const settings = {
     infinite: true,
@@ -72,20 +86,15 @@ export default function CustomerReviews() {
                     <div key={index} className="px-3">
                         <div className="bg-white rounded-2xl my-5 shadow-lg p-6">
                             <div className="flex justify-between items-center mb-4">
-                                <div className="flex items-center gap-3">
-                                    <img
-                                        src={review.image}
-                                        alt={review.name}
-                                        width={50}
-                                        height={50}
-                                        className="rounded-full object-cover"
-                                    />
-                                    <h3 className="font-medium text-gray-900">{review.name}</h3>
+                                <div className="flex  flex-col ">
+
+                                    <h3 className="font-semibold text-black text-lg ">{review.name}</h3>
+                                    <p className="text-gray-700 text-sm">{review.designation}</p>
+
                                 </div>
                                 <Rating value={review.rating} precision={0.5} readOnly />
                             </div>
                             <hr className="border-gray-200 my-2" />
-                            <h4 className="font-semibold text-black mb-2">Top-Notch Quality</h4>
                             <p className="text-gray-700 text-sm">{review.message}</p>
                             <hr className="border-gray-200 mt-4" />
                         </div>

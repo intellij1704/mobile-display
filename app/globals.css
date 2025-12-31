@@ -506,3 +506,10 @@ body {
     max-width: 85%; /* 2 images per row */
   }
 }
+
+
+
+/* globals.css */
+.font-outfit {
+  font-family: var(--font-outfit), sans-serif;
+}

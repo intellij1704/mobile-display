@@ -1,11 +1,12 @@
-// app/layout.js or app/layout.tsx
-import { Geist, Geist_Mono, Jost } from "next/font/google";
+// app/layout.js
+import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import ClientProviders from "./ClientProviders";
 import UserAgentFix from "./UserAgentFix";
 
+/* Optional fonts (kept for future use) */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -16,31 +17,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const jost = Jost({
+/* ✅ Global Font: Outfit (Sans-serif) */
+const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
-  variable: "--font-jost",
+  variable: "--font-outfit",
 });
 
-// ✅ Update metadata for the main page
+/* ✅ SEO Metadata */
 export const metadata = {
   title: "Mobile Repair Service | Home",
-  description: "Shop the best products from top brands on our platform.",
-  keywords: "e-commerce, shopping, best-selling products, deals, offers",
-  author: "Intellij Technologies",
+  description:
+    "Buy premium mobile displays and spare parts with warranty and fast delivery across India.",
+  keywords:
+    "mobile repair, mobile display, spare parts, phone repair, LCD, AMOLED",
+  authors: [{ name: "IntelliJ Technologies" }],
 
   icons: {
-    icon: "/favicon.png", // ✅ PNG favicon
+    icon: "/favicon.png",
   },
+
   openGraph: {
-    title: "Mobile Repair Service | Home",
-    description: "Shop the best products from top brands on our platform.",
-    url: "https://yourwebsite.com", // Replace with your actual URL
-    site_name: "Mobile Repair Service",
+    title: "Mobile Repair Service",
+    description:
+      "Trusted mobile displays and spare parts for technicians and customers.",
+    url: "https://yourwebsite.com",
+    siteName: "Mobile Repair Service",
     images: [
       {
-        url: "/images/og-image.jpg", // Replace with your Open Graph image
+        url: "/images/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "Mobile Repair Service",
@@ -48,27 +54,34 @@ export const metadata = {
     ],
     type: "website",
   },
+
   twitter: {
     card: "summary_large_image",
-    site: "@your_twitter_handle", // Replace with your Twitter handle
-    title: "E-Commerce Website | Home",
-    description: "Shop the best products from top brands on our platform.",
-    image: "/images/og-image.jpg", // Replace with your Twitter image
+    title: "Mobile Repair Service",
+    description:
+      "Premium mobile displays and repair parts with warranty.",
+    images: ["/images/og-image.jpg"],
   },
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={jost.variable}>
+    <html
+      lang="en"
+      className={`${outfit.variable} ${geistSans.variable} ${geistMono.variable}`}
+    >
       <head>
         <meta name="theme-color" content="#DC2626" />
-
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="#DC2626" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="#DC2626"
+        />
       </head>
-      <body className="font-jost antialiased">
+
+      {/* ✅ Outfit applied globally */}
+      <body className="font-outfit antialiased">
         <ClientProviders>
-          {" "}
           <UserAgentFix />
           {children}
         </ClientProviders>
