@@ -22,7 +22,7 @@ const quickLinks = [
 const infoLinks = [
   { label: "About Us", href: "/about" },
   { label: "Contact Us", href: "/contact" },
-  { label: "Warranty & Return Policy", href: "/replacement-policy" },
+  { label: "Warranty & Return Policy", href: "/warranty-return-policy" },
   { label: "Terms & Conditions", href: "/terms-conditions" },
   { label: "Refund Policy", href: "/refund-policy" },
   { label: "Shipping Policy", href: "/shipping-policy" },
