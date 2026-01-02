@@ -37,83 +37,37 @@ function Page() {
     "CANCELLED": "cancelled",
     "RTO": "rto"
   };
-
   useEffect(() => {
     const fetchOrderDetail = async () => {
-      try {
-        const shipmozoOrderId = order?.shipmozoOrderId;
-        if (!shipmozoOrderId) {
-          console.warn("⚠️ Shipmozo Order ID missing for order:", orderId);
-          return;
-        }
+      if (!order?.shipmozoOrderId) return;
 
-        console.log("🚀 Fetching Shipmozo Order Detail for:", shipmozoOrderId);
-        const response = await fetch(
-          `https://shipping-api.com/app/api/v1/get-order-detail/${shipmozoOrderId}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
-              "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
-            },
-          }
+      try {
+        const res = await fetch(
+          `/api/shipmozo/tracking?orderId=${order.shipmozoOrderId}`
         );
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch order details. Status: ${response.status}`);
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error);
+
+        // ✅ SAFE now
+        setShipmozoStatus(data.shipmozoStatus);
+        setTrackingInfo(data.tracking);
+
+        const mappedStatus =
+          shipmozoToInternalStatus[
+          data.tracking?.current_status || data.shipmozoStatus
+          ];
+
+        if (mappedStatus && mappedStatus !== order.status) {
+          await updateOrderStatus({
+            id: orderId,
+            status: mappedStatus,
+            orderData: order,
+          });
+          toast.success(`Order status synced to ${mappedStatus}`);
         }
-
-        const result = await response.json();
-        console.log("✅ Shipmozo Order Details:", result);
-
-        if (result?.result === "1" && result?.data?.[0]) {
-          const orderData = result.data[0];
-          setShipmozoStatus(orderData.order_status);
-          console.log("🟢 Shipmozo Status Set:", orderData.order_status);
-
-          // Automatically update internal status if it differs
-          const newInternalStatus = shipmozoToInternalStatus[orderData.order_status];
-          if (newInternalStatus && newInternalStatus !== order.status) {
-            console.log(`🚀 Syncing status: Shipmozo '${orderData.order_status}' -> Internal '${newInternalStatus}'`);
-            await updateOrderStatus({ id: orderId, status: newInternalStatus, orderData: order });
-            toast.success(`Order status synced to: ${newInternalStatus}`);
-          }
-
-
-
-          const awb = orderData.shipping_details?.awb_number;
-          if (awb) {
-            console.log("🚚 Fetching tracking for AWB:", awb);
-            const trackResponse = await fetch(
-              `https://shipping-api.com/app/api/v1/track-order?awb_number=${awb}`,
-              {
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                  "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
-                  "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
-                },
-              }
-            );
-            const trackResult = await trackResponse.json();
-            if (trackResult.result === "1") {
-              setTrackingInfo(trackResult.data);
-              console.log("📦 Tracking Info:", trackResult.data);
-              const newTrackingStatus = shipmozoToInternalStatus[trackResult.data.current_status];
-              if (newTrackingStatus && newTrackingStatus !== order.status) {
-                console.log(`🚀 Syncing tracking status: Shipmozo '${trackResult.data.current_status}' -> Internal '${newTrackingStatus}'`);
-                await updateOrderStatus({ id: orderId, status: newTrackingStatus, orderData: order });
-                toast.success(`Order status synced to: ${newTrackingStatus}`);
-              }
-            }
-          }
-        } else {
-          console.warn("⚠️ Shipmozo Response:", result.message);
-          setShipmozoStatus("N/A");
-        }
-      } catch (error) {
-        console.error("❌ Error fetching Shipmozo order details:", error.message);
+      } catch (err) {
+        console.error(err);
         setShipmozoStatus("Error");
       }
     };
@@ -121,7 +75,8 @@ function Page() {
     if (order && !isLoading && !error) {
       fetchOrderDetail();
     }
-  }, [order, orderId, isLoading, error]);
+  }, [order, isLoading, error, orderId]);
+
 
   if (!orderId) {
     return (
@@ -267,46 +222,45 @@ function Page() {
     if (!confirm("Are you sure you want to approve this cancel request?")) return;
 
     const shipmozoOrderId = order?.shipmozoOrderId;
-    const awbNumber = trackingInfo?.awb_number; // This might not exist yet
+    const awbNumber = trackingInfo?.awb_number;
 
     try {
-      // If AWB number is present, attempt to cancel with Shipmozo first.
+      // 1️⃣ Cancel in Shipmozo via SERVER API
       if (shipmozoOrderId && awbNumber) {
-        console.log("Attempting to cancel with Shipmozo...");
-        const shipmozoResponse = await fetch("https://shipping-api.com/app/api/v1/cancel-order", {
+        const res = await fetch("/api/shipmozo/cancel", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
-            "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            order_id: shipmozoOrderId,
-            awb_number: awbNumber,
+            orderId: shipmozoOrderId,
+            awbNumber,
           }),
         });
 
-        const shipmozoResult = await shipmozoResponse.json();
+        const result = await res.json();
 
-        // If Shipmozo cancellation fails, we stop and show an error.
-        // You might want to allow manual cancellation in Firestore anyway in some cases.
-        if (shipmozoResult.result !== "1") {
-          throw new Error(shipmozoResult.message || "Failed to cancel order with Shipmozo.");
+        if (!res.ok || result.result !== "1") {
+          throw new Error(result.message || "Failed to cancel order with Shipmozo");
         }
 
-        toast.success("Order successfully cancelled with Shipmozo.");
+        toast.success("Order successfully cancelled with Shipmozo");
       } else {
-        console.log("AWB number not found. Cancelling in Firestore only.");
+        console.warn("AWB number not found. Cancelling in Firestore only.");
       }
 
-      // If Shipmozo cancellation was successful OR if it was not needed,
-      // approve the request in Firestore.
-      await approveCancelRequest({ id: cancelRequest.id, orderId, orderData: order });
-      toast.success("Cancel request approved in Firestore.");
+      // 2️⃣ Approve cancel request in Firestore
+      await approveCancelRequest({
+        id: cancelRequest.id,
+        orderId,
+        orderData: order,
+      });
+
+      toast.success("Cancel request approved successfully");
     } catch (err) {
-      toast.error(err.message || "An error occurred during the cancellation process.");
+      console.error(err);
+      toast.error(err.message || "Cancellation failed");
     }
   };
+
 
   const handleRejectCancel = async () => {
     if (!confirm("Are you sure you want to reject this cancel request?")) return;

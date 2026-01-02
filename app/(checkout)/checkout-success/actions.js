@@ -146,7 +146,7 @@ async function pushToShipmozo(orderId, address, products, totalAmount, codAmount
             headers: {
                 "Content-Type": "application/json",
                 "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
-                "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
+                "private-key": process.env.SHIPMOZO_PRIVATE_KEY,
             },
             body: JSON.stringify(requestBody),
         });

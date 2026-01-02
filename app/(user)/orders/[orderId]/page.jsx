@@ -225,69 +225,39 @@ const OrderDetailPage = () => {
 
     useEffect(() => {
         const fetchTrackingDetails = async () => {
-            if (!order?.shipmozoOrderId) {
-                setTrackingError("Shipmozo Order ID not found.");
-                return;
-            }
+            if (!order?.shipmozoOrderId) return
 
-            setIsTrackingLoading(true);
-            setTrackingError(null);
+            setIsTrackingLoading(true)
+            setTrackingError(null)
 
             try {
-                // Step 1: Get Order Details to find AWB number
-                const detailResponse = await fetch(
-                    `https://shipping-api.com/app/api/v1/get-order-detail/${order.shipmozoOrderId}`,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
-                            "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
-                        },
-                    }
-                );
+                const res = await fetch(
+                    `/api/shipmozo/tracking?orderId=${order.shipmozoOrderId}`
+                )
 
-                if (!detailResponse.ok) throw new Error(`Failed to fetch order details: ${detailResponse.statusText}`);
-                const detailResult = await detailResponse.json();
-
-                const awbNumber = detailResult?.data?.[0]?.shipping_details?.awb_number;
-                if (!awbNumber) {
-                    setTrackingInfo({ current_status: detailResult?.data?.[0]?.order_status || 'Processing' });
-                    return;
+                if (!res.ok) {
+                    throw new Error("Failed to fetch tracking info")
                 }
 
-                // Step 2: Get Tracking Details with AWB number
-                const trackResponse = await fetch(
-                    `https://shipping-api.com/app/api/v1/track-order?awb_number=${awbNumber}`,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "public-key": process.env.NEXT_PUBLIC_SHIPMOZO_PUBLIC_KEY,
-                            "private-key": process.env.NEXT_PUBLIC_SHIPMOZO_PRIVATE_KEY,
-                        },
-                    }
-                );
+                const result = await res.json()
 
-                if (!trackResponse.ok) throw new Error(`Failed to fetch tracking details: ${trackResponse.statusText}`);
-                const trackResult = await trackResponse.json();
-
-                if (trackResult.result === "1") {
-                    setTrackingInfo(trackResult.data);
-                } else {
-                    throw new Error(trackResult.message || "Could not fetch tracking info.");
+                if (result.error) {
+                    throw new Error(result.error)
                 }
+
+                setTrackingInfo(result.data || result)
             } catch (err) {
-                setTrackingError(err.message);
+                setTrackingError(err.message)
             } finally {
-                setIsTrackingLoading(false);
+                setIsTrackingLoading(false)
             }
-        };
+        }
 
         if (order && !isCancelled) {
-            fetchTrackingDetails();
+            fetchTrackingDetails()
         }
-    }, [order]);
+    }, [order, isCancelled])
+
 
     if (isLoading || !orders || returnIsLoading) {
         return (
