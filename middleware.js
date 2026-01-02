@@ -1,29 +1,38 @@
 import { NextResponse } from "next/server";
 
 export function middleware(req) {
-  const isUnderConstruction = false; // toggle this
+  const isUnderConstruction = false; // toggle if needed
   const { pathname } = req.nextUrl;
 
-  // Always allow Next.js internals, API routes, favicon
+  // Allow Next.js internals, APIs, and static assets
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/favicon.ico")
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
   ) {
     return NextResponse.next();
   }
 
-  // If under construction is ON → redirect all routes (except /under-construction) to under-construction page
+  // Redirect all routes to /under-construction if enabled
   if (isUnderConstruction && pathname !== "/under-construction") {
-    const underConstructionUrl = new URL("/under-construction", req.url);
-    return NextResponse.redirect(underConstructionUrl);
+    return NextResponse.redirect(new URL("/under-construction", req.url));
   }
 
-  // If under construction is OFF → redirect /under-construction to home
+  // Prevent access to /under-construction when disabled
   if (!isUnderConstruction && pathname === "/under-construction") {
-    const homeUrl = new URL("/", req.url);
-    return NextResponse.redirect(homeUrl);
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();
 }
+
+/**
+ * 🔑 IMPORTANT:
+ * Limit middleware to page routes only.
+ * This prevents Server Component crashes.
+ */
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
