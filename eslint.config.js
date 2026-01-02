@@ -1,5 +1,5 @@
-import eslintConfigNext from "eslint-config-next";
+import next from "eslint-config-next";
 
 export default [
-  ...eslintConfigNext(),
+  ...next,
 ];

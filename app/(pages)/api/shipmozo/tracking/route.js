@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -33,7 +35,10 @@ export async function GET(req) {
     const orderData = detailData?.data?.[0];
 
     if (!orderData) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
     }
 
     const shipmozoStatus = orderData.order_status;
