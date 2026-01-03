@@ -17,6 +17,7 @@ const MissionVision = () => {
               fill
               className="object-cover"
               quality={90}
+              unoptimized
             />
           </div>
 
@@ -98,6 +99,7 @@ const MissionVision = () => {
                 fill
                 className="object-cover"
                 quality={90}
+                unoptimized
               />
             </div>
 
@@ -108,6 +110,7 @@ const MissionVision = () => {
                 fill
                 className="object-cover"
                 quality={90}
+                unoptimized
               />
             </div>
           </div>

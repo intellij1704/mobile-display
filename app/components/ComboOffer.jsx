@@ -104,6 +104,7 @@ const ComboOffer = ({ products }) => {
                                                         width={400}
                                                         height={400}
                                                         className="object-contain w-full h-full"
+                                                        unoptimized
                                                     />
                                                 </div>
 

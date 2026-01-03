@@ -369,6 +369,7 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
                   alt={featureImageAlt ? featureImageAlt : title}
                   width={200}
                   height={200}
+                  unoptimized
                   className="object-contain p-2 transition-transform duration-500 group-hover:scale-105 w-full  max-h-[160px]
     sm:max-h-[160px]
     md:max-h-[180px]

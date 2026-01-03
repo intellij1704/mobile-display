@@ -198,6 +198,7 @@ export default function BrandListing() {
                                                     width={80}
                                                     height={48}
                                                     className="h-auto w-20 object-contain"
+                                                    unoptimized
                                                 />
                                                 <span className="text-sm font-medium text-gray-800">
                                                     {s.seriesName}
@@ -233,6 +234,7 @@ export default function BrandListing() {
                                                 alt={model.name}
                                                 width={64}
                                                 height={64}
+                                                unoptimized
                                                 className="h-16 w-16 object-contain"
                                             />
                                             <p className="font-medium mt-2 text-xs sm:text-sm text-gray-800 group-hover:text-gray-900 text-center">

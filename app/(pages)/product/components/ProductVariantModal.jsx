@@ -515,6 +515,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                       fill
                       className="object-contain p-4 sm:p-6 lg:p-8 transition-all duration-500 group-hover:scale-105"
                       priority
+                      unoptimized
                     />
                     {displayImages.length > 1 && (
                       <>
@@ -561,6 +562,7 @@ export default function ProductVariantModal({ product, isOpen, onClose }) {
                           width={64}
                           height={64}
                           className="object-contain w-full h-full p-0.5 sm:p-1"
+                          unoptimized
                         />
                       </button>
                     ))}

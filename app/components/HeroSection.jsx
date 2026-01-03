@@ -11,6 +11,7 @@ function HeroSection() {
                 layout='fill'
                 objectFit='cover'
                 className='absolute top-0 left-0 w-full h-full'
+                unoptimized
             />
             <div className='relative z-10 text-center text-white px-6'>
                 <h1 className='text-4xl md:text-6xl font-bold drop-shadow-lg'>

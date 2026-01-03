@@ -76,6 +76,7 @@ export default function BrandListing() {
                                             width={100}
                                             height={100}
                                             className="object-contain w-20 md:h-24 h-14"
+                                            unoptimized
                                         />
                                     </div>
                                 </div>

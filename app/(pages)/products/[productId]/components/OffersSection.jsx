@@ -124,6 +124,7 @@ const OffersSection = ({ product, selectedVariation }) => {
               width={28}
               height={28}
               className="rounded-md"
+              unoptimized
             />
             <h3 className="text-lg font-semibold text-gray-800">Offers</h3>
           </div>

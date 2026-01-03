@@ -59,6 +59,7 @@ export default function Footer() {
               alt="Mobile Display"
               width={160}
               height={60}
+              unoptimized
             />
             <p className="text-sm text-gray-400 mt-4 leading-relaxed max-w-md">
               Your trusted source for premium mobile phone spare parts and accessories.
@@ -152,6 +153,7 @@ export default function Footer() {
                 width={45}
                 height={25}
                 className="opacity-80"
+                unoptimized
               />
             ))}
           </div>

@@ -103,7 +103,7 @@ export default function Sidebar() {
             {/* Logo */}
             <div className="flex items-center justify-center py-3 border-b">
                 <Link href="/" className="flex items-center">
-                    <Image src="/logo.png" alt="Logo" width={isOpen ? 80 : 40} height={40} className="transition-all duration-300" />
+                    <Image src="/logo.png" alt="Logo" width={isOpen ? 80 : 40} height={40} className="transition-all duration-300" unoptimized  />
                 </Link>
             </div>
 

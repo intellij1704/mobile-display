@@ -198,6 +198,7 @@ const Page = () => {
                     <Image
                       key={i}
                       src={img}
+                      unoptimized
                       alt={`Shop ${i + 1}`}
                       width={60}
                       height={60}
@@ -260,6 +261,7 @@ const Page = () => {
             <Image
               src={selectedImage}
               alt="Full Preview"
+              unoptimized
               width={1000}
               height={800}
               className="w-full max-h-[80vh] object-contain rounded-lg shadow-lg"

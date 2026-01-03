@@ -220,6 +220,7 @@ function Photos({ product, selectedColor, selectedQuality, selectedBrand }) {
                             fill
                             className="object-contain p-4 cursor-zoom-out"
                             priority
+                            unoptimized
                         />
                     </motion.div>
                 </motion.div>
@@ -269,6 +270,7 @@ function Photos({ product, selectedColor, selectedQuality, selectedBrand }) {
                                             className="object-contain"
                                             priority={index === 0}
                                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            unoptimized
                                         />
                                     </div>
                                     <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-3 transform transition-transform duration-300 translate-y-full group-hover:translate-y-0">
@@ -314,6 +316,7 @@ function Photos({ product, selectedColor, selectedQuality, selectedBrand }) {
                                                         fill
                                                         className="object-cover"
                                                         sizes="80px"
+                                                        unoptimized
                                                     />
                                                 </div>
                                             </button>

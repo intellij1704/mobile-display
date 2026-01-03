@@ -95,6 +95,7 @@ export function ProductCard({ product }) {
       group-hover:scale-105
     "
               priority={false}
+              unoptimized
             />
           </div>
 

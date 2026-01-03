@@ -184,6 +184,7 @@ const OrdersPage = () => {
               height={300}
               alt="No Orders"
               priority
+              unoptimized
             />
             <h2 className="text-xl font-semibold text-gray-700 mt-6">
               You have no orders yet
