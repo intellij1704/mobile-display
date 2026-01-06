@@ -4,6 +4,7 @@ import { db } from "@/lib/firebase";
 import {
   collection,
   doc,
+  getDoc,
   limit,
   onSnapshot,
   orderBy,
@@ -17,7 +18,7 @@ export function useOrder({ id }) {
   const { data, error } = useSWRSubscription(
     ["orders", id],
     ([path, currentId], { next }) => {
-      if (!currentId) return () => {}; // Return no-op unsubscribe
+      if (!currentId) return () => { }; // Return no-op unsubscribe
 
       const ref = doc(db, `${path}/${currentId}`);
       const unsub = onSnapshot(
@@ -115,7 +116,7 @@ export function useCancelRequest({ id }) {
   const { data, error } = useSWRSubscription(
     ["cancel_requests", id],
     ([path, currentId], { next }) => {
-      if (!currentId) return () => {}; // Return no-op unsubscribe
+      if (!currentId) return () => { }; // Return no-op unsubscribe
 
       const ref = doc(db, `${path}/${currentId}`);
       const unsub = onSnapshot(
@@ -134,3 +135,35 @@ export function useCancelRequest({ id }) {
   };
 }
 
+
+export const getOrder = async (id) => {
+  const ref = doc(db, `orders/${id}`);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    return { id: snap.id, ...snap.data() };
+  }
+  return null;
+};
+
+export async function getOrderByIdAndMobile({ id, mobile }) {
+  if (!id || !mobile) {
+    throw new Error("Missing order ID or mobile number");
+  }
+
+  const order = await getOrder(id);
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  const address = order?.checkout?.metadata?.address ? JSON.parse(order.checkout.metadata.address) : {};
+  
+  const normalize = (str) => str ? String(str).replace(/^\+91/, '').trim() : '';
+  const orderMobile = normalize(address.mobile);
+  const inputMobile = normalize(mobile);
+
+  if (orderMobile !== inputMobile) {
+    throw new Error("Mobile number does not match the order");
+  }
+
+  return order;
+}
