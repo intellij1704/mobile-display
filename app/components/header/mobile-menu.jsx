@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { User, X, Heart, ShoppingCart, ChevronDown, Repeat } from "lucide-react"
+import { User, X, Heart, ShoppingCart, ChevronDown, Repeat, Truck } from "lucide-react"
 
 export default function MobileMenu({
   isOpen,
@@ -145,6 +145,19 @@ export default function MobileMenu({
                     {wishlistCount}
                   </span>
                 )}
+              </Link>
+
+
+                <Link
+                href="/track-order"
+                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-md transition-colors"
+                onClick={closeMobileMenu}
+              >
+                <div className="flex items-center gap-3">
+                  <Truck size={18} />
+                  <span className="text-sm">Truck Order</span>
+                </div>
+           
               </Link>
 
               <Link

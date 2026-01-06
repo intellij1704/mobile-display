@@ -282,6 +282,7 @@ export default function Header() {
               </div>
               <span className="hidden md:block text-sm text-gray-700 group-hover:text-blue-600">Cart</span>
             </button>
+            
             <UserDropdown
               user={user}
               username={username}
