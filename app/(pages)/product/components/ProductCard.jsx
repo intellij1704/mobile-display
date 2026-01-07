@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, memo } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import FavoriteButton from "@/app/components/FavoriteButton"
@@ -58,8 +58,6 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     }
     return []
   }, [product?.colors, attributes])
-
-  console.log("Newe", product)
 
   // Compute prices for display
   const { minEffective, displayOriginal, discountPercentage, maxSave } = useMemo(() => {
@@ -164,6 +162,8 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
     // For non-variable products, show return selector directly
     setShowReturnSelector(true)
   }
+
+
 
   // Completely rewritten cart removal logic for variable products
   const handleRemove = useCallback(async () => {
@@ -547,4 +547,4 @@ const ProductCard = ({ product, isVariable = false, hasQualityOptions = false, s
   )
 }
 
-export default ProductCard
+export default memo(ProductCard)
