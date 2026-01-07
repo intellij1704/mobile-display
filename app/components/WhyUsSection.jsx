@@ -47,7 +47,7 @@ const WhyUsSection = () => {
 
                   <div
                     className="
-        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+        absolute bottom-full -left-10 sm:left-1/2 -translate-x-1/2 mb-2
       w-40 max-w-xs
       rounded-md bg-gray-900 text-white text-xs px-3 py-2 text-center
       opacity-0 scale-95 translate-y-1

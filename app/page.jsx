@@ -47,7 +47,7 @@ export default async function Home() {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 12);
   return (
-    <main>
+    <main className="overflow-x-hidden">
       <Header />
       <CategoriesNav />
       <FeaturedProductSlider />
