@@ -5,7 +5,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import ClientProviders from "./ClientProviders";
 import UserAgentFix from "./UserAgentFix";
-
+import Script from "next/script";
 /* Optional fonts (kept for future use) */
 const geistSans = Geist({
   variable: "--font-geist-sans",
