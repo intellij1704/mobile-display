@@ -156,16 +156,16 @@ export default function ShopOwnerBanner() {
   }
 
   return (
-    <section className="relative w-full max-w-7xl mx-auto h-[200px] md:h-[350px] lg:h-[600px] flex items-center justify-center">
+    <section className="relative w-full max-w-5xl mx-auto h-[200px] md:h-[350px] lg:h-[600px] flex items-center justify-center">
       <img
         src="/shop-repair-banner.avif"
         alt="Mobile repair shop banner"
-        className="absolute inset-0 w-full h-full object-contain rounded-lg"
+        className="absolute inset-0 w-full h-full object-contain rounded-lg  md:px-0 px-5"
       />
 
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="absolute bottom-8 z-20 bg-white text-red-900 px-6 py-3 rounded-xl shadow-sm md:shadow-lg hover:shadow-xl transition-all font-bold text-sm md:text-lg flex items-center gap-2 transform hover:scale-105 border border-white/20 backdrop-blur-sm"
+        className="absolute md:bottom-20 bottom-5 z-20 bg-white text-red-900  md:px-6 md:py-3 px-3 py-2 rounded-xl shadow-sm md:shadow-lg hover:shadow-xl transition-all font-bold text-xs md:text-lg flex items-center gap-2 transform hover:scale-105 border border-white/20 backdrop-blur-sm"
         whileHover={{ scale: 1.05, y: -2 }}
         whileTap={{ scale: 0.95 }}
       >

@@ -75,7 +75,7 @@ export default function CustomerReviews() {
                 <h2 className="text-2xl sm:text-3xl md:px-1 px-6 font-normal text-[#2F2F2F] capitalize tracking-tight">
                     What Our {" "}
                     <span className="relative inline-block font-semibold text-[#2F2F2F]">
-                        Coustomer Says
+                        Customer Says
                         <span className="absolute bottom-0 right-0 w-1/2 h-[4px] mt-10 bg-[#BB0300]"></span>
                     </span>
                 </h2>

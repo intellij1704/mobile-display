@@ -70,14 +70,10 @@ const Page = () => {
                         If a replacement request cannot be fulfilled due to the product being
                         permanently out of stock.
                     </li>
-                    <li>
-                        If an order is cancelled by us before dispatch due to operational or
-                        inventory issues.
-                    </li>
+
                 </ul>
                 <p className="mt-3">
-                    No other scenarios are eligible for refunds unless mandated by
-                    applicable law.
+                    No other scenarios are eligible for refunds.
                 </p>
 
                 {/* Section 3 */}
@@ -90,7 +86,7 @@ const Page = () => {
                 </p>
                 <p className="mb-2">Replacement requests are accepted in cases where:</p>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>The product received is defective on arrival, or</li>
+                    <li>The product received is defective on arrival, or.</li>
                     <li>The wrong product has been delivered.</li>
                 </ul>
                 <p className="mt-3">
@@ -104,76 +100,53 @@ const Page = () => {
                 </h2>
                 <p className="mb-2">If you receive a wrong or damaged product:</p>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>You must notify us within 24 hours of delivery.</li>
+                    <li>You must notify us within 7 days of delivery.</li>
                     <li>
-                        Clear photos/videos of the product and packaging may be required for
-                        verification.
+                        Clear, uncut, and unedited videos (no pauses) of the product and packaging must be shared for verification.
                     </li>
                     <li>
-                        Upon successful verification, a replacement or refund will be
-                        initiated as applicable.
+                        Upon successful verification, replacement or re-dispatch will be initiated within 7 working days.
                     </li>
                 </ul>
 
                 {/* Section 5 */}
+
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    5. Cancellation Before Dispatch
+                    5. No Cancellation Policy
                 </h2>
-                <ul>
-                    <li>    Orders may be cancelled before dispatch by contacting customer
-                        support.</li>
-                    <li>    Once cancelled before dispatch, a refund will be initiated as
-                        per this policy.</li>
-                </ul>
+
+
+                <p className="mt-3">
+                    Orders cannot be cancelled once placed. Cancellation or refunds are not permitted before or after dispatch.
+
+                </p>
 
 
                 {/* Section 6 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    6. Dispatched Orders
+                    6. Refund Process
                 </h2>
                 <ul className="list-disc pl-6 space-y-1">
                     <li>
-                        Orders cannot be cancelled or refunded once they have been
-                        dispatched.
+                        The refund or replacement process will be carried out based on the return type selected by the customer at the time of placing the order. Customers are advised to refer to the Warranty & Return Policy page for complete details.
+
                     </li>
-                    <li>Refusal to accept delivery does not qualify for a refund.</li>
+                    <li>
+                        For any refund, return, or replacement-related queries, customers may contact us with their order details.
+
+                    </li>
+
                 </ul>
 
                 {/* Section 7 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    7. Refund Process
-                </h2>
-                <p className="mb-2">To initiate a refund:</p>
-                <ul className="list-disc pl-6 space-y-1">
-                    <li>
-                        Contact our support team at{" "}
-                        <a
-                            href="mailto:support@mobiledisplay.in"
-                            className="font-semibold underline hover:text-gray-700"
-                        >
-                            support@mobiledisplay.in
-                        </a>{" "}
-                        with your order details.
-                    </li>
-                    <li>
-                        Supporting proof (order ID, images, or delivery details) may be
-                        required.
-                    </li>
-                    <li>
-                        Refunds are processed only after the returned product is received
-                        and passes quality and warranty checks, where applicable.
-                    </li>
-                </ul>
-
-                {/* Section 8 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">
-                    8. Refund Timeline & Mode
+                    7. Refund Timeline & Mode
                 </h2>
                 <p className="mb-2">
-                    Approved refunds are processed within 3 working days from:
-                </p>
+                    Approved refunds are processed within 7 working days from:
+                    Any approved refund will be processed exclusively through the UPI payment method, regardless of the original payment mode.                </p>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>Confirmation of non-dispatch, or</li>
+                    <li>Confirmation of non-dispatch, or.</li>
                     <li>
                         Receipt of returned product at our warehouse (if applicable).
                     </li>
@@ -183,25 +156,10 @@ const Page = () => {
                     banking) or other approved modes.
                 </p>
 
-                {/* Section 9 */}
+              
+                {/* Section 8 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    9. Non-Refundable Payments
-                </h2>
-                <ul className="list-disc pl-6 space-y-1">
-                    <li>
-                        Any advance payment or partial payment made to place an order is
-                        non-refundable, unless the refund qualifies under the conditions
-                        mentioned in this policy.
-                    </li>
-                    <li>
-                        Products damaged due to improper handling, installation, or misuse
-                        are not eligible for refund or replacement.
-                    </li>
-                </ul>
-
-                {/* Section 10 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">
-                    10. Customer Communication
+                    8. Customer Communication
                 </h2>
                 <p className="mb-2">Customers will be informed via email or phone regarding:</p>
                 <ul className="list-disc pl-6 space-y-1">
@@ -213,9 +171,9 @@ const Page = () => {
                     (excluding public holidays).
                 </p>
 
-                {/* Section 11 */}
+                {/* Section 9 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    11. Policy Updates
+                    9. Policy Updates
                 </h2>
                 <p className="leading-relaxed mb-4">
                     mobiledisplay.in reserves the right to modify or update this Refund

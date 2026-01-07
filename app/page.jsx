@@ -46,7 +46,6 @@ export default async function Home() {
   const latestArrivals = [...serializedProducts]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 12);
-
   return (
     <main>
       <Header />
@@ -63,7 +62,7 @@ export default async function Home() {
       <ProductSection title="Big Deals" products={bigDeals} />
 
       {/* Top Picks */}
-      <ProductSection title="Top Pick For You" products={topPickProducts} />
+      <ProductSection title="Top Picks For You" products={topPickProducts} />
 
       <ShopOwnerSection />
 

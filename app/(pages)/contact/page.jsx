@@ -259,19 +259,7 @@ export default function ContactUs() {
         </form>
       </div>
 
-      {/* Map */}
-      <div className="max-w-7xl mx-auto h-[500px] rounded-lg overflow-hidden shadow-lg">
-        <iframe
-          width="100%"
-          height="100%"
-          className="rounded-lg"
-          allowFullScreen=""
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          src="https://www.google.com/maps?q=1st%20Floor,%20BA-38,%20Salt%20Lake%20Rd,%20near%20PNB,%20BA%20Block,%20Sector%201,%20Bidhannagar,%20Kolkata,%20West%20Bengal%20700064&output=embed"
-          style={{ filter: "grayscale(0) contrast(1.2) opacity(100%)" }}
-        ></iframe>
-      </div>
+
     </section>
   );
 }

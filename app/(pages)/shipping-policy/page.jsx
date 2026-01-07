@@ -33,13 +33,9 @@ const Page = () => {
         </h2>
         <ul className="list-disc pl-6 space-y-1">
           <li>
-            All orders are processed within 1 business day, excluding Sundays
-            and public holidays.
+            All orders are processed within 5 Working Days.
           </li>
-          <li>
-            Orders placed outside business hours will be processed on the next
-            working day.
-          </li>
+      
         </ul>
 
         {/* Shipping Methods */}

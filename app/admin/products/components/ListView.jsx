@@ -4,6 +4,10 @@ import { useProducts } from "@/lib/firestore/products/read";
 import { getAllProductsForAdmin } from "@/lib/firestore/products/read_server";
 import { deleteProduct } from "@/lib/firestore/products/write";
 import { Edit2, Trash2, Search, ChevronLeft, ChevronRight, Download, FileText, File, ArrowUp, ArrowDown, RefreshCcw, Loader2, X } from "lucide-react";
+import { useBrands } from "@/lib/firestore/brands/read";
+import { useCategories } from "@/lib/firestore/categories/read";
+import { useModels } from "@/lib/firestore/models/read";
+import { useSeries } from "@/lib/firestore/series/read";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
@@ -27,6 +31,12 @@ export default function ProductListView() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
     const [statusFilter, setStatusFilter] = useState("all");
+
+    // Reference Data for Export Names
+    const { data: brands } = useBrands();
+    const { categoriesMap } = useCategories();
+    const { data: models } = useModels();
+    const { data: seriesList } = useSeries();
 
     // Debounce Search
     useEffect(() => {
@@ -204,14 +214,12 @@ export default function ProductListView() {
                 "ID": product.id,
                 "Title": product.title,
                 "Short Description": product.shortDescription,
-                "Brand ID": product.brandId,
-                "Category ID": product.categoryId,
-                "Series ID": product.seriesId,
-                "Model ID": product.modelId,
+                "Brand": brands?.find(b => b.id === product.brandId)?.name || product.brand || product.brandId,
+                "Category": categoriesMap?.get(product.categoryId)?.name || product.category || product.categoryId,
+                "Series": seriesList?.find(s => s.id === product.seriesId)?.seriesName || product.series || product.seriesId,
+                "Model": models?.find(m => m.id === product.modelId)?.name || product.model || product.modelId,
                 "Price": getExportPrice(product),
-                "Stock": getTotalStock(product),
                 "Orders": product.orders || 0,
-                "Status": getTotalStock(product) - (product.orders || 0) > 0 ? "In Stock" : "Out of Stock",
                 "Best Selling": product.bestSelling ? "Yes" : "No",
                 "Big Deal": product.bigDeal ? "Yes" : "No",
                 "Top Pick": product.topPick ? "Yes" : "No",
@@ -235,7 +243,7 @@ export default function ProductListView() {
         } finally {
             setIsExporting(false);
         }
-    }, [allProducts, fetchAllProductsInternal]);
+    }, [allProducts, fetchAllProductsInternal, brands, categoriesMap, models, seriesList]);
 
     // Export to PDF function (all products)
     const exportToPDF = useCallback(async () => {
@@ -265,18 +273,16 @@ export default function ProductListView() {
                 product.id,
                 product.title,
                 product.shortDescription?.substring(0, 50) + (product.shortDescription?.length > 50 ? "..." : ""),
-                product.brandId,
+                brands?.find(b => b.id === product.brandId)?.name || product.brand || product.brandId,
                 getExportPrice(product),
-                getTotalStock(product),
                 product.orders || 0,
-                getTotalStock(product) - (product.orders || 0) > 0 ? "In Stock" : "Out of Stock",
                 product.bestSelling ? "Yes" : "No",
                 product.isVariable ? "Yes" : "No",
                 product.seoSlug
             ]);
 
             autoTable(doc, {
-                head: [['#', 'ID', 'Title', 'Short Desc', 'Brand ID', 'Price', 'Stock', 'Orders', 'Status', 'Best Selling', 'Variable', 'SEO Slug']],
+                head: [['#', 'ID', 'Title', 'Short Desc', 'Brand', 'Price',  'Orders',  'Best Selling', 'Variable', 'SEO Slug']],
                 body: tableData,
                 startY: 20,
                 styles: {
@@ -313,7 +319,7 @@ export default function ProductListView() {
         } finally {
             setIsExporting(false);
         }
-    }, [allProducts, fetchAllProductsInternal]);
+    }, [allProducts, fetchAllProductsInternal, brands]);
 
     return (
         <div className="flex flex-col gap-6 p-6 bg-white rounded-xl shadow-sm">
