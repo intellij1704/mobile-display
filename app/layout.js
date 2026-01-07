@@ -85,6 +85,12 @@ export default function RootLayout({ children }) {
           <UserAgentFix />
           {children}
         </ClientProviders>
+           {/* Tawk.to Live Chat */}
+        <Script
+          id="tawk-to"
+          strategy="afterInteractive"
+          src="https://embed.tawk.to/695e2dc221ac6f19798bddba/1jebu5gcd"
+        />
       </body>
     </html>
   );

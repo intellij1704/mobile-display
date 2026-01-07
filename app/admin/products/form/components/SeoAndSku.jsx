@@ -22,10 +22,18 @@ export default function SeoAndSku({ data, handleData }) {
                 <input
                     type="text"
                     value={data?.seoSlug || ""}
-                    onChange={(e) => handleData("seoSlug", e.target.value)}
+                    onChange={(e) => {
+                        const value = e.target.value
+                            .toLowerCase()              // convert to lowercase
+                            .replace(/\s+/g, "-")       // spaces → hyphen
+                            .replace(/[^a-z0-9-]/g, ""); // remove special characters
+
+                        handleData("seoSlug", value);
+                    }}
                     placeholder="auto-generated if empty"
                     className="w-full border rounded-md px-3 py-2"
                 />
+
             </div>
 
 
