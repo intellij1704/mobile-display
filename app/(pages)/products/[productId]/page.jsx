@@ -15,7 +15,7 @@ import GTMProductView from "@/app/components/GTM_DataLayer/GTMProductView";
 
 // ✅ Dynamic Metadata for SEO
 export async function generateMetadata({ params }) {
-    const { productId } = params;
+    const { productId } = await params;
 
 
     // First try seoSlug, then fallback to Firestore id
