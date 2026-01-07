@@ -508,8 +508,43 @@ body {
 }
 
 
+@keyframes popup {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-popup {
+  animation: popup 0.25s ease-out forwards;
+}
+
+
 
 /* globals.css */
 .font-outfit {
   font-family: var(--font-outfit), sans-serif;
+}
+
+
+
+@layer utilities {
+  .footer-link-underline {
+    @apply relative inline-block transition-colors duration-200;
+  }
+
+  .footer-link-underline::after {
+    content: "";
+    @apply absolute left-0 bottom-0 h-[1px] w-full bg-white
+           scale-x-0 origin-left
+           transition-transform duration-300 ease-out;
+  }
+
+  .footer-link-underline:hover::after {
+    @apply scale-x-100;
+  }
 }

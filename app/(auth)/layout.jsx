@@ -2,7 +2,7 @@
 import { AuthContextProvider } from '@/context/AuthContext';
 
 import Header from '../components/header/Header';
-import Footer from '../components/Footer';
+import Footer from '../components/footer/Footer';
 
 function layout({ children }) {
     return (

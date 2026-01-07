@@ -10,7 +10,6 @@ import Categories from "./components/Categories";
 import { getCategories } from "@/lib/firestore/categories/read_server";
 import CustomerReviews from "./components/CustomerReviews";
 import { getBrands } from "@/lib/firestore/brands/read_server";
-import Footer from "./components/Footer";
 import { AuthContextProvider } from "@/context/AuthContext";
 import CategoryListHero from "./components/CategoryListHero";
 import Accessories from "./components/Accessories";
@@ -21,6 +20,7 @@ import CategoriesNav from "./components/header/CategoriesNav";
 import ShopOwnerSection from "./components/ShopOwnerSection";
 import { serializeFirestoreData } from "@/utils/serializeFirestoreData";
 import BestsellerCategories from "./components/BestsellerCategories";
+import Footer from "./components/footer/Footer";
 
 export default async function Home() {
   const [ categories, products, brands] = await Promise.all([

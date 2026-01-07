@@ -1,4 +1,4 @@
-import Footer from "@/app/components/Footer";
+import Footer from "@/app/components/footer/Footer";
 import Header from "@/app/components/header/Header";
 import Link from "next/link";
 import { Suspense } from "react";
