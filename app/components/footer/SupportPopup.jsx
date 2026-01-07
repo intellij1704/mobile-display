@@ -5,7 +5,7 @@ export default function SupportPopup({ title, children, onClose }) {
     <div
       className="
         absolute -bottom-6 sm:bottom-0 mb-3 z-50
-        -left-20 sm:left-0
+        right-0 sm:left-0
         max-w-[calc(100vw-1rem)]
         px-2
       "
