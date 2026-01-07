@@ -165,7 +165,7 @@ export default function ShopOwnerBanner() {
 
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="absolute md:bottom-20 bottom-5 z-20 bg-white text-red-900  md:px-6 md:py-3 px-3 py-2 rounded-xl shadow-sm md:shadow-lg hover:shadow-xl transition-all font-bold text-xs md:text-lg flex items-center gap-2 transform hover:scale-105 border border-white/20 backdrop-blur-sm"
+        className="absolute md:bottom-20 bottom-10 z-20 bg-white text-red-900  md:px-6 md:py-3 px-3 py-2 rounded-xl shadow-sm md:shadow-lg hover:shadow-xl transition-all font-bold text-xs md:text-lg flex items-center gap-2 transform hover:scale-105 border border-white/20 backdrop-blur-sm"
         whileHover={{ scale: 1.05, y: -2 }}
         whileTap={{ scale: 0.95 }}
       >
