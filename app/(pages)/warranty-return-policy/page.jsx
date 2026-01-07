@@ -50,12 +50,10 @@ const Page = () => {
                         testing.
                     </li>
                     <li>
-                        Once the warranty seal or protective film is removed, the product is
-                        considered accepted, and no return or replacement will be provided.
+                        Once the warranty seal or protective film is removed, installed or glue is applied the product is considered accepted, and no return or replacement will be provided.
                     </li>
                     <li>
-                        No replacement or refund will be given if the warranty seal is
-                        removed, damaged, or tampered with.
+                        No replacement or refund will be given if  the product does not qualify the warranty policy when the warranty seal is removed, damaged or tampered with.
                     </li>
                 </ul>
 
@@ -65,10 +63,8 @@ const Page = () => {
                 </h2>
 
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>   All mobile displays and spare parts come with a 3-day testing warranty
-                        from the date of delivery.</li>
-                    <li>    The warranty is only for testing purposes and applies before
-                        installation.</li>
+                    <li>  All mobile displays and spare parts come with a 7 - days testing warranty before installed from the date of delivery.</li>
+                    <li>The warranty is valid only for testing purposes and the warranty is applicable before installation.</li>
                 </ul>
 
 
@@ -106,8 +102,9 @@ const Page = () => {
                     3. Types of Return & Replacement Options
                 </h2>
                 <p className="mb-3">
-                    At the time of placing an order, customers can select one of the
-                    following return options:
+                    Product must qualify warranty policy (unused & uninstalled). Please note only the product price is refunded, excluding the other handling/courier charges.
+                    At the time of placing an order, customers can select one of the following return options as per their preference:
+
                 </p>
 
                 <p className="font-semibold mt-3">Easy Return</p>
@@ -115,9 +112,9 @@ const Page = () => {
                     period.</p>
                 <ul className="list-disc pl-6 space-y-1">
 
-                    <li>Pickup will be arranged by us.</li>
+                    <li>Pickup will be arranged and scheduled by us.</li>
                     <li>
-                        After verification and quality check, a full refund will be issued.
+                        After verification and quality check, refund of the product price will be issued by us.
                     </li>
                     <li>
                         Applicable only if the product is unused, uninstalled, and warranty
@@ -129,7 +126,7 @@ const Page = () => {
                 <p className="my-2">   Replacement requests must be raised from the website.</p>
                 <ul className="list-disc pl-6 space-y-1">
                     <li>Pickup will be arranged by us.</li>
-                    <li>Only replacement of the same product will be provided.</li>
+                    <li>Pickup will be arranged and scheduled by us.</li>
                     <li>No refund is applicable under this option.</li>
                 </ul>
 
@@ -148,6 +145,7 @@ const Page = () => {
                         Shipping charges for sending the product back are borne by the
                         customer.
                     </li>
+                    <li>Incase product is damaged in-transit, we will not be responsible and the warranty policy will stand null and void.</li>
                 </ul>
 
                 {/* Section 4 */}
@@ -161,10 +159,7 @@ const Page = () => {
                     <li>Warranty seal / sticker / protective film removed or damaged</li>
                     <li>Product installed, pasted, or glued</li>
                     <li>Physical damage, scratches, cracks, or liquid damage</li>
-                    <li>
-                        Damage due to improper handling or incorrect installation
-                    </li>
-                    <li>Testing done after warranty period expires</li>
+                    <li>If request is raised after warranty period expires.</li>
                 </ul>
 
                 {/* Section 5 */}
@@ -172,7 +167,7 @@ const Page = () => {
                     5. Replacement / Return Approval
                 </h2>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>All requests are subject to internal quality inspection.</li>
+                    <li>All requests are subject to quality warranty policy.</li>
                     <li>Photos/videos may be required for verification.</li>
                     <li>
                         mobiledisplay.in reserves the right to approve or reject requests
