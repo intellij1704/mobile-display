@@ -53,7 +53,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5 justify-center">
 
           {/* 1️⃣ Logo (2 Columns on Large Screens) */}
-          <div className="lg:col-span-2 ">
+          <div className="lg:col-span-2">
             <Image
               src="/footer-logo.svg"
               alt="Mobile Display"
@@ -61,12 +61,24 @@ export default function Footer() {
               height={60}
               unoptimized
             />
-            <p className="text-sm text-gray-400 mt-4 leading-relaxed max-w-md">
-              Your trusted source for premium mobile phone spare parts and accessories.
-              We provide genuine, affordable, and high-quality components to keep your
-              devices running smoothly.
+
+            <p className="text-sm text-white/90 mt-4 leading-relaxed max-w-md">
+              All product names, logos, and brands are property of their respective owners. All company, product and service names used in this website are for identification purposes only. All items available for sale on this website are super quality generic.
+
+
             </p>
+
+            {/* Important Notes */}
+            <div className="mt-5 space-y-2">
+              <p className="text-xs text-white/90">
+                * 90% of the order value is payable at the time of delivery.
+              </p>
+              <p className="text-xs text-white/90">
+                # Return eligibility depends on the option selected during checkout.
+              </p>
+            </div>
           </div>
+
 
           {/* 2️⃣ Quick Links */}
           <div>
@@ -140,30 +152,10 @@ export default function Footer() {
       </div>
 
       {/* ================= BOTTOM FOOTER ================= */}
-      <div className="border-t border-gray-700 bg-[#1a1a1a]">
-        <div className="max-w-8xl mx-auto py-12 xl:px-20 md:px-12 px-6 flex flex-col gap-4">
-
-          {/* Payment Icons */}
-          <div className="flex flex-wrap md:gap-10 gap-4">
-            {paymentIcons.map((icon, i) => (
-              <Image
-                key={i}
-                src={icon}
-                alt="Payment"
-                width={45}
-                height={25}
-                className="opacity-80"
-                unoptimized
-              />
-            ))}
-          </div>
-
-          {/* Trademark */}
-          <p className="text-xs text-white max-w-xl">
-            © 2026 Mobile Display. All trademarks are properties of their respective
-            holders. Mobile Display does not own or claim trademarks not held by it.
-          </p>
-        </div>
+      {/* Footer Bottom */}
+      <div className="border-t border-gray-700 mt-10 py-5 pt-6 text-center text-sm text-white/80">
+        Mobile Display © Copyright 2026 {" "} Design and Developed by{" "}
+        <span className="text-red-500 font-medium"><a href="https://intellij.in" target="_blank">IntelliJ Technologies</a></span>
       </div>
     </footer>
   );

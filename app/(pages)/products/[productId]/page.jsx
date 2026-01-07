@@ -15,7 +15,7 @@ import GTMProductView from "@/app/components/GTM_DataLayer/GTMProductView";
 
 // ✅ Dynamic Metadata for SEO
 export async function generateMetadata({ params }) {
-    const { productId } = await params;
+    const { productId } = params;
 
 
     // First try seoSlug, then fallback to Firestore id
@@ -32,10 +32,8 @@ export async function generateMetadata({ params }) {
     }
 
     let minPrice = product?.price || 0;
-    let hasStock = product?.stock > 0;
     if (product?.isVariable && product?.variations?.length > 0) {
         minPrice = Math.min(...product.variations.map(v => parseFloat(v.salePrice || v.price)));
-        hasStock = product.variations.some(v => parseInt(v.stock) > 0);
     }
 
     const title =
@@ -78,7 +76,6 @@ export async function generateMetadata({ params }) {
                     width: 1125,
                     height: 1125,
                     alt: product.title,
-                    type: "image/jpeg",
                 },
             ],
         },
@@ -92,16 +89,66 @@ export async function generateMetadata({ params }) {
             label1: "Price",
             data1: `₹${minPrice}`,
             label2: "Availability",
-            data2: hasStock ? "In Stock" : "Out of Stock",
+            data2: "In Stock",
         },
         other: {
             "product:price:amount": minPrice || "0",
             "product:price:currency": "INR",
-            "product:availability":
-                hasStock ? "instock" : "outofstock",
+            "product:availability": "instock"
+
         },
     };
 }
+
+
+export function generateProductSchema(product) {
+    const minPrice = product.isVariable && product.variations?.length
+        ? Math.min(...product.variations.map(v => Number(v.salePrice || v.price)))
+        : Number(product.salePrice || product.price || 0);
+
+    // Determine availability
+    let isInStock = false;
+    if (product.isVariable && product.variations?.length > 0) {
+        isInStock = product.variations.some(v => parseInt(v.stock) > 0);
+    } else {
+        isInStock = parseInt(product.stock) > 0;
+    }
+
+    const images = [product.featureImageURL, ...(product.imageList || [])].filter(Boolean);
+
+    return {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.title,
+        description:
+            product.seoDescription ||
+            `Buy ${product.title} from Mobile Display. Genuine mobile spare parts online.`,
+        image: images,
+        brand: {
+            "@type": "Brand",
+            name: product.brand || "Mobile Display",
+        },
+        sku: product.sku || product.id,
+
+        offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: minPrice,
+            url: `${process.env.NEXT_PUBLIC_DOMAIN}/products/${product.seoSlug || product.id}`,
+            availability: "https://schema.org/InStock",
+            itemCondition: "https://schema.org/NewCondition",
+        },
+
+        ...(product.rating && {
+            aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: product.rating,
+                reviewCount: product.reviewCount || 1,
+            },
+        }),
+    };
+}
+
 
 export default async function Page({ params, searchParams }) {
     const { productId } = await params;
@@ -122,7 +169,8 @@ export default async function Page({ params, searchParams }) {
     };
 
 
-    console.log(product)
+    const schema = generateProductSchema(product);
+
     // Compute attributes
     const colors = product?.attributes?.find(attr => attr.name === "Color")?.values || [];
     const qualities = product?.attributes?.find(attr => attr.name === "Quality")?.values || [];
@@ -152,41 +200,16 @@ export default async function Page({ params, searchParams }) {
         isInStock = product.variations.some(v => parseInt(v.stock) > 0);
     }
 
-    // ✅ Schema for SEO
-    const schemaData = product.schemaData || {
-        "@context": "https://schema.org/",
-        "@type": "Product",
-        name: product.title,
-        description: product.seoDescription || product.shortDescription,
-        sku: product.sku,
-        brand: {
-            "@type": "Brand",
-            name: product.brand || "Mobile Display",
-        },
-        category: product.categoryName || "Mobile Spare Parts",
-        image: product.featureImageURL,
-        offers: {
-            "@type": "Offer",
-            url: `${process.env.NEXT_PUBLIC_DOMAIN}/product/${product.seoSlug || product.id}`,
-            priceCurrency: "INR",
-            price: effectivePrice,
-            availability:
-                isInStock
-                    ? "https://schema.org/InStock"
-                    : "https://schema.org/OutOfStock",
-            seller: {
-                "@type": "Organization",
-                name: "Mobile Display Mobile Phone Spare Parts Online",
-            },
-        },
-    };
+
 
     return (
         <main className="p-4 w-full max-w-7xl mx-auto md:pt-10 overflow-x-hidden ">
-            {/* ✅ Inject Schema.org JSON-LD */}
+            {/* ✅ JSON-LD Product Schema */}
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(schema),
+                }}
             />
 
             {/* Product Main Section */}

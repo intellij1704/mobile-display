@@ -4,6 +4,12 @@ import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, Timestamp, 
 import { getDownloadURL, ref, uploadBytes, deleteObject } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 
+// Helper: Convert URL to AVIF
+const toAvif = (url) => {
+  if (!url || typeof url !== "string") return url;
+  return url.replace(/\.(png|jpg|jpeg)(\?.*)?$/i, ".avif$2");
+};
+
 // Helper: Delete Image from Storage
 const deleteImageFromStorage = async (url) => {
   if (!url) return;
@@ -68,6 +74,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     const featureImageRef = ref(storage, `products/${newId}/${finalSlug}-${uuidv4()}.${featureImage.type.split("/")[1]}`);
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
+    featureImageURL = toAvif(featureImageURL);
   }
 
   // Upload gallery images
@@ -76,7 +83,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
     const imageRef = ref(storage, `products/${newId}/gallery/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
     await uploadBytes(imageRef, image);
     const url = await getDownloadURL(imageRef);
-    imageURLList.push(url);
+    imageURLList.push(toAvif(url));
   }
 
   if (!isDraft && imageURLList.length === 0) throw new Error("At least one product image is required");
@@ -90,7 +97,7 @@ export const createNewProduct = async ({ data, featureImage, imageList, variantI
         const imageRef = ref(storage, `products/${newId}/variants/${varr.id}/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
         await uploadBytes(imageRef, image);
         const url = await getDownloadURL(imageRef);
-        imgURLs.push(url);
+        imgURLs.push(toAvif(url));
       }
       varr.imageURLs = imgURLs;
     }
@@ -148,6 +155,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     const featureImageRef = ref(storage, `products/${data?.id}/${finalSlug}-${uuidv4()}.${featureImage.type.split("/")[1]}`);
     await uploadBytes(featureImageRef, featureImage);
     featureImageURL = await getDownloadURL(featureImageRef);
+    featureImageURL = toAvif(featureImageURL);
   }
 
 
@@ -160,7 +168,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
     const imageRef = ref(storage, `products/${data.id}/gallery/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
     await uploadBytes(imageRef, image);
     const url = await getDownloadURL(imageRef);
-    imageURLList.push(url);
+    imageURLList.push(toAvif(url));
   }
 
   if (!isDraft && imageURLList.length === 0) throw new Error("At least one product image is required");
@@ -174,7 +182,7 @@ export const updateProduct = async ({ data, featureImage, imageList, variantImag
         const imageRef = ref(storage, `products/${data.id}/variants/${varr.id}/${uuidv4()}_${image.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "")}.${image.type.split("/")[1]}`);
         await uploadBytes(imageRef, image);
         const url = await getDownloadURL(imageRef);
-        imgURLs.push(url);
+        imgURLs.push(toAvif(url));
       }
       varr.imageURLs = imgURLs;
     }

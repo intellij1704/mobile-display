@@ -5,22 +5,19 @@ const whyUsItems = [
   {
     icon: "/icon/cod.svg",
     title: "Cash On Delivery*",
-    subtitle: "*Pay 90% of the order value at the time of delivery.",
   },
   {
     icon: "/icon/easy-return.svg",
-    title: "Easy Return*",
-    subtitle: "*Return eligibility depends on the option selected at the time of order.",
+    title: "Easy Return#",
+    subtitle: "*Return  depends on the option selected at the time of order.",
   },
   {
     icon: "/icon/quality-control.svg",
     title: "Quality Check",
-    subtitle: "Each product undergoes strict quality inspection before dispatch.",
   },
   {
     icon: "/icon/branded.svg",
     title: "Branded Products",
-    subtitle: "We deal in trusted and verified branded products only.",
   },
 ];
 
@@ -38,7 +35,6 @@ const WhyUsSection = () => {
             <h3 className="text-sm md:text-base font-semibold text-gray-800">
               {item.title}
             </h3>
-            <p className="text-xs text-gray-600">{item.subtitle}</p>
           </div>
         ))}
       </div>
