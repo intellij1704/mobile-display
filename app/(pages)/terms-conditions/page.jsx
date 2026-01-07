@@ -126,16 +126,33 @@ const Page = () => {
                     6. Intellectual Property Rights
                 </h2>
                 <p className="leading-relaxed">
-                    All Website content including text, graphics, images, logos, software,
-                    and product information is the property of IntelliJ Technologies or its
-                    licensors and is protected under applicable Indian laws. Unauthorized
-                    reproduction, modification, or commercial use is prohibited without
-                    prior written permission.
+                    All Website content including text, graphics, images, logos, software, and product information is the property of their respective brands or its licensors and is protected under applicable Indian laws. Unauthorized reproduction, modification, or commercial use is prohibited without prior written permission.
+
                 </p>
+
 
                 {/* Section 7 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    7. Product Information & Compatibility Disclaimer (Very Important)
+                    7. Wrong Model Received
+                </h2>
+                <p className="leading-relaxed">
+                    In the event that a customer receives an incorrect product or model, the following terms shall apply:
+
+                </p>
+
+                <ul className="list-disc pl-6 space-y-1">
+                    <li>The customer must notify mobiledisplay.in within 7 days of delivery with clear, uncut and without pausing the video for verification.</li>
+                    <li>Upon verification, if it is confirmed that the wrong product was dispatched due to an error from our end, we will arrange a replacement at free of cost.</li>
+                    <li>If our verification shows that the correct product was sent and the issue is not from our side, the customer must return the product (subject to warranty terms) and pay an additional courier charge of ₹120 for replacement.
+                    </li>
+                    <li>Replacement or further processing will be initiated only after the returned product is received and passes warranty policy terms.
+                    </li>
+                </ul>
+
+
+                {/* Section 8 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">
+                    8. Product Information & Compatibility Disclaimer (Very Important)
                 </h2>
                 <p className="leading-relaxed mb-2">
                     mobiledisplay.in sells mobile spare parts, accessories, and electronic
@@ -159,8 +176,8 @@ const Page = () => {
                 <p className="leading-relaxed mt-2">  We recommend installation by a qualified technician. Damage caused by
                     incorrect installation is not covered under warranty or refunds. </p>
 
-                {/* Section 8 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">8. Terms of Sale</h2>
+                {/* Section 9 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">9. Once order placed</h2>
                 <p className="font-semibold mt-2">a) Order Acceptance</p>
                 <p className="leading-relaxed mb-2">
                     Placing an order constitutes an offer to purchase. Order confirmation
@@ -181,23 +198,23 @@ const Page = () => {
                     Orders will be processed only after successful payment authorization.
                 </p>
 
-                {/* Section 9 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">9. Shipping & Delivery</h2>
+                {/* Section 10 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">10. Shipping & Delivery</h2>
                 <p className="leading-relaxed">
-                    Delivery timelines are estimates and may vary due to courier delays,
-                    serviceability, weather conditions, or operational constraints.
-                    IntelliJ Technologies shall not be liable for delays beyond its
-                    control.
+                    Delivery timelines are estimates and may vary due to courier delays, serviceability, weather, or operational reasons. As deliveries are handled by third-party logistics partners, we are not liable for delays beyond its control.
+                </p>
+                <p className="leading-relaxed">
+                    If an order is not dispatched within 5 working days, the customer will be eligible for a full refund. Express shipments are sent via air where available; if not, they will be shipped using the fastest available surface courier.
+
                 </p>
 
-                {/* Section 10 */}
+                {/* Section 11 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    10. Cancellations, Returns & Refunds
+                    11. Cancellations, Returns & Refunds
                 </h2>
                 <ul className="list-disc pl-6 space-y-1">
                     <li>
-                        Orders once placed cannot be canceled by the customer after
-                        processing
+                        Once order is placed it cannot be canceled or refunded.
                     </li>
                     <li>
                         Returns and refunds are governed strictly by our{" "}
@@ -208,22 +225,19 @@ const Page = () => {
                             Refund & Return Policy
                         </Link>
                     </li>
-                    <li>
-                        Certain products such as displays, ICs, and electronic components may
-                        be non-returnable unless received damaged or defective
-                    </li>
+
 
                 </ul>
 
                 <p className="leading-relaxed mt-2">   Refunds, if applicable, will be processed within the timelines
                     prescribed by Indian law</p>
 
-                {/* Section 11 */}
+                {/* Section 12 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    11. Warranty & Testing
+                    12. Warranty & Testing
                 </h2>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>Products may be tested before dispatch</li>
+                    <li>Most products are tested before dispatch, subject to flex and testing compatibility availability.</li>
                     <li>
                         Warranty (if applicable) varies by product and is limited to
                         manufacturing defects only
@@ -243,31 +257,31 @@ const Page = () => {
                     </Link>{" "}
                     page</p>
 
-                {/* Section 12 */}
+                {/* Section 13 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    12. Limitation of Liability
+                    13. Limitation of Liability
                 </h2>
                 <p className="mb-2">
                     To the maximum extent permitted under Indian law, IntelliJ Technologies
                     shall not be liable for:
                 </p>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>Incorrect product selection or compatibility issues</li>
-                    <li>Installation errors or misuse</li>
-                    <li>Indirect, incidental, or consequential damages</li>
+
+                    <li>Liability of mobiledisplay.in is limited to the point of handover of the shipment to the third-party courier partner. We are not responsible for any issues arising during transit thereafter.
+                    </li>
+                    <li>Incorrect product selection or compatibility issues.
+                    </li>
+                    <li>Installation errors or misuse.
+                    </li>
+                    <li> Indirect, incidental, or consequential damages.
+                    </li>
                 </ul>
                 <p className="mt-3">
                     Nothing in these Terms limits statutory consumer rights that cannot be
                     excluded by law.
                 </p>
 
-                {/* Section 13 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">13. Indemnification</h2>
-                <p className="leading-relaxed">
-                    You agree to indemnify and hold harmless IntelliJ Technologies and its
-                    affiliates from claims, losses, or damages arising from misuse of the
-                    Website or breach of these Terms.
-                </p>
+         
 
                 {/* Section 14 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">14. Refusal of Service</h2>
@@ -277,19 +291,11 @@ const Page = () => {
                     violation of policies.
                 </p>
 
+             
+
                 {/* Section 15 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    15. E-Waste Responsibility
-                </h2>
-                <p className="leading-relaxed">
-                    Customers are responsible for proper disposal of electronic waste such
-                    as displays, batteries, and PCBs in accordance with India’s E-Waste
-                    (Management) Rules, 2022.
-                </p>
-
-                {/* Section 16 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">
-                    16. Governing Law & Jurisdiction
+                    15. Governing Law & Jurisdiction
                 </h2>
                 <p className="leading-relaxed">
                     These Terms shall be governed by the laws of India. All disputes shall
@@ -297,19 +303,14 @@ const Page = () => {
                     Bengal.
                 </p>
 
-                {/* Section 17 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">17. Severability</h2>
+                {/* Section 16 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">16. Severability</h2>
                 <p className="leading-relaxed">
                     If any provision of these Terms is found unenforceable, the remaining
                     provisions shall continue to be valid.
                 </p>
 
-                {/* Section 18 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">18. Entire Agreement</h2>
-                <p className="leading-relaxed">
-                    These Terms constitute the entire agreement between you and IntelliJ
-                    Technologies regarding the use of mobiledisplay.in.
-                </p>
+             
             </div>
         </section>
     );
