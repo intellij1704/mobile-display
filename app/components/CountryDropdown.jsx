@@ -10,7 +10,7 @@ const CountryDropdown = () => {
     return (
         <>
             {/* Country Dropdown */}
-            <div className="relative">
+            <div className="relative w-max">
                 {/* Button */}
                 <button
                     onClick={() => setCountryOpen(!countryOpen)}
