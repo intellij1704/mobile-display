@@ -7,6 +7,9 @@ export const metadata = {
     description:
         "Learn more about PhoneR – India’s trusted online store for mobile phone spare parts and accessories. Get to know our mission, vision, and commitment to quality service.",
     robots: "index, follow",
+    alternates: {
+        canonical: "https://mobiledisplay.in/about",
+    },
     openGraph: {
         title: "About Us | Mobile Phone Spare Parts & Accessories - PhoneR",
         description:

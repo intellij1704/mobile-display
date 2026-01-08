@@ -28,42 +28,30 @@ const outfit = Outfit({
 
 /* ✅ SEO Metadata */
 export const metadata = {
-  title: "Mobile Repair Service | Home",
+  metadataBase: new URL("https://mobiledisplay.in"), // ✅ MUST
+
+  title: {
+    default: "Mobile Display | Mobile Spare Parts Online",
+    template: "%s | Mobile Display",
+  },
+
   description:
     "Buy premium mobile displays and spare parts with warranty and fast delivery across India.",
-  keywords:
-    "mobile repair, mobile display, spare parts, phone repair, LCD, AMOLED",
-  authors: [{ name: "IntelliJ Technologies" }],
 
   icons: {
     icon: "/favicon.png",
   },
 
   openGraph: {
-    title: "Mobile Repair Service",
-    description:
-      "Trusted mobile displays and spare parts for technicians and customers.",
-    url: "https://yourwebsite.com",
-    siteName: "Mobile Repair Service",
-    images: [
-      {
-        url: "/images/og-image.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Mobile Repair Service",
-      },
-    ],
+    siteName: "Mobile Display",
     type: "website",
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "Mobile Repair Service",
-    description:
-      "Premium mobile displays and repair parts with warranty.",
-    images: ["/images/og-image.jpg"],
   },
 };
+
 
 export default function RootLayout({ children }) {
   return (
