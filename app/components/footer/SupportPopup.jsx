@@ -4,8 +4,9 @@ export default function SupportPopup({ title, children, onClose }) {
   return (
     <div
       className="
-        absolute -bottom-6 sm:bottom-0 mb-3 z-50
-        right-0 sm:left-0
+        absolute -bottom-6 sm:bottom-0 md:-bottom-5
+        mb-3 z-50
+        right-0 sm:left-0 md:-left-24
         max-w-[calc(100vw-1rem)]
         px-2
       "
@@ -13,7 +14,7 @@ export default function SupportPopup({ title, children, onClose }) {
       <div
         className="
           relative
-          w-[260px] max-w-full
+          w-[260px] min-w-full
           rounded-xl
           p-4
           shadow-2xl
