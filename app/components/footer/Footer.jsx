@@ -157,8 +157,7 @@ function Footer() {
 
           {/* Disclaimer */}
           <p className="text-xs max-w-3xl">
-            All product names, logos, and brands are property of their respective
-            owners. Products sold are high-quality generic replacements.
+            All product names, logos, and brands are property of their respective owners. All company, product and service names used in this website are for identification purposes only.
           </p>
 
           {/* Copyright */}

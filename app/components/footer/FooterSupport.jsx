@@ -30,13 +30,14 @@ export default function FooterSupport() {
     const popupContent = {
         location: (
             <>
-                <p className="text-sm text-gray-300 mb-2">Warehouse Address</p>
+                <p className="text-sm text-gray-300 mb-2">
+                    Business Address:</p>
                 <p className="text-sm leading-relaxed">
-                   
 
-                    BA-38, Salt Lake Rd, <br />
-                    Sector-1, Bidhannagar, <br />
-                    Kolkata – 700064
+                    1st Floor, BA-38, Salt Lake Road, <br />
+                    near PNB, BA Block, Sector 1,<br />
+                    Bidhannagar, Kolkata,<br />
+                    West Bengal – 700064, India
                 </p>
                 <a
                     href="https://maps.app.goo.gl/RL9Z5rVykKKCwF7cA"
@@ -45,6 +46,9 @@ export default function FooterSupport() {
                 >
                     Get directions <ArrowUpRight size={14} />
                 </a>
+
+
+
             </>
         ),
 

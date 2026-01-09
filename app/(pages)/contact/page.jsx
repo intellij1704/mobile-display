@@ -119,7 +119,18 @@ export default function ContactUs() {
                 <img src="/map.svg" alt="map" className="w-full h-full object-contain" />
               </span>
               <span className="text-base leading-relaxed">
-                BA-38, Salt Lake Rd, Sector-1, Bidhannagar, Kolkata – 700064
+                <strong>Registered Address: </strong>
+                Sneha Niwas, Ground Floor, Hatiara, Hela Battala, Sankar Abasan, New Town, North 24 Parganas, West Bengal, Pin - 700059
+              </span>
+            </li>
+            <li className="flex items-start gap-4">
+              <span className="w-6 h-6 mt-1 flex-shrink-0">
+                <img src="/map.svg" alt="map" className="w-full h-full object-contain" />
+              </span>
+              <span className="text-base leading-relaxed">
+                <strong>Business Address: </strong>1st Floor, BA-38, Salt Lake Road, near PNB,
+                BA Block, Sector 1, Bidhannagar,
+                Kolkata, West Bengal – 700064, India
               </span>
             </li>
           </ul>
@@ -140,7 +151,7 @@ export default function ContactUs() {
                   },
                 })}
                 onChange={(e) => handleNameInput(e, "firstName")}
-                placeholder="John"
+                placeholder="Enter Frist Name"
                 className="w-full border-b border-gray-400 focus:outline-none focus:border-red-500 py-1"
               />
               {errors.firstName && (
@@ -159,7 +170,7 @@ export default function ContactUs() {
                   },
                 })}
                 onChange={(e) => handleNameInput(e, "lastName")}
-                placeholder="Doe"
+                placeholder="Enter Last Name"
                 className="w-full border-b border-gray-400 focus:outline-none focus:border-red-500 py-1"
               />
               {errors.lastName && (
@@ -189,7 +200,7 @@ export default function ContactUs() {
               <label className="block mb-1 font-medium text-gray-700">Phone Number</label>
               <input
                 type="tel"
-                placeholder="1234567890"
+                placeholder="Enter Phone Number"
                 {...register("phone", {
                   required: "Phone number is required",
                   pattern: {

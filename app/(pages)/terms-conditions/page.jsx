@@ -11,7 +11,8 @@ const Page = () => {
     return (
         <section className="bg-white text-black">
             <div className="max-w-8xl mx-auto px-4 sm:px-6 md:px-12 lg:px-20 py-12">
-                {/* Page Title */}
+
+                {/* Title */}
                 <h1 className="text-2xl sm:text-3xl font-bold mb-6">
                     Terms & Conditions
                 </h1>
@@ -19,21 +20,29 @@ const Page = () => {
                 {/* Intro */}
                 <p className="mb-4 leading-relaxed">
                     Welcome to{" "}
-                    <Link
-                        href="/"
-                        className="font-semibold underline hover:text-gray-700"
-                    >
+                    <Link href="/" className="font-semibold underline hover:text-gray-700">
                         mobiledisplay.in
                     </Link>{" "}
                     (“Website”).
                 </p>
 
                 <p className="mb-4 leading-relaxed">
-                    This Website is owned and operated by <strong>IntelliJ Technologies</strong>,
-                    having its registered office at:
+                    This Website is owned and operated by <strong>          <Link target="_blank" href="https://intellij.in" className="font-semibold underline hover:text-gray-700">
+                        IntelliJ Technologies</Link></strong>.
                 </p>
 
-                {/* Address */}
+                {/* Registered Address */}
+                <p className="font-semibold mt-4">Registered Address:</p>
+                <address className="not-italic mb-4 leading-relaxed">
+                    Sneha Niwas, Ground Floor, Hatiara, Hela Battala, Sankar Abasan,
+                    <br />
+                    New Town, North 24 Parganas,
+                    <br />
+                    West Bengal – 700059, India
+                </address>
+
+                {/* Business Address */}
+                <p className="font-semibold">Business Address:</p>
                 <address className="not-italic mb-6 leading-relaxed">
                     1st Floor, BA-38, Salt Lake Road, near PNB,
                     <br />
@@ -49,7 +58,7 @@ const Page = () => {
                     these Terms.
                 </p>
 
-                {/* Section 1 */}
+                {/* 1 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
                     1. Website Access & Availability
                 </h2>
@@ -60,23 +69,24 @@ const Page = () => {
                     liable if the Website is unavailable at any time.
                 </p>
 
-                {/* Section 2 */}
+                {/* 2 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">2. User Eligibility</h2>
-                <p className="mb-2">To place an order on mobiledisplay.in, you must:</p>
+                <p className="leading-relaxed">
+                    To place an order on mobiledisplay.in, you must:
+
+                </p>
                 <ul className="list-disc pl-6 space-y-1">
                     <li>Be at least 18 years old</li>
                     <li>
-                        Be legally capable of entering into a binding contract under Indian
-                        law
+                        Be legally capable of entering into a binding contract under Indian law
                     </li>
                     <li>Provide accurate and complete information during checkout</li>
                 </ul>
                 <p className="mt-3">
-                    We reserve the right to refuse service or cancel orders at our
-                    discretion.
+                    We reserve the right to refuse service or cancel orders at our discretion.
                 </p>
 
-                {/* Section 3 */}
+                {/* 3 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
                     3. Account Responsibility (If Applicable)
                 </h2>
@@ -86,7 +96,7 @@ const Page = () => {
                     activities carried out under your account.
                 </p>
 
-                {/* Section 4 */}
+                {/* 4 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
                     4. Privacy & Communication Consent
                 </h2>
@@ -107,9 +117,13 @@ const Page = () => {
                     refunds, or customer support.
                 </p>
 
-                {/* Section 5 */}
+                {/* 5 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">5. Prohibited Activities</h2>
-                <p className="mb-2">You agree not to:</p>
+                <p className="leading-relaxed">
+                    You agree not to:
+
+
+                </p>
                 <ul className="list-disc pl-6 space-y-1">
                     <li>Engage in unlawful, fraudulent, or misleading activities</li>
                     <li>Upload malicious software, viruses, or harmful code</li>
@@ -121,196 +135,188 @@ const Page = () => {
                     Violations may result in suspension, termination, or legal action.
                 </p>
 
-                {/* Section 6 */}
+                {/* 6 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
                     6. Intellectual Property Rights
                 </h2>
                 <p className="leading-relaxed">
-                    All Website content including text, graphics, images, logos, software, and product information is the property of their respective brands or its licensors and is protected under applicable Indian laws. Unauthorized reproduction, modification, or commercial use is prohibited without prior written permission.
+                    All product names, logos, and brands are property of their respective owners. All company, product, and service names used on this Website are for identification purposes only. Use of these names, logos, and brands does not imply endorsement.
 
                 </p>
 
-
-                {/* Section 7 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">
-                    7. Wrong Model Received
-                </h2>
-                <p className="leading-relaxed">
-                    In the event that a customer receives an incorrect product or model, the following terms shall apply:
-
+                <p className="leading-relaxed">The terms “Original” or “Genuine” refer only to products manufactured by the respective mobile phone brands. mobiledisplay.in does not claim ownership or manufacture of such brands.
                 </p>
 
+                {/* 7 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">7. Wrong Model Received</h2>
+                <p className="leading-relaxed mb-2">In the event that a customer receives an incorrect product or model, the following terms shall apply:
+                </p>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>The customer must notify mobiledisplay.in within 7 days of delivery with clear, uncut and without pausing the video for verification.</li>
-                    <li>Upon verification, if it is confirmed that the wrong product was dispatched due to an error from our end, we will arrange a replacement at free of cost.</li>
-                    <li>If our verification shows that the correct product was sent and the issue is not from our side, the customer must return the product (subject to warranty terms) and pay an additional courier charge of ₹120 for replacement.
+                    <li>
+                        The customer must notify mobiledisplay.in within 7 days of delivery, along with a clear, uncut, and unpaused unboxing video for verification.
+
                     </li>
-                    <li>Replacement or further processing will be initiated only after the returned product is received and passes warranty policy terms.
+                    <li>
+                        Upon verification, if it is confirmed that the wrong product was dispatched due to an error from our end, a free replacement will be arranged (one-time only).
+                    </li>
+                    <li>
+                        If verification confirms that the correct product was dispatched, the customer must return the product (subject to warranty terms) and pay an additional ₹120 courier charge for replacement.
+
+                    </li>
+                    <li>
+                        Replacement processing will begin only after the returned product is received and passes warranty inspection.
+
                     </li>
                 </ul>
 
-
-                {/* Section 8 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">
-                    8. Product Information & Compatibility Disclaimer (Very Important)
-                </h2>
-                <p className="leading-relaxed mb-2">
-                    mobiledisplay.in sells mobile spare parts, accessories, and electronic
-                    components intended for both end consumers (B2C) and professionals
-                    (B2B).
+                <p className="leading-relaxed mb-2">If the issue persists after the first replacement, it will be considered a device-related issue. Further replacements will be offered at a charge of ₹99 (delivery cost) per replacement.
                 </p>
-                <p className="font-semibold mb-2">Please Note:</p>
+
+                {/* 8 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">
+                    8. Product Information & Compatibility Disclaimer
+                </h2>
+                <p className="leading-relaxed">mobiledisplay.in sells mobile spare parts, accessories, and electronic components intended for both B2C and B2B customers.
+                </p>
+                <p className="leading-relaxed">Please Note:
+                </p>
                 <ul className="list-disc pl-6 space-y-1">
                     <li>Product images are for reference only</li>
-                    <li>
-                        Compatibility varies by device model, variant, and manufacturer
-                        batch
+                    <li>Compatibility varies by device model, variant, and manufacturer batch
                     </li>
-                    <li>
-                        Customers are responsible for verifying compatibility before placing
-                        an order
+                    <li>Customers are solely responsible for verifying compatibility before placing an order
                     </li>
+                    <li>Installation is recommended only through a qualified technician
+                    </li>
+                </ul>
+                <p className="leading-relaxed mt-3">The following are not covered under warranty or refunds:
+                </p>
 
+                <ul className="list-disc pl-6 space-y-1">
+                    <li>Damage caused due to incorrect installation
+                    </li>
+                    <li>In-display fingerprint sensors, proximity sensors, or other in-built sensors not working on compatible combo display folders
+                    </li>
+                    <li>Battery capacity (mAh) variations due to supplier differences
+                    </li>
+                    <li>Flex, PCB, and modules supplied without pre-installed components
+                    </li>
+                    <li>Full housings or body units that do not include middle frame or side keys
+                    </li>
                 </ul>
 
-                <p className="leading-relaxed mt-2">  We recommend installation by a qualified technician. Damage caused by
-                    incorrect installation is not covered under warranty or refunds. </p>
-
-                {/* Section 9 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">9. Once order placed</h2>
+                {/* 9 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">9. Once Order Placed</h2>
                 <p className="font-semibold mt-2">a) Order Acceptance</p>
                 <p className="leading-relaxed mb-2">
-                    Placing an order constitutes an offer to purchase. Order confirmation
-                    emails acknowledge receipt but do not confirm acceptance. A contract is
-                    formed only once the order is dispatched.
+                    Placing an order constitutes an offer to purchase. Order confirmation emails acknowledge receipt but do not confirm acceptance. A binding contract is formed only after dispatch.
+
                 </p>
 
                 <p className="font-semibold mt-2">b) Pricing & Availability</p>
                 <p className="leading-relaxed mb-2">
-                    Prices and availability are subject to change without notice. If a
-                    pricing or listing error occurs, we reserve the right to cancel the
-                    order and issue a refund.
+                    Prices and availability are subject to change without notice. In case of pricing or listing errors, we reserve the right to cancel the order and issue a refund.
                 </p>
 
                 <p className="font-semibold mt-2">c) Payment</p>
                 <p className="leading-relaxed">
-                    Payments must be made through secure, authorized payment gateways.
-                    Orders will be processed only after successful payment authorization.
+                    Payments must be made through secure and authorized payment gateways. Orders are processed only after successful payment authorization.
                 </p>
 
-                {/* Section 10 */}
+                {/* 10 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">10. Shipping & Delivery</h2>
                 <p className="leading-relaxed">
-                    Delivery timelines are estimates and may vary due to courier delays, serviceability, weather, or operational reasons. As deliveries are handled by third-party logistics partners, we are not liable for delays beyond its control.
+                    Delivery timelines are estimates and may vary due to courier delays, serviceability, weather, or operational constraints. As deliveries are handled by third-party logistics partners, mobiledisplay.in is not liable for delays beyond its control.
+
                 </p>
                 <p className="leading-relaxed">
-                    If an order is not dispatched within 5 working days, the customer will be eligible for a full refund. Express shipments are sent via air where available; if not, they will be shipped using the fastest available surface courier.
+                    Customers are advised not to accept shipments that appear physically damaged or opened before delivery.
+                    If an order is not dispatched within 5 working days, the customer is eligible for a full refund. Express shipments are sent via air where available; otherwise, the fastest available surface courier is used.
 
                 </p>
 
-                {/* Section 11 */}
+                {/* 11 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
                     11. Cancellations, Returns & Refunds
                 </h2>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>
-                        Once order is placed it cannot be canceled or refunded.
+                    <li>Once an order is placed, it cannot be canceled or refunded.
                     </li>
-                    <li>
-                        Returns and refunds are governed strictly by our{" "}
-                        <Link
-                            href="/refund-policy"
-                            className="font-semibold underline hover:text-gray-700"
-                        >
-                            Refund & Return Policy
-                        </Link>
+                    <li>Returns and refunds are governed strictly by the Refund & Return Policy.
                     </li>
-
+                    <li>Returned items must be packed in original, new, and working condition. Items damaged during return transit or due to misuse may invalidate warranty claims.
+                    </li>
 
                 </ul>
 
-                <p className="leading-relaxed mt-2">   Refunds, if applicable, will be processed within the timelines
-                    prescribed by Indian law</p>
-
-                {/* Section 12 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">
-                    12. Warranty & Testing
-                </h2>
+                {/* 12 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">12. Warranty & Testing</h2>
                 <ul className="list-disc pl-6 space-y-1">
-                    <li>Most products are tested before dispatch, subject to flex and testing compatibility availability.</li>
-                    <li>
-                        Warranty (if applicable) varies by product and is limited to
-                        manufacturing defects only
+                    <li>Most products are tested before dispatch, subject to flex and compatibility availability
                     </li>
-                    <li>
-                        Physical damage, liquid damage, or installation damage is not covered
+                    <li>Warranty, if applicable, is limited strictly to manufacturing defects only
+                    </li>
+                    <li>Products may contain more than one warranty seal; all seals must remain intact</li>
+                    <li>Any broken or tampered seal will void the warranty entirely
                     </li>
 
                 </ul>
+                <p className="leading-relaxed">Detailed warranty terms are available on the Warranty Policy page.
+                </p>
 
-                <p className="leading-relaxed mt-2">    Detailed warranty terms are available on the{" "}
-                    <Link
-                        href="/replacement-policy"
-                        className="font-semibold underline hover:text-gray-700"
-                    >
-                        Warranty Policy
-                    </Link>{" "}
-                    page</p>
-
-                {/* Section 13 */}
+                {/* 13 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
                     13. Limitation of Liability
                 </h2>
-                <p className="mb-2">
-                    To the maximum extent permitted under Indian law, IntelliJ Technologies
-                    shall not be liable for:
+                <p className="leading-relaxed">
+                    Liability of mobiledisplay.in is limited to the point of handover to the courier partner. We are not responsible for:
+
                 </p>
+
                 <ul className="list-disc pl-6 space-y-1">
+                    <li>Transit-related issues after dispatch
+                    </li>
+                    <li>Incorrect product selection or compatibility issues
+                    </li>
+                    <li>Installation errors or misuse
+                    </li>
+                    <li>Indirect, incidental, or consequential damages
+                    </li>
 
-                    <li>Liability of mobiledisplay.in is limited to the point of handover of the shipment to the third-party courier partner. We are not responsible for any issues arising during transit thereafter.
-                    </li>
-                    <li>Incorrect product selection or compatibility issues.
-                    </li>
-                    <li>Installation errors or misuse.
-                    </li>
-                    <li> Indirect, incidental, or consequential damages.
-                    </li>
                 </ul>
-                <p className="mt-3">
-                    Nothing in these Terms limits statutory consumer rights that cannot be
-                    excluded by law.
+                <p className="leading-relaxed">Customers must coordinate directly with the respective courier partner for transit-related concerns.
+
                 </p>
 
-         
-
-                {/* Section 14 */}
+                {/* 14 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">14. Refusal of Service</h2>
                 <p className="leading-relaxed">
-                    We reserve the right to refuse service, cancel orders, or restrict
-                    access if we suspect fraud, misuse, repeated delivery failures, or
-                    violation of policies.
+                    We reserve the right to refuse service, cancel orders, or restrict access in cases of suspected fraud, misuse, repeated delivery failures, or violation of these Terms.
                 </p>
 
-             
+                {/* 15 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">15. Indemnification</h2>
+                <p className="leading-relaxed">
+                    You agree to indemnify and hold mobiledisplay.in, its affiliates, directors, employees, and agents harmless from any claims, damages, losses, liabilities, or legal expenses arising from your use of the Website or violation of these Terms.
 
-                {/* Section 15 */}
+                </p>
+
+                {/* 16 */}
                 <h2 className="text-xl font-bold mt-8 mb-3">
-                    15. Governing Law & Jurisdiction
+                    16. Governing Law & Jurisdiction
                 </h2>
                 <p className="leading-relaxed">
-                    These Terms shall be governed by the laws of India. All disputes shall
-                    fall under the exclusive jurisdiction of courts in Kolkata, West
-                    Bengal.
+                    These Terms shall be governed by the laws of India. All disputes shall fall under the exclusive jurisdiction of courts in Kolkata, West Bengal.
+
                 </p>
 
-                {/* Section 16 */}
-                <h2 className="text-xl font-bold mt-8 mb-3">16. Severability</h2>
+                {/* 17 */}
+                <h2 className="text-xl font-bold mt-8 mb-3">17. Severability</h2>
                 <p className="leading-relaxed">
-                    If any provision of these Terms is found unenforceable, the remaining
-                    provisions shall continue to be valid.
+                    If any provision of these Terms is found unenforceable, the remaining provisions shall continue to remain valid and enforceable.
+
                 </p>
 
-             
             </div>
         </section>
     );
