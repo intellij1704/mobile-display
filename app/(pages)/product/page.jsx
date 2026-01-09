@@ -12,6 +12,27 @@ import SortMenu from "./components/SortMenu"
 import { Filter, ArrowUpDown, X } from "lucide-react"
 import ProductSkeleton from "./components/ProductSkeleton"
 
+// Helper to get effective price for sorting and filtering
+const getEffectivePrice = (product) => {
+    // Check if product is variable
+    if (product.isVariable && Array.isArray(product.variations) && product.variations.length > 0) {
+        // Get all effective prices from variations
+        const variationPrices = product.variations.map((v) => {
+            const regularPrice = Number(v.price) || 0
+            const salePrice = Number(v.salePrice)
+            // Use sale price if valid (greater than 0), otherwise regular price
+            return salePrice > 0 ? salePrice : regularPrice
+        })
+        // Return the lowest price among variations
+        return Math.min(...variationPrices)
+    }
+
+    // For simple products
+    const regularPrice = Number(product.price) || 0
+    const salePrice = Number(product.salePrice)
+    return salePrice > 0 ? salePrice : regularPrice
+}
+
 // Filter logic extracted into a reusable hook
 const useProductFilters = (
     products,
@@ -144,7 +165,7 @@ const useProductFilters = (
 
         if (filters.price < 2000) {
             updatedProducts = updatedProducts.filter(
-                (product) => (product.salePrice || product.price) <= Number(filters.price),
+                (product) => getEffectivePrice(product) <= Number(filters.price),
             )
         }
 
@@ -170,9 +191,9 @@ const useProductSorting = (filteredProducts) => {
         const products = [...filteredProducts]
         switch (sortOption) {
             case "priceLowToHigh":
-                return products.sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price))
+                return products.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b))
             case "priceHighToLow":
-                return products.sort((a, b) => (b.salePrice || b.price) - (a.salePrice || a.price))
+                return products.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a))
             case "newest":
                 return products.sort((a, b) => {
                     const aTime = a.timestampCreate?.seconds || 0
